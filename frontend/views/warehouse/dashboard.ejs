@@ -1,0 +1,284 @@
+<%- include("../partials/header") %>
+<% var whName = (user && user.name) ? user.name : "Warehouse"; %>
+<div class="welcome-hero">
+  <div class="welcome-avatar"><%= whName.charAt(0).toUpperCase() %></div>
+  <div class="welcome-text">
+    <span class="welcome-greeting" id="welcomeGreeting">Welcome back,</span>
+    <span class="welcome-name"><%= whName %></span>
+    <span class="welcome-sub">📦 Manage your stock, orders, and packages here.</span>
+  </div>
+  <a class="welcome-cta" href="/warehouse/stock-all">View stock →</a>
+</div>
+<script>
+  (function () {
+    var h = new Date().getHours();
+    var g = h < 12 ? "Good morning" : (h < 17 ? "Good afternoon" : "Good evening");
+    var el = document.getElementById("welcomeGreeting");
+    if (el) el.textContent = g + ",";
+  })();
+</script>
+
+<% if (subscription && subscription.active) { %>
+  <div class="alert-card ok">
+    <span class="alert-ico">✅</span>
+    <div class="alert-body">
+      <div class="alert-title">Package active</div>
+      <div class="alert-text"><strong><%= subscription.current.plan_name %></strong> ·
+        <%= subscription.current.days_remaining %> day(s) left · expires <%= subscription.current.end_date %></div>
+    </div>
+    <a class="alert-cta" href="/warehouse/subscription">Manage</a>
+  </div>
+<% } else { %>
+  <div class="alert-card danger">
+    <span class="alert-ico">🔔</span>
+    <div class="alert-body">
+      <div class="alert-title">No active package</div>
+      <div class="alert-text">Buy a plan to keep your warehouse listed and sell products.</div>
+    </div>
+    <a class="alert-cta" href="/warehouse/subscription">Buy a plan</a>
+  </div>
+<% } %>
+
+<% if (stock.low_stock_alerts && stock.low_stock_alerts.length) { %>
+<div class="alert-card warn">
+  <span class="alert-ico">📉</span>
+  <div class="alert-body">
+    <div class="alert-title">Low stock <span class="alert-count"><%= stock.low_stock_alerts.length %></span>
+      <span class="alert-sub">under <%= stock.low_stock_threshold_kg %>kg</span></div>
+    <div class="alert-chips">
+      <% stock.low_stock_alerts.forEach(b => { %>
+        <span class="alert-chip"><%= b.batch_id %> · <%= b.qty_kg %>kg</span>
+      <% }) %>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<% if (expiry.count) { %>
+<div class="alert-card danger">
+  <span class="alert-ico">⏳</span>
+  <div class="alert-body">
+    <div class="alert-title">Expiry alerts <span class="alert-count"><%= expiry.count %></span></div>
+    <div class="alert-chips">
+      <% expiry.alerts.forEach(b => { %>
+        <span class="alert-chip <%= b.expiry_status === 'expired' ? 'expired' : 'warn' %>"><%= b.batch_id %> · <%= b.expiry_status.replace('_',' ') %></span>
+      <% }) %>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<% var hasStock = (stock.batches || []).length > 0; %>
+<div class="cols">
+  <div class="card">
+    <h3>Stock by grade</h3>
+    <% if (hasStock) { %>
+      <canvas id="stockGrade" height="180"></canvas>
+    <% } else { %>
+      <div class="card-empty">
+        <span class="ce-icon">📊</span>
+        <div class="ce-title">No stock to show yet</div>
+        <div class="ce-sub">When you add products, this chart shows how your stock splits across <strong>Grade A, B &amp; C</strong>.</div>
+      </div>
+    <% } %>
+  </div>
+  <% var rev7 = (charts && charts.revenue_7d) || {}; var hasRevenue = (rev7.values || []).some(function (v) { return Number(v) > 0; }); %>
+  <div class="card">
+    <h3>Revenue — last 7 days</h3>
+    <% if (hasRevenue) { %>
+      <canvas id="rev7" height="180"></canvas>
+    <% } else { %>
+      <div class="card-empty">
+        <span class="ce-icon">💰</span>
+        <div class="ce-title">No sales yet</div>
+        <div class="ce-sub">Your earnings from the last 7 days will show here once customers start buying your products.</div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Upload many products at once</h3>
+  <p class="muted" style="margin:.2rem 0 .9rem">Add all your products in one go with a <strong>.csv</strong> file.
+    Not sure about the format? Open the sample to see exactly how it should look.</p>
+  <div class="inline" style="flex-wrap:wrap;gap:.6rem;align-items:center">
+    <a class="btn sm btn-outline" href="/warehouse/sample-stock-template" target="_blank" rel="noopener">📄 Download sample</a>
+    <form action="/warehouse/batches/bulk" method="post" enctype="multipart/form-data" class="inline" style="gap:.6rem;align-items:center">
+      <input type="file" name="file" accept=".csv" required>
+      <button class="btn sm" type="submit">⬆ Upload CSV</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  window.CHART_DATA = <%- JSON.stringify(charts) %>;
+  window.addEventListener("load", function () {
+    if (document.getElementById("stockGrade") && CHART_DATA.stock_by_grade && Object.keys(CHART_DATA.stock_by_grade).length) {
+      JaggeryCharts.pie("stockGrade", CHART_DATA.stock_by_grade, "kg by grade");
+    }
+    if (document.getElementById("rev7") && CHART_DATA.revenue_7d) {
+      JaggeryCharts.line("rev7", CHART_DATA.revenue_7d.labels, CHART_DATA.revenue_7d.values, "Revenue (Kyats)");
+    }
+  });
+</script>
+
+<div class="card">
+  <h3>Request a new product</h3>
+  <p class="req-hint">📦 Got something new to sell? Submit it for admin approval — once approved, it goes
+    <strong>live on the Categories page</strong> for customers to buy.</p>
+  <a class="btn sm" href="/warehouse/transfers">➕ Request a product</a>
+</div>
+
+<div class="card">
+  <h3>Current Stock <span class="muted">(<%= stock.batches.length %>)</span></h3>
+  <% if (!hasStock) { %>
+    <div class="card-empty">
+      <span class="ce-icon">📦</span>
+      <div class="ce-title">No products in stock yet</div>
+      <div class="ce-sub">Your shelf is empty. Add your first product and it will appear here — ready to sell to customers.</div>
+      <div class="ce-actions"><a class="btn sm" href="/warehouse/transfers">➕ Request a product</a></div>
+    </div>
+  <% } else { %>
+  <form id="bulkStock" action="/warehouse/batches/bulk-delete" method="post" data-confirm="Delete the selected product(s)? They'll be removed from the shop and the admin notified."></form>
+  <table class="tbl stock-tbl">
+    <thead><tr><th><input type="checkbox" class="bulk-all" data-group="stock" title="Select all"></th><th>No.</th><th>Category</th><th>Grade</th><th>Qty</th><th>Kyats/kg</th><th>Production Date</th>
+      <th>Update</th><th>Certificate</th></tr></thead>
+    <tbody>
+    <% stock.batches.slice(0, 3).forEach((b, idx) => { %>
+      <tr class="<%= b.expiry_status === 'expired' ? 'expired-row' : (b.near_expiry ? 'expiry-row' : '') %>">
+        <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="stock" name="stock_ids" value="<%= b.id %>" form="bulkStock"></td>
+        <td data-label="No."><%= idx + 1 %></td>
+        <td data-label="Category"><%= b.batch_id %>
+          <% if (b.expiry_status === 'expired') { %><span class="exp-badge">EXPIRED</span>
+          <% } else if (b.near_expiry) { %><span class="exp-badge near">near expiry</span><% } %>
+        </td>
+        <td data-label="Grade"><%= b.grade %></td>
+        <td data-label="Qty"><%= b.qty_kg %></td>
+        <td data-label="Kyats/kg"><%= b.price_per_kg %></td>
+        <td data-label="Production Date"><%= b.harvest_date %></td>
+        <td data-label="Update" class="cell-block">
+          <% const uf = "uf" + b.id; %>
+          <form id="<%= uf %>" action="/warehouse/batches/<%= b.id %>/update" method="post"></form>
+          <div class="inline" style="gap:.4rem;align-items:flex-end;flex-wrap:wrap">
+            <label class="upd-lbl">Quality<input name="qty_kg" form="<%= uf %>" type="text" inputmode="decimal"
+              value="<%= b.qty_kg %>" title="Quantity in kg"
+              oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+            <label class="upd-lbl">Price/kg<input name="price_per_kg" form="<%= uf %>" type="text" inputmode="numeric"
+              value="<%= b.price_per_kg %>" title="Whole numbers only"
+              oninput="this.value=this.value.replace(/[^0-9]/g,'')"></label>
+            <button class="btn sm" type="submit" form="<%= uf %>">Save</button>
+            <form action="/warehouse/batches/<%= b.id %>/delete" method="post" style="display:inline-flex"
+                  data-confirm="Delete &quot;<%= b.batch_id %>&quot;? It will be removed from the shop and the admin will be notified.">
+              <button class="btn sm danger" type="submit">🗑 Delete</button>
+            </form>
+          </div>
+        </td>
+        <td data-label="Certificate" class="cell-block">
+          <% if (b.certificate_path) { %><span class="muted">✔ uploaded</span><br><% } %>
+          <div class="inline" style="flex-wrap:wrap;gap:.3rem;align-items:center">
+            <form action="/warehouse/batches/<%= b.id %>/certificate" method="post"
+                  enctype="multipart/form-data" class="inline" style="gap:.3rem">
+              <input type="file" name="file" accept="application/pdf" style="max-width:150px">
+              <button class="btn sm" type="submit">Upload</button>
+            </form>
+            <a class="btn sm" href="/warehouse/batches/<%= b.id %>/qr" target="_blank">QR</a>
+          </div>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkStock">🗑 Delete selected</button>
+    <% if (stock.batches.length > 3) { %>
+      <a class="btn sm" href="/warehouse/stock-all">📦 Read more — view all <%= stock.batches.length %> products →</a>
+    <% } %>
+  </div>
+  <% } %>
+</div>
+
+<%
+  var activeOrders  = orders.filter(function (o) { return o.status === "waiting"; });
+  var historyOrders = orders.filter(function (o) { return ["shipped", "cancelled"].indexOf(o.status) !== -1; });
+  // brand-new orders first so they're obvious
+  activeOrders.sort(function (a, b) { return (b.isNew === true) - (a.isNew === true); });
+%>
+
+<!-- ============ Orders that still need action ============ -->
+<div class="card">
+  <h3>📋 Assigned Orders <span class="muted">(<%= activeOrders.length %>)</span></h3>
+  <p class="muted" style="margin:.1rem 0 .6rem">Orders waiting to be shipped. Press <strong>Shipped</strong> to send one to history.</p>
+  <% if (typeof newOrderCount !== "undefined" && newOrderCount > 0) { %>
+    <div class="order-update-banner">
+      <span class="oub-ico">🛒</span>
+      <span><strong><%= newOrderCount %> new customer order<%= newOrderCount === 1 ? "" : "s" %></strong>
+        just arrived — highlighted <%= newOrderCount === 1 ? "below" : "at the top" %>.</span>
+    </div>
+  <% } %>
+  <% if (!activeOrders.length) { %>
+    <p class="muted">🎉 All caught up — no orders waiting.</p>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>Date</th><th>Customer</th><th>Product</th><th>Price</th><th>Address</th><th>Total (Kyats)</th><th>Details</th><th>Action</th><th>Message</th></tr></thead>
+      <tbody>
+      <% activeOrders.slice(0, 3).forEach(function (o, idx) { %>
+        <tr class="<%= o.isNew ? 'order-new-row' : '' %>">
+          <td><%= idx + 1 %><% if (o.isNew) { %> <span class="new-tag">🆕 NEW</span><% } %></td>
+          <td class="muted"><%= o.created_at ? o.created_at.substring(0,10) : "—" %></td>
+          <td><%= o.customer_name %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.unit_price %> Kyats</div><% }) %></td>
+          <td class="muted"><%= o.delivery_address %></td>
+          <td><%= o.total_price %></td>
+          <td><a class="btn sm row-view" href="/warehouse/orders/<%= o.id %>/details">🔍 View</a></td>
+          <td>
+            <% if (o.status === "waiting") { %>
+              <form action="/warehouse/orders/<%= o.id %>/status" method="post" class="inline">
+                <input type="hidden" name="status" value="shipped">
+                <button class="btn sm danger" type="submit">Shipped</button>
+              </form>
+            <% } %>
+          </td>
+          <td><a class="btn sm" href="/warehouse/orders/<%= o.id %>/messages">💬</a></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% if (activeOrders.length > 3) { %>
+      <a class="btn sm" href="/warehouse/orders-all">📋 Read more — view all <%= activeOrders.length %> waiting orders →</a>
+    <% } %>
+  <% } %>
+</div>
+
+<!-- ============ Completed / shipped orders ============ -->
+<div class="card">
+  <h3>📦 Orders History <span class="muted">(<%= historyOrders.length %>)</span></h3>
+  <% if (!historyOrders.length) { %>
+    <p class="muted">No shipped orders yet. Once you press <strong>Shipped</strong>, orders move here.</p>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>Date</th><th>Customer</th><th>Product</th><th>Price</th><th>Address</th><th>Total (Kyats)</th><th>Status</th><th>Message</th><th>Details</th></tr></thead>
+      <tbody>
+      <% historyOrders.slice(0, 3).forEach(function (o, idx) { %>
+        <tr>
+          <td><%= idx + 1 %></td>
+          <td class="muted"><%= o.created_at ? o.created_at.substring(0,10) : "—" %></td>
+          <td><%= o.customer_name %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.unit_price %> Kyats</div><% }) %></td>
+          <td class="muted"><%= o.delivery_address %></td>
+          <td><%= o.total_price %></td>
+          <td class="status-flat"><%= whStatusLabel(o.status) %></td>
+          <td><a class="btn sm" href="/warehouse/orders/<%= o.id %>/messages">💬</a></td>
+          <td><a class="btn sm row-view" href="/warehouse/orders/<%= o.id %>/details">🔍 View</a></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% if (historyOrders.length > 3) { %>
+      <a class="btn sm" href="/warehouse/orders-history">📦 Read more — view all <%= historyOrders.length %> past orders →</a>
+    <% } else { %>
+      <a class="btn sm" href="/warehouse/orders-history">View all · search by date →</a>
+    <% } %>
+  <% } %>
+</div>
+<%- include("../partials/footer") %>

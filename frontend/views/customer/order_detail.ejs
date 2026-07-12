@@ -1,0 +1,108 @@
+<%- include("../partials/header") %>
+
+<% var steps = ["pending","waiting","shipped"]; %>
+<% var si = steps.indexOf(order.status); var cancelled = (order.status === "cancelled"); %>
+
+<!-- summary banner -->
+<div class="card od-banner">
+  <div class="od-banner-main">
+    <div class="od-num">🧾 Order<% if (displayNo) { %> #<%= displayNo %><% } %></div>
+    <div class="od-meta">Placed on <strong><%= order.created_at ? order.created_at.substring(0,10) : "—" %></strong>
+      · <%= order.items.length %> item<%= order.items.length === 1 ? "" : "s" %></div>
+  </div>
+  <div class="od-banner-side">
+    <span class="od-status-pill status-<%= order.status %>"><%= statusLabel(order.status) %></span>
+    <% if (order.payment_status === "paid") { %>
+      <span class="pay-badge paid">✔ Paid<% if (order.payment_method_label) { %> · <%= order.payment_method_label %><% } %></span>
+    <% } else if (order.payment_method === "cod") { %>
+      <span class="pay-badge cod">Pay on delivery</span>
+    <% } else { %>
+      <span class="pay-badge unpaid">Unpaid</span>
+    <% } %>
+  </div>
+</div>
+
+<!-- progress -->
+<div class="card">
+  <% if (!cancelled) { %>
+    <div class="order-steps">
+      <% steps.forEach(function (s, i) { %>
+        <div class="ostep <%= i < si ? 'done' : (i === si ? 'active' : '') %>">
+          <span class="odot"></span><span class="olabel"><%= statusLabel(s) %></span>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="order-cancelled">✕ Order cancelled</div>
+  <% } %>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <h3>🚚 Delivery</h3>
+    <dl class="od-dl">
+      <div><dt>Address</dt><dd><%= order.delivery_address || "—" %></dd></div>
+      <div><dt>Pincode</dt><dd><%= order.pincode || "—" %></dd></div>
+      <div><dt>Warehouse</dt><dd><%= order.warehouse_name || "—" %></dd></div>
+    </dl>
+  </div>
+  <div class="card">
+    <h3>💳 Payment</h3>
+    <dl class="od-dl">
+      <div><dt>Method</dt><dd><%= order.payment_method_label || order.payment_method || "—" %></dd></div>
+      <div><dt>Status</dt><dd><%= order.payment_status || "—" %></dd></div>
+      <div><dt>Reference</dt><dd><%= order.payment_reference || "—" %></dd></div>
+    </dl>
+  </div>
+</div>
+
+<!-- items -->
+<div class="card">
+  <h3>📦 Items</h3>
+  <table class="tbl">
+    <thead><tr><th>No.</th><th>Product</th><th>Grade</th><th>Qty (kg)</th><th>Unit (Kyats)</th><th>Line Kyats </th></tr></thead>
+    <tbody>
+      <% order.items.forEach(function (it, i) { %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><strong><%= it.batch_id %></strong></td>
+          <td><%= it.grade %></td>
+          <td><%= it.qty_kg %></td>
+          <td><%= it.unit_price %> Kyats</td>
+          <td><%= it.line_total %> Kyats</td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="od-totals">
+    <div><span>Subtotal</span><span><%= order.subtotal %> Kyats</span></div>
+    <% if (order.discount_amount && Number(order.discount_amount) > 0) { %>
+      <div class="od-disc"><span>Discount</span><span>− <%= order.discount_amount %> Kyats</span></div>
+    <% } %>
+    <div><span>Delivery</span><span><%= order.delivery_charge %> Kyats</span></div>
+    <div class="od-grand"><span>Total</span><span><%= order.grand_total != null ? order.grand_total : order.total_price %> Kyats</span></div>
+  </div>
+</div>
+
+<!-- actions -->
+<div class="card od-actions">
+  <% if (order.payment_status !== "paid" && order.payment_method !== "cod" && order.status !== "cancelled") { %>
+    <a class="btn" href="/orders/<%= order.id %>/pay">💳 Pay now</a>
+  <% } %>
+  <% if (order.payment_status === "paid") { %>
+    <a class="btn" href="/orders/<%= order.id %>/payment-slip" target="_blank">🧾 Payment slip</a>
+  <% } %>
+  <% if (order.status === "shipped") { %>
+    <a class="btn" href="/orders/<%= order.id %>/invoice" target="_blank">📄 Invoice PDF</a>
+  <% } %>
+  <% if (order.status === "pending" || order.status === "waiting") { %>
+    <form action="/orders/<%= order.id %>/cancel" method="post" class="inline">
+      <button class="btn danger" type="submit">Cancel order</button>
+    </form>
+  <% } %>
+  <a class="btn" href="/orders/<%= order.id %>/messages">📝 Note</a>
+  <a class="btn gray" href="/">← Back to home</a>
+</div>
+
+<%- include("../partials/footer") %>

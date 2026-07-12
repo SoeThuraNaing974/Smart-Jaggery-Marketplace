@@ -1,0 +1,165 @@
+<%- include("../partials/header") %>
+<h2>Checkout</h2>
+<a class="btn sm" href="/warehouse/subscription" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; Back to plans</a>
+
+<div class="cols">
+  <div class="card">
+    <h3>Order summary</h3>
+    <p class="price"><%= plan.price %> Kyats</p>
+    <p><strong><%= plan.name %></strong> — <%= plan.duration_months %> month(s)</p>
+    <p class="muted">Your package activates as soon as payment is confirmed.
+      If you already have an active plan, this term is added on top.</p>
+  </div>
+
+  <div class="card">
+    <h3>Pay with</h3>
+    <form action="/warehouse/subscription/pay" method="post" id="payForm">
+      <input type="hidden" name="plan_id" value="<%= plan.id %>">
+
+      <div class="pay-methods">
+        <% methods.forEach((m, i) => { %>
+          <label class="pay-opt">
+            <input type="radio" name="method" value="<%= m.key %>" data-account="<%= m.account %>"
+                   <%= i === 0 ? "checked" : "" %> required>
+            <span><%= m.label %></span>
+          </label>
+        <% }) %>
+      </div>
+
+      <label id="phoneLabel">Phone number</label>
+      <div class="phone-group">
+        <select name="country_code" class="phone-cc-select" id="phoneCc"><%- include("../partials/ccodes", { selected: "+95" }) %></select>
+        <input name="phone" type="tel" inputmode="numeric" placeholder="9xxxxxxxx"
+               maxlength="9" pattern="[0-9]{1,9}" title="Up to 9 digits" id="phoneInput" required>
+      </div>
+
+      <label>Description:
+        <input name="description" id="descInput">
+      </label>
+      <div class="note-chips">
+        <% ["Transfer","Payment","Gift","Chilling"].forEach(function(p){ %>
+          <button type="button" class="note-chip" data-note="<%= p %>"><%= p %></button>
+        <% }) %>
+      </div>
+
+      <div id="otpPanel" class="otp-modal" style="display:none">
+        <div class="otp-box">
+          <button type="button" class="otp-close" id="otpClose">✕</button>
+          <div class="otp-icon">📧</div>
+          <h3 class="otp-title">Verify your payment</h3>
+          <p id="otpInfo" class="muted">Sending a verification code to your email…</p>
+          <input name="otp" id="otpInput" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                 autocomplete="one-time-code" placeholder="––––––" class="otp-input"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+          <button class="btn otp-verify" type="submit">Verify &amp; Pay — <%= plan.price %> Kyats</button>
+          <div class="otp-actions">
+            <button type="button" class="link-btn otp-autofill" id="otpAutofill" style="display:none">✨ Autofill code</button>
+            <button type="button" class="link-btn" id="otpResend" style="color:#1a3aa0">Resend code</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn" type="button" id="payBtn">Confirm payment — <%= plan.price %> Kyats</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // switch phone/bank field when the method changes
+  (function () {
+    const phone = document.getElementById("phoneInput");
+    const phoneLabel = document.getElementById("phoneLabel");
+    const phoneCc = document.getElementById("phoneCc");
+
+    let prevIsBank = null;
+    function applyMode() {
+      const sel = document.querySelector('input[name="method"]:checked');
+      const isBank = sel && sel.value === "bank";
+      // switching between phone(wallet) and bank clears the field so it isn't reused
+      if (prevIsBank !== null && isBank !== prevIsBank) phone.value = "";
+      prevIsBank = isBank;
+      if (isBank) {
+        phoneLabel.textContent = "Bank Number";
+        phoneCc.style.display = "none";
+        phone.placeholder = "Enter your bank account number";
+        phone.maxLength = 20;
+        phone.removeAttribute("pattern");
+        phone.title = "";
+        phone.classList.add("no-cc");
+      } else {
+        phoneLabel.textContent = "Phone number";
+        phoneCc.style.display = "";
+        phone.classList.remove("no-cc");
+        if (window.applyPhoneLen) { window.applyPhoneLen(phone, phoneCc.value); }
+        else { phone.maxLength = 9; phone.setAttribute("pattern", "[0-9]{1,9}"); phone.title = "Up to 9 digits"; }
+      }
+    }
+    phone.addEventListener("input", function () {
+      this.value = this.value.replace(/\D/g, "").slice(0, this.maxLength);
+    });
+    document.querySelectorAll('input[name="method"]').forEach(function (r) {
+      r.addEventListener("change", applyMode);
+    });
+    applyMode();
+  })();
+
+  // description quick-prompt chips
+  (function () {
+    var input = document.getElementById("descInput");
+    document.querySelectorAll(".note-chip").forEach(function (c) {
+      c.addEventListener("click", function () {
+        input.value = this.dataset.note;
+        document.querySelectorAll(".note-chip").forEach(function (x) { x.classList.remove("active"); });
+        this.classList.add("active");
+        input.focus();
+      });
+    });
+  })();
+
+  // Email-OTP confirmation: Confirm payment -> email a code -> enter it -> submit.
+  (function () {
+    var form = document.getElementById("payForm");
+    var payBtn = document.getElementById("payBtn");
+    var otpPanel = document.getElementById("otpPanel");
+    var otpInfo = document.getElementById("otpInfo");
+    var otpInput = document.getElementById("otpInput");
+    var otpAutofill = document.getElementById("otpAutofill");
+    var devCode = null;
+
+    async function requestCode() {
+      otpInfo.textContent = "Sending a verification code to your email…";
+      otpAutofill.style.display = "none"; devCode = null;
+      try {
+        var r = await fetch("/warehouse/subscription/otp", { method: "POST" });
+        var d = await r.json();
+        if (d.dev_code) {
+          devCode = d.dev_code; otpAutofill.style.display = "inline-block";
+          otpInfo.innerHTML = "Sent to <strong>" + (d.email || "your email") + "</strong>. Your code is <strong>" + d.dev_code + "</strong> — type it in, or tap Autofill.";
+        } else {
+          otpInfo.textContent = "Type the 6-digit code sent to " + (d.email || "your email") + ".";
+        }
+      } catch (e) { otpInfo.textContent = "Could not send the code. Tap Resend."; }
+    }
+    otpAutofill.addEventListener("click", function () {
+      if (!devCode) return;
+      otpInput.value = devCode;
+      otpInput.classList.add("otp-filled");
+      otpInput.focus();
+    });
+
+    payBtn.addEventListener("click", function () {
+      if (!form.reportValidity()) return;   // validate method + phone first
+      otpPanel.style.display = "flex";
+      otpInput.setAttribute("required", "required");
+      otpInput.value = "";
+      otpInput.focus();
+      requestCode();
+    });
+    document.getElementById("otpClose").addEventListener("click", function () {
+      otpPanel.style.display = "none";
+      otpInput.removeAttribute("required");
+    });
+    document.getElementById("otpResend").addEventListener("click", requestCode);
+  })();
+</script>
+<%- include("../partials/footer") %>

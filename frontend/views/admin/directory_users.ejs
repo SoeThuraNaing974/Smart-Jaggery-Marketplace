@@ -1,0 +1,33 @@
+<%- include("../partials/header") %>
+<div class="page-intro"><h2>👤 All Users</h2></div>
+
+<div class="card">
+  <div class="acc-head">
+    <h3>Users (<%= users.length %>)</h3>
+    <div class="acc-toolbar">
+      <input type="search" class="acc-search" data-target="userTable" placeholder="🔍 Search name or email…">
+      <div class="acc-filter" data-target="userTable">
+        <button type="button" class="acc-chip active" data-f="all">All</button>
+        <button type="button" class="acc-chip" data-f="active">● Active</button>
+        <button type="button" class="acc-chip" data-f="inactive">○ Inactive</button>
+      </div>
+      <div class="acc-dates" data-target="userTable">
+        <label class="acc-date">📅 From <input type="date" class="acc-from" data-target="userTable"></label>
+        <label class="acc-date">To <input type="date" class="acc-to" data-target="userTable"></label>
+        <button type="button" class="acc-date-clear" data-target="userTable" title="Clear dates">✕</button>
+      </div>
+      <a class="btn sm gray" href="/admin/directory">← Back</a>
+    </div>
+  </div>
+  <form action="/admin/directory/users/delete" method="post" data-confirm="Delete the selected user(s)? This also removes their orders & related data.">
+    <input type="hidden" name="_back" value="all">
+    <table class="tbl" id="userTable">
+      <thead><tr><th><input type="checkbox" class="dir-all" title="Select all"></th><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Last active</th><th>Status</th></tr></thead>
+      <tbody><%- include("../partials/dir_user_rows", { rows: users }) %></tbody>
+    </table>
+    <div class="acc-actions"><button class="btn sm danger" type="submit">🗑 Delete selected</button></div>
+  </form>
+</div>
+
+<%- include("../partials/dir_filter_script") %>
+<%- include("../partials/footer") %>

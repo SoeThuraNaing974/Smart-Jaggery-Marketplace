@@ -1,0 +1,155 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <h2>🏷️ All Promotions</h2>
+</div>
+
+<div class="card">
+  <form action="/admin/promotions-all" method="get" class="orders-toolbar">
+    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 Search</button>
+    <% if (from || to) { %><a class="btn sm gray" href="/admin/promotions-all">Clear</a><% } %>
+    <a class="btn sm gray" href="/admin/promotions">← Back</a>
+  </form>
+
+  <p class="muted" style="margin:.6rem 0">
+    <strong><%= promotions.length %></strong> promotion<%= promotions.length === 1 ? "" : "s" %><%
+      if (from || to) { %> · running <%= from || "…" %> → <%= to || "…" %><% } %>
+  </p>
+
+  <% if (!promotions.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">🏷️</div>
+      <div class="empty-title">No promotions found</div>
+      <div class="empty-sub">Try a different date range.</div>
+    </div>
+  <% } else { %>
+    <%
+      // build the analytics list (orders & revenue per promotion), best first
+      var perf = promotions.map(function (p) {
+        var st = stats[p.id] || {};
+        return { title: p.title, active: p.is_active,
+                 date: (p.start_date || "").substring(0, 10),
+                 endDate: (p.end_date || "").substring(0, 10),
+                 orders: Number(st.orders) || 0, revenue: Number(st.revenue) || 0 };
+      });
+      perf.sort(function (a, b) { return b.revenue - a.revenue || b.orders - a.orders; });
+      var maxRev = perf.reduce(function (m, r) { return Math.max(m, r.revenue); }, 0) || 1;
+      var totOrders = perf.reduce(function (t, r) { return t + r.orders; }, 0);
+      var totRevenue = perf.reduce(function (t, r) { return t + r.revenue; }, 0);
+    %>
+
+    <h3 class="promo-sec">📊 Promotion performance <span class="muted">(top <%= Math.min(3, perf.length) %> of <%= perf.length %>)</span></h3>
+    <table class="tbl promo-perf">
+      <thead><tr><th>No.</th><th>Promotion</th><th>Orders</th><th>Revenue (Kyats)</th></tr></thead>
+      <tbody>
+        <% perf.slice(0, 3).forEach(function (r, i) { %>
+          <tr>
+            <td><span class="perf-rank <%= i === 0 ? 'top' : '' %>"><%= i + 1 %></span></td>
+            <td><strong><%= r.title %></strong><% if (!r.active) { %> <span class="muted">· inactive</span><% } %></td>
+            <td><%= r.orders %></td>
+            <td><%= r.revenue %> Kyats</td>
+          </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr><td></td><td><strong>Total (all <%= perf.length %>)</strong></td><td><strong><%= totOrders %></strong></td>
+            <td><strong><%= totRevenue %> Kyats</strong></td></tr>
+      </tfoot>
+    </table>
+    <% if (perf.length > 3) { %>
+      <button type="button" class="btn sm" id="perfReadMore">📊 Read more — view all <%= perf.length %> with dates →</button>
+    <% } %>
+
+    <!-- popup: full performance list with assigned date + date search -->
+    <div class="modal-overlay" id="perfModal" style="display:none">
+      <div class="modal-box perf-modal-box">
+        <div class="perf-modal-head">📊 Promotion performance — all <%= perf.length %></div>
+        <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem">
+          <label class="ot-field">From <input type="date" id="perfFrom"></label>
+          <label class="ot-field">To <input type="date" id="perfTo"></label>
+          <button type="button" class="btn sm" id="perfSearch">🔍 Search</button>
+          <button type="button" class="btn sm gray" id="perfClear">Clear</button>
+        </div>
+        <div class="perf-modal-scroll">
+          <table class="tbl" id="perfTable">
+            <thead><tr><th>No.</th><th>Promotion</th><th>Orders</th><th>Revenue (Kyats)</th><th>📅 Start date</th><th>🏁 End date</th></tr></thead>
+            <tbody>
+              <% perf.forEach(function (r, i) { %>
+                <tr data-date="<%= r.date %>">
+                  <td><span class="perf-rank <%= i === 0 ? 'top' : '' %>"><%= i + 1 %></span></td>
+                  <td><strong><%= r.title %></strong><% if (!r.active) { %> <span class="muted">· inactive</span><% } %></td>
+                  <td><%= r.orders %></td>
+                  <td><%= r.revenue %> Kyats</td>
+                  <td class="muted"><%= r.date || "—" %></td>
+                  <td class="muted"><%= r.endDate || "—" %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          <p class="muted" id="perfNoRows" style="display:none;padding:.6rem">No promotions in this date range.</p>
+        </div>
+        <button type="button" class="btn" id="perfClose" style="margin-top:.7rem">Close</button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var modal = document.getElementById("perfModal");
+        if (!modal) return;
+        var openBtn = document.getElementById("perfReadMore");
+        function open() { modal.style.display = "flex"; }
+        function close() { modal.style.display = "none"; }
+        if (openBtn) openBtn.addEventListener("click", open);
+        document.getElementById("perfClose").addEventListener("click", close);
+        modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+        var from = document.getElementById("perfFrom"), to = document.getElementById("perfTo");
+        var rows = Array.prototype.slice.call(document.querySelectorAll("#perfTable tbody tr"));
+        var noRows = document.getElementById("perfNoRows");
+        function applyFilter() {
+          var f = from.value, t = to.value, shown = 0;
+          rows.forEach(function (tr) {
+            var d = tr.getAttribute("data-date") || "";
+            var ok = (!f || (d && d >= f)) && (!t || (d && d <= t));
+            tr.style.display = ok ? "" : "none";
+            if (ok) shown++;
+          });
+          noRows.style.display = shown ? "none" : "";
+        }
+        document.getElementById("perfSearch").addEventListener("click", applyFilter);
+        document.getElementById("perfClear").addEventListener("click", function () {
+          from.value = ""; to.value = ""; applyFilter();
+        });
+      })();
+    </script>
+
+    <h3 class="promo-sec">✏️ Manage promotions</h3>
+    <div class="promo-grid">
+      <% promotions.forEach(p => { const fid = "paf" + p.id; const s = stats[p.id] || {}; %>
+        <div class="promo-card <%= p.is_active ? '' : 'inactive' %>">
+          <form id="<%= fid %>" action="/admin/promotions/<%= p.id %>/update" method="post" class="promo-fields">
+            <label class="full">Title<input name="title" value="<%= p.title %>"></label>
+            <label>Discount %<input name="discount_percent" type="text" inputmode="decimal" value="<%= p.discount_percent %>"
+              oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+            <label>Minimum Kg<input name="min_qty" type="text" inputmode="decimal" value="<%= p.min_qty %>"
+              oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+            <label>Start date<input name="start_date" type="date" value="<%= p.start_date %>"></label>
+            <label>End date<input name="end_date" type="date" value="<%= p.end_date %>"></label>
+            <label class="promo-active full"><input type="checkbox" name="is_active" <%= p.is_active ? "checked" : "" %>> Active</label>
+          </form>
+          <p class="promo-stats">📊 Used <strong><%= s.orders || 0 %></strong> · Revenue <strong><%= s.revenue || 0 %> Kyats</strong></p>
+          <div class="cat-toolbar">
+            <span class="spacer"></span>
+            <button class="btn sm" type="submit" form="<%= fid %>">Save</button>
+            <form action="/admin/promotions/<%= p.id %>/delete" method="post" class="ct-form"
+                  data-confirm="Delete promotion <%= p.title %>?">
+              <button class="btn sm danger" type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<%- include("../partials/footer") %>

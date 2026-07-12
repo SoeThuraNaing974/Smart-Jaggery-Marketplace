@@ -1,0 +1,172 @@
+<%- include("../partials/header") %>
+<h2>Package Plans</h2>
+<div class="page-intro">
+  <span class="page-intro-ico">📦</span>
+  <div>
+    <strong>Plans &amp; packages</strong>
+    <span>Manage the plans warehouses can buy — 1, 2, 6 or 12 months — and track each warehouse's package status at a glance.</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Add a plan</h3>
+  <form action="/admin/subscription-plans" method="post" class="row-form">
+    <input name="name" placeholder="Name (e.g. 3 Months)" required>
+    <input name="duration_months" type="number" min="1" placeholder="Months" required>
+    <input name="price" type="number" step="1" min="0" placeholder="Price (Kyats)" required>
+    <button class="btn sm" type="submit">Create</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>All plans (<%= plans.length %>)</h3>
+  <form id="bulkPlan" action="/admin/subscription-plans/bulk-delete" method="post" data-confirm="Delete the selected plan(s)?"></form>
+  <table class="tbl plan-tbl">
+    <thead><tr><th><input type="checkbox" class="bulk-all" data-group="plan" title="Select all"></th><th>Name</th><th>Months</th><th>Price (Kyats)</th><th>Active</th><th>Save</th><th>Delete</th></tr></thead>
+    <tbody>
+    <% plans.forEach(p => { const fid = "sp" + p.id; %>
+      <tr>
+        <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="plan" name="plan_ids" value="<%= p.id %>" form="bulkPlan"></td>
+        <td>
+          <input name="name" form="<%= fid %>" value="<%= p.name %>" style="width:140px">
+          <form id="<%= fid %>" action="/admin/subscription-plans/<%= p.id %>/update" method="post"></form>
+        </td>
+        <td><input name="duration_months" form="<%= fid %>" type="number" min="1" value="<%= p.duration_months %>" style="width:70px"></td>
+        <td><input name="price" form="<%= fid %>" type="number" step="1" value="<%= p.price %>" style="width:90px"></td>
+        <td style="text-align:center"><input type="checkbox" name="is_active" form="<%= fid %>" <%= p.is_active ? "checked" : "" %>></td>
+        <td><button class="btn sm" type="submit" form="<%= fid %>">Save</button></td>
+        <td>
+          <form action="/admin/subscription-plans/<%= p.id %>/delete" method="post"
+                data-confirm="Delete plan <%= p.name %>?">
+            <button class="btn danger sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkPlan">🗑 Delete selected</button></div>
+</div>
+
+<div class="card">
+  <h3>Warehouse package status</h3>
+  <% if (!subs.length) { %>
+    <div class="card-empty">
+      <span class="ce-icon">📦</span>
+      <div class="ce-title">No packages bought yet</div>
+      <div class="ce-sub">When a warehouse buys a package, it appears here with its plan and expiry. Warehouses that haven't bought one aren't listed.</div>
+    </div>
+  <% } else { %>
+  <form id="bulkSub" action="/admin/subscriptions/bulk-delete" method="post" data-confirm="Delete the selected package(s)?"></form>
+  <table class="tbl">
+    <thead><tr><th><input type="checkbox" class="bulk-all" data-group="sub" title="Select all"></th><th>Warehouse</th><th>Status</th><th>Plan</th><th>Started</th><th>Expires</th><th>Days left</th><th>Action</th></tr></thead>
+    <tbody>
+    <% subs.slice(0, 5).forEach(s => { %>
+      <tr class="<%= s.isNew ? 'new-req-row' : '' %>">
+        <td class="dir-chk"><% if (s.current) { %><input type="checkbox" class="bulk-cb" data-group="sub" name="sub_ids" value="<%= s.current.id %>" form="bulkSub"><% } %></td>
+        <td><%= s.warehouse %><% if (s.isNew) { %> <span class="new-badge">🆕 NEW</span><% } %></td>
+        <td><span class="status status-<%= s.subscribed ? 'delivered' : 'pending' %>"><%= s.subscribed ? "active" : "expired" %></span></td>
+        <td><%= s.current ? s.current.plan_name : "—" %></td>
+        <td class="muted"><%= s.current && s.current.start_date ? s.current.start_date.substring(0,10) : "—" %></td>
+        <td><%= s.current ? s.current.end_date : "—" %></td>
+        <td><%= s.current ? s.current.days_remaining : "—" %></td>
+        <td>
+          <% if (s.current) { %>
+            <form action="/admin/subscriptions/<%= s.current.id %>/delete" method="post" class="ct-form"
+                  data-confirm="Delete <%= s.warehouse %>'s package?">
+              <button class="btn sm danger" type="submit">Delete</button>
+            </form>
+          <% } else { %><span class="muted">—</span><% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  <div class="acc-actions" style="margin-bottom:1rem"><button class="btn sm danger" type="submit" form="bulkSub">🗑 Delete selected</button></div>
+  <% if (subs.length > 5) { %>
+    <a class="btn sm" href="/admin/subscription-statuses">📋 Read more — view all <%= subs.length %> warehouses →</a>
+  <% } else { %>
+    <a class="btn sm" href="/admin/subscription-statuses">View all · search by date →</a>
+  <% } %>
+  <% } %>
+</div>
+<div class="card">
+  <h3>Payments received <span class="badge" id="payTotal" style="font-size:1.15rem;padding:.3rem .7rem">= <%= totalCollected %> Kyats</span>
+    <span class="muted" id="payPeriodLabel" style="font-size:.85rem;font-weight:400"> · all time</span></h3>
+  <div class="orders-toolbar" style="justify-content:flex-start;margin:.3rem 0 .7rem;flex-wrap:wrap">
+    <label class="ot-field">🏬 Warehouse <select id="payWhSel" style="padding:.25rem .4rem"></select></label>
+    <label class="ot-field">📅 From <input type="date" id="payFrom"></label>
+    <label class="ot-field">📅 To <input type="date" id="payTo"></label>
+    <button type="button" class="btn sm" id="paySearch">🔍 Search</button>
+    <button type="button" class="btn sm gray" id="payClear">Clear</button>
+    <a class="btn sm" id="payPdf" href="/admin/payments/pdf" target="_blank">⬇ Download PDF slip</a>
+  </div>
+  <script>
+    (function () {
+      var data = <%- JSON.stringify((payments || []).map(function (p) { return { a: Number(p.amount) || 0, d: p.created_at ? p.created_at.substring(0,10) : "", paid: (p.status === "paid"), w: p.warehouse_name || "" }; })) %>;
+      var totalEl = document.getElementById("payTotal");
+      var labelEl = document.getElementById("payPeriodLabel");
+      var whSel = document.getElementById("payWhSel");
+      var fromEl = document.getElementById("payFrom");
+      var toEl = document.getElementById("payTo");
+      if (!totalEl || !whSel) return;
+      function rangeSum() {
+        var wh = whSel.value, from = fromEl.value, to = toEl.value, t = 0;
+        data.forEach(function (p) {
+          if (!p.paid || !p.d) return;
+          if (wh && p.w !== wh) return;
+          if (from && p.d < from) return;
+          if (to && p.d > to) return;
+          t += p.a;
+        });
+        return Math.round(t);
+      }
+      function render() {
+        totalEl.textContent = "= " + rangeSum() + " Kyats";
+        var f = fromEl.value, to = toEl.value, parts = [];
+        parts.push((f || to) ? ((f || "start") + " → " + (to || "now")) : "all time");
+        if (whSel.value) parts.push(whSel.value);
+        labelEl.textContent = " · " + parts.join(" · ");
+        var pdf = document.getElementById("payPdf");
+        if (pdf) {
+          var pq = [];
+          if (f) pq.push("from=" + encodeURIComponent(f));
+          if (to) pq.push("to=" + encodeURIComponent(to));
+          if (whSel.value) pq.push("warehouse=" + encodeURIComponent(whSel.value));
+          pdf.href = "/admin/payments/pdf" + (pq.length ? "?" + pq.join("&") : "");
+        }
+      }
+      var whs = {};
+      data.forEach(function (p) { if (p.w) whs[p.w] = true; });
+      whSel.innerHTML = '<option value="">All warehouses</option>' +
+        Object.keys(whs).sort().map(function (w) { return '<option value="' + w + '">' + w + '</option>'; }).join("");
+      [whSel, fromEl, toEl].forEach(function (el) { el.addEventListener("change", render); });
+      document.getElementById("paySearch").addEventListener("click", render);
+      document.getElementById("payClear").addEventListener("click", function () {
+        whSel.value = ""; fromEl.value = ""; toEl.value = ""; render();
+      });
+      render();
+    })();
+  </script>
+  <% if (!payments || !payments.length) { %><p class="muted">No payments yet.</p><% } else { %>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Warehouse</th><th>Plan</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th></tr></thead>
+      <tbody>
+        <% payments.slice(0, 5).forEach(p => { %>
+          <tr>
+            <td class="muted"><%= p.created_at ? p.created_at.substring(0,10) : "" %></td>
+            <td><%= p.warehouse_name %></td><td><%= p.plan_name || "—" %></td>
+            <td><%= p.amount %></td><td><%= p.method_label %></td>
+            <td class="muted"><%= p.reference %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (payments.length > 5) { %>
+      <a class="btn sm" href="/admin/subscription-payments">📋 Read more — view all <%= payments.length %> payments →</a>
+    <% } else { %>
+      <a class="btn sm" href="/admin/subscription-payments">View all · search by date →</a>
+    <% } %>
+  <% } %>
+</div>
+<%- include("../partials/footer") %>

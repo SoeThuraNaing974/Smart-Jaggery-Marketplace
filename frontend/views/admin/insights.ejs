@@ -1,0 +1,41 @@
+<%- include("../partials/header") %>
+<h2>Insights</h2>
+
+<div class="card">
+  <h3>Customer segmentation</h3>
+  <div class="kpis">
+    <div class="kpi"><span><%= segments.counts.regular || 0 %></span>Regular buyers (5+ orders)</div>
+    <div class="kpi"><span><%= segments.counts.one_time || 0 %></span>One-time buyers (1 order)</div>
+    <div class="kpi"><span><%= segments.counts.high_value || 0 %></span>Top spenders (over 5,000 Kyats)</div>
+    <div class="kpi"><span><%= segments.counts.dormant || 0 %></span>Inactive (60+ days)</div>
+  </div>
+  <canvas id="segChart" height="120"></canvas>
+</div>
+
+<div class="card">
+  <h3>Warehouse performance</h3>
+  <table class="tbl">
+    <thead><tr><th>Warehouse</th><th>Fulfilled</th><th>Avg Customer/day</th><th>Avg Delivery/day</th><th>Avg rating</th></tr></thead>
+    <tbody>
+      <% performance.forEach(w => { %>
+        <tr><td><%= w.warehouse %></td><td><%= w.orders_fulfilled %></td>
+            <td><%= w.avg_customers_per_day === null ? "—" : w.avg_customers_per_day %></td>
+            <td><%= w.avg_delivery_days === null ? "—" : w.avg_delivery_days %></td>
+            <td><%= w.avg_rating === null ? "—" : w.avg_rating + " ★" %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  window.SEG = <%- JSON.stringify(segments.counts || {}) %>;
+  window.addEventListener("load", function () {
+    var LABELS = { regular: "Regular buyers (5+ orders)", one_time: "One-time buyers (1 order)",
+                   high_value: "Top spenders (over 5,000 Kyats)", dormant: "Inactive (60+ days)" };
+    var keys = Object.keys(SEG);
+    JaggeryCharts.bar("segChart",
+      keys.map(function (k) { return LABELS[k] || k; }),
+      keys.map(function (k) { return SEG[k]; }), "customers");
+  });
+</script>
+<%- include("../partials/footer") %>

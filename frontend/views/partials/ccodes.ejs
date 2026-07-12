@@ -1,0 +1,12 @@
+<%
+  var ccList = [
+    ["+95","Myanmar"], ["+66","Thailand"], ["+91","India"], ["+65","Singapore"],
+    ["+60","Malaysia"], ["+86","China"], ["+1","USA/Canada"], ["+44","UK"],
+    ["+61","Australia"], ["+81","Japan"], ["+82","South Korea"], ["+84","Vietnam"],
+    ["+880","Bangladesh"], ["+977","Nepal"], ["+62","Indonesia"], ["+63","Philippines"]
+  ];
+  var ccSel = (typeof selected !== "undefined" && selected) ? selected : "+95";
+%>
+<% ccList.forEach(function (c) { %>
+  <option value="<%= c[0] %>" <%= ccSel === c[0] ? "selected" : "" %>><%= c[0] %> <%= c[1] %></option>
+<% }) %>

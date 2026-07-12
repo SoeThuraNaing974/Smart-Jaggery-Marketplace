@@ -1,0 +1,90 @@
+<%- include("../partials/header") %>
+
+<!-- banner -->
+<div class="card od-banner">
+  <div class="od-banner-main">
+    <div class="od-num">🏬 <%= warehouse.name %></div>
+    <div class="od-meta">📍 <%= warehouse.location %><% if (warehouse.created_at) { %>
+      · added <strong><%= warehouse.created_at.substring(0,10) %></strong><% } %></div>
+  </div>
+  <div class="od-banner-side">
+    <% if (sub && sub.subscribed) { %>
+      <span class="od-status-pill status-delivered">Package active</span>
+    <% } else { %>
+      <span class="od-status-pill status-cancelled">No package</span>
+    <% } %>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <h3>🏢 Warehouse info</h3>
+    <dl class="od-dl">
+      <div><dt>Name</dt><dd><%= warehouse.name %></dd></div>
+      <div><dt>Location</dt><dd><%= warehouse.location %></dd></div>
+      <div><dt>✉ Email</dt><dd><%= warehouse.email || "—" %></dd></div>
+      <div><dt>☎ Phone</dt><dd><%= warehouse.phone || "—" %></dd></div>
+      <div><dt>Pincode</dt><dd><%= warehouse.pincode || "—" %></dd></div>
+      <div><dt>Manager</dt><dd><%= warehouse.manager_name || "—" %></dd></div>
+      <div><dt>📅 Added</dt><dd><%= warehouse.created_at ? warehouse.created_at.substring(0,10) : "—" %></dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>💳 Package</h3>
+    <% if (sub && sub.current) { %>
+      <dl class="od-dl">
+        <div><dt>Status</dt><dd><%= sub.subscribed ? "Active" : "Expired" %></dd></div>
+        <div><dt>Plan</dt><dd><%= sub.current.plan_name || "—" %></dd></div>
+        <div><dt>Started</dt><dd><%= sub.current.start_date ? sub.current.start_date.substring(0,10) : "—" %></dd></div>
+        <div><dt>Expires</dt><dd><%= sub.current.end_date || "—" %></dd></div>
+        <div><dt>Days left</dt><dd><%= sub.current.days_remaining %></dd></div>
+      </dl>
+    <% } else { %>
+      <p class="muted">This warehouse has no package.</p>
+    <% } %>
+
+    <h3 style="margin-top:1rem">👥 Warehouse Name (<%= staff.length %>)</h3>
+    <% if (!staff.length) { %><p class="muted">No staff assigned.</p><% } else { %>
+      <ul>
+        <% staff.forEach(s => { %><li><%= s.name %> <span class="muted">(<%= s.email %>)</span></li><% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<!-- products -->
+<div class="card">
+  <h3>📦 Products in this warehouse (<%= batches.length %>)</h3>
+  <% if (!batches.length) { %>
+    <p class="muted">No products yet.</p>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>Product</th><th>Grade</th><th>Qty (kg)</th><th>Kyats/kg</th><th>Production Date</th><th>Status</th></tr></thead>
+      <tbody>
+        <% batches.forEach((b, i) => { %>
+          <tr class="<%= b.expired ? 'expired-row' : (b.near_expiry ? 'expiry-row' : '') %>">
+            <td><%= i + 1 %></td>
+            <td><strong><%= b.batch_id %></strong></td>
+            <td><%= b.grade %></td>
+            <td><%= b.qty_kg %></td>
+            <td><%= b.price_per_kg %></td>
+            <td class="muted"><%= b.harvest_date ? b.harvest_date.substring(0,10) : "—" %></td>
+            <td>
+              <% if (b.expired) { %><span class="exp-badge">EXPIRED</span>
+              <% } else if (b.near_expiry) { %><span class="status status-pending">near expiry</span>
+              <% } else if (!b.is_active) { %><span class="status status-cancelled">inactive</span>
+              <% } else { %><span class="status status-delivered">active</span><% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="od-actions">
+  <a class="btn gray" href="/admin/ops">← Back to maintain</a>
+</div>
+
+<%- include("../partials/footer") %>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Blocked</title>
+  <link rel="stylesheet" href="/css/style.css?v=153" />
+</head>
+<body>
+  <div class="blocked-screen">
+    <div class="blocked-card">
+      <div class="blocked-badge">
+        <span class="blocked-emoji">🚫</span>
+      </div>
+      <h1 class="blocked-title">Your account has been blocked</h1>
+      <p class="blocked-lead">
+        The administrator has <strong>blocked</strong> your account<% if (typeof user !== "undefined" && user && user.name) { %>, <strong><%= user.name %></strong><% } %>.
+      </p>
+      <% var bUntil = (typeof user !== "undefined" && user && user.blocked_until) ? user.blocked_until : null; %>
+      <% if (bUntil) { %>
+        <div class="blocked-until">⏳ Your access returns automatically on<br><strong id="blockedUntilText"><%= bUntil %></strong></div>
+        <script>
+          (function () {
+            var el = document.getElementById("blockedUntilText");
+            try { el.textContent = new Date("<%= bUntil %>").toLocaleString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch (e) {}
+          })();
+        </script>
+      <% } %>
+      <ul class="blocked-points">
+        <li>🔒 You cannot perform any actions while blocked.</li>
+        <li>📦 Nothing has been deleted — your account and data are safe.</li>
+        <li>✅ Access returns <%= bUntil ? "automatically when the time above is reached" : "the moment an administrator unblocks you" %>.</li>
+      </ul>
+      <p class="blocked-help">If you think this is a mistake, please contact the administrator.</p>
+      <form action="/logout" method="post">
+        <button class="btn blocked-logout" type="submit"><svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.75v8.5"/><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0"/></svg> Log out</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

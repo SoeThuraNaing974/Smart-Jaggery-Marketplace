@@ -1,0 +1,15 @@
+<% rows.forEach(function (u) {
+     var roleLabel = u.role === 'warehouse'
+       ? ('🏬 Warehouse' + (u.warehouse_name ? ' · ' + u.warehouse_name : ''))
+       : (u.role === 'admin' ? '🛡️ Admin' : '🛍️ Customer');
+%>
+  <tr data-active="<%= u.active ? '1' : '0' %>" data-search="<%= (u.name + ' ' + u.email).toLowerCase() %>" data-date="<%= u.created_at ? u.created_at.substring(0,10) : '' %>">
+    <td class="dir-chk"><input type="checkbox" name="user_ids" value="<%= u.id %>" class="dir-cb"<% if (u.role === 'admin') { %> disabled title="Admin accounts can't be deleted"<% } %>></td>
+    <td data-label="Name"><strong><%= u.name %></strong></td>
+    <td data-label="Email" class="muted"><%= u.email %></td>
+    <td data-label="Role"><%= roleLabel %></td>
+    <td data-label="Joined" class="muted"><%= u.created_at ? u.created_at.substring(0,10) : '—' %></td>
+    <td data-label="Last active" class="muted"><%= u.last_login ? u.last_login.substring(0,10) : 'Never' %></td>
+    <td data-label="Status"><span class="acc-badge <%= u.active ? 'on' : 'off' %>"><%= u.active ? '● Active' : '○ Inactive' %></span></td>
+  </tr>
+<% }) %>

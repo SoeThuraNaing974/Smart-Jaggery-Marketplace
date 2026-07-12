@@ -1,0 +1,115 @@
+<%- include("../partials/header") %>
+
+<% if (!items.length) { %>
+  <div class="empty-state">
+    <div class="empty-icon">🛒</div>
+    <div class="empty-title">Your cart is empty</div>
+    <div class="empty-sub">Looks like you haven't added anything yet.</div>
+    <a class="btn" href="/batches">Browse categories</a>
+  </div>
+<% } else { %>
+  <h2>Your Cart</h2>
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>Category</th><th>Warehouse</th><th>Grade</th><th>Kyats/kg</th><th>Qty (kg)</th><th>Total (Kyats)</th><th></th></tr></thead>
+      <tbody>
+        <% items.forEach((it, idx) => { %>
+          <tr class="<%= it.issue ? 'expiry-row' : '' %>">
+            <td><%= idx + 1 %></td>
+            <td><%= it.batch ? it.batch.batch_id : ("#" + it.batch_pk) %>
+              <% if (it.issue) { %><br><span class="alert err" style="display:inline-block;margin:.2rem 0;padding:.2rem .4rem">⚠ <%= it.issue %></span><% } %>
+            </td>
+            <td><%= it.batch ? (it.batch.warehouse_name || "—") : "—" %></td>
+            <td><%= it.batch ? it.batch.grade : "—" %></td>
+            <td><%= it.batch ? it.batch.price_per_kg : "—" %></td>
+            <td><%= it.qty_kg %></td>
+            <td><%= it.line_total %></td>
+            <td>
+              <form action="/cart/remove" method="post" class="inline">
+                <input type="hidden" name="batch_pk" value="<%= it.batch_pk %>">
+                <button class="btn sm" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <% if (promo) { %>
+      <p><strong>Promotion: −<%= promo.discount_percent %>%</strong> <span class="muted">("<%= promo.title %>")</span></p>
+    <% } else { %>
+      <p><strong>Promotion: 0%</strong></p>
+    <% } %>
+    <p id="feeLine"><strong>Delivery fee: <span id="feeVal"><%= Math.round(deliveryFee) %></span> Kyats</strong>
+      <span class="muted">(for your region <%= pincode || "—" %>)</span></p>
+    <% if (promo) { %>
+      <p class="after-promo">Promotion: −<%= promo.discount_percent %>% of <%= Math.round(subtotal) %> Kyats (original) = −<%= Math.round(discount) %> Kyats</p>
+    <% } %>
+    <p><strong>Total after promotion: <span id="payVal"><%= Math.round(deliveryTotal) %></span> Kyats</strong></p>
+
+    <form action="/cart/clear" method="post" class="inline">
+      <button class="btn sm" type="submit">Clear cart</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Checkout</h3>
+    <% if (!canCheckout) { %>
+      <div class="alert err">Resolve the flagged item(s) above before checking out.</div>
+    <% } %>
+    <form action="/cart/checkout" method="post" id="checkoutForm">
+      <label>Delivery address <input type="text" name="delivery_address" value="<%= address %>" required></label>
+      <label>State : <span class="muted">(optional)</span>
+        <input type="text" name="pincode" list="mmStatesCart" value="<%= pincode %>"
+               autocomplete="off" placeholder="Start typing a state…">
+      </label>
+      <datalist id="mmStatesCart">
+        <% [
+          "Kachin","Kayah","Kayin","Chin","Mon","Rakhine","Shan",
+          "Sagaing","Tanintharyi","Bago","Magway","Mandalay","Yangon","Ayeyarwady",
+          "Naypyitaw"
+        ].forEach(function(s){ %>
+          <option value="<%= s %>"></option>
+        <% }) %>
+      </datalist>
+      <label>Preferred delivery date <input type="date" name="preferred_date"></label>
+
+      <fieldset class="opt-group">
+        <legend>How do you want it?</legend>
+        <label class="opt-row"><input type="radio" name="fulfillment" value="delivery" checked>
+          Home delivery <span class="muted">(+<%= Math.round(deliveryFee) %> Kyats fee)</span></label>
+        <label class="opt-row"><input type="radio" name="fulfillment" value="pickup">
+          Pickup at warehouse <span class="muted">(free)</span></label>
+      </fieldset>
+
+      <fieldset class="opt-group">
+        <legend>Payment</legend>
+        <label class="opt-row"><input type="radio" name="pay_when" value="online" checked>
+          Pay online now <span class="muted">(KPay / Wave / AYA / CB / Yoma / Bank)</span></label>
+        <label class="opt-row"><input type="radio" name="pay_when" value="cod">
+          Pay on delivery</label>
+      </fieldset>
+
+      <button class="btn" type="submit" <%= canCheckout ? "" : "disabled" %>>Place order</button>
+    </form>
+  </div>
+
+  <script>
+    // live-update the delivery fee / total when the customer toggles delivery vs pickup
+    (function () {
+      var fee = <%= deliveryFee %>;
+      var sub = <%= subtotal %>;        // before promotion
+      var goods = <%= total %>;         // subtotal minus promotion discount
+      var feeVal = document.getElementById("feeVal");
+      var payVal = document.getElementById("payVal");
+      document.querySelectorAll('input[name="fulfillment"]').forEach(function (r) {
+        r.addEventListener("change", function () {
+          var f = (this.value === "pickup") ? 0 : fee;
+          feeVal.textContent = Math.round(f);
+          payVal.textContent = Math.round(goods + f);   // total after promotion
+        });
+      });
+    })();
+  </script>
+<% } %>
+<%- include("../partials/footer") %>

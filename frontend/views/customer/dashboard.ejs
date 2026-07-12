@@ -1,0 +1,224 @@
+<%- include("../partials/header") %>
+<% var custName = (user && user.name) ? user.name : "Customer"; %>
+<div class="welcome-hero">
+  <div class="welcome-avatar"><%= custName.charAt(0).toUpperCase() %></div>
+  <div class="welcome-text">
+    <span class="welcome-greeting" id="welcomeGreeting">Welcome back,</span>
+    <span class="welcome-name"><%= custName %></span>
+    <span class="welcome-sub">🍯 Fresh, pure jaggery — picked just for you.</span>
+  </div>
+  <a class="welcome-cta" href="/batches">Shop now →</a>
+</div>
+<script>
+  (function () {
+    var h = new Date().getHours();
+    var g = h < 12 ? "Good morning" : (h < 17 ? "Good afternoon" : "Good evening");
+    var el = document.getElementById("welcomeGreeting");
+    if (el) el.textContent = g + ",";
+  })();
+</script>
+
+<% if (typeof ads !== "undefined" && ads && ads.length) { %>
+  <section class="ad-rail" id="adRail" aria-label="Advertisements">
+    <div class="ad-rail-head">
+      <span class="ad-rail-tag">✨ Advertisements For You</span>
+      <% if (ads.length > 1) { %>
+        <div class="ad-nav">
+          <button type="button" class="ad-arrow" data-ad-prev aria-label="Previous">‹</button>
+          <button type="button" class="ad-arrow" data-ad-next aria-label="Next">›</button>
+        </div>
+      <% } %>
+    </div>
+    <div class="ad-track" id="adTrack">
+      <% ads.forEach(function (ad) { var ext = ad.link_url && /^https?:\/\//i.test(ad.link_url); %>
+        <article class="ad-card accent-<%= ad.accent || 'amber' %>">
+          <div class="ad-ico"><%= ad.icon || '📣' %></div>
+          <h3 class="ad-title"><%= ad.title %></h3>
+          <% if (ad.body) { %><p class="ad-body"><%= ad.body %></p><% } %>
+          <% if (ad.link_url) { %>
+            <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || 'Learn more' %> →</a>
+          <% } %>
+        </article>
+      <% }) %>
+    </div>
+  </section>
+  <script>
+    (function () {
+      var track = document.getElementById("adTrack");
+      if (!track) return;
+      var cards = track.querySelectorAll(".ad-card");
+      function step() { return cards.length ? cards[0].getBoundingClientRect().width + 14 : 240; }
+      var prevBtn = document.querySelector("[data-ad-prev]"), nextBtn = document.querySelector("[data-ad-next]");
+      var timer = null;
+      function rest() { if (timer) clearInterval(timer); if (cards.length > 1) timer = setInterval(tick, 4000); }
+      function tick() {
+        if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 4) track.scrollTo({ left: 0, behavior: "smooth" });
+        else track.scrollBy({ left: step(), behavior: "smooth" });
+      }
+      if (prevBtn) prevBtn.addEventListener("click", function () { track.scrollBy({ left: -step(), behavior: "smooth" }); rest(); });
+      if (nextBtn) nextBtn.addEventListener("click", function () { track.scrollBy({ left: step(), behavior: "smooth" }); rest(); });
+      rest();
+    })();
+  </script>
+<% } %>
+
+<% if (priceDrops && priceDrops.length) { %>
+  <div class="card promo">
+    <h3>🔔 Price drops on items you're watching</h3>
+    <ul>
+      <% priceDrops.forEach(a => { %>
+        <li><strong><%= a.batch_code %></strong> is now <%= a.current_price %> Kyats/kg
+          (you wanted ≤ <%= a.desired_price %> Kyats) — <a href="/batches">grab it</a></li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<% if (announcements.length) { %>
+  <section class="ann-ticker" aria-label="Announcements">
+    <div class="ann-ticker-tag"><span class="att-ico">📢</span> NEWS</div>
+    <div class="ann-ticker-track">
+      <div class="ann-ticker-move">
+        <% for (var k = 0; k < 2; k++) { %>
+          <% announcements.forEach(function (a) { %>
+            <span class="att-item"><b><%= a.title %></b><% if (a.message) { %> — <%= a.message %><% } %>
+              <% if (a.created_at) { %><span class="att-date">🗓 <%= a.created_at.substring(0,10) %></span><% } %>
+            </span>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </section>
+<% } %>
+
+<div class="cols">
+  <div class="card spend-card">
+    <% var spendTotal = (chart.values || []).reduce(function (s, v) { return s + (Number(v) || 0); }, 0); %>
+    <div class="spend-head">
+      <div class="spend-ico">💰</div>
+      <div>
+        <div class="spend-label">Your spending by month</div>
+        <div class="spend-total"><%= Math.round(spendTotal).toLocaleString() %> Kyats</div>
+        <div class="spend-sub muted">total across <%= chart.labels.length %> month<%= chart.labels.length === 1 ? "" : "s" %></div>
+      </div>
+    </div>
+    <% if (!chart.labels.length) { %>
+      <p class="muted">No orders yet — your spending will appear here.</p>
+    <% } else { %>
+      <canvas id="orderHistory" height="170"></canvas>
+    <% } %>
+  </div>
+  <div class="card">
+    <h3>Recent orders <span class="muted">(last 3 days)</span></h3>
+    <%
+      // only orders placed within 3 days, keeping each order's overall number
+      var dayOrders = [];
+      orders.forEach(function (o, i) {
+        if (o.created_at && new Date(o.created_at).getTime() >= recentCutoffMs) {
+          dayOrders.push({ o: o, n: orders.length - i });
+        }
+      });
+    %>
+    <% if (!dayOrders.length) { %>
+      <p class="muted">No orders in the last 3 days. <a class="btn sm" href="/orders">See all orders →</a></p>
+    <% } %>
+    <div class="recent-list">
+      <% dayOrders.slice(0,5).forEach(function(row, idx) { var o = row.o; %>
+        <div class="recent-row">
+          <span class="recent-id">🧾 <%= idx + 1 %></span>
+          <span class="muted recent-time">🕐 <%= o.created_at ? o.created_at.substring(11,16) : "—" %></span>
+          <span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span>
+          <% if (o.payment_status === "paid") { %>
+            <span class="pay-badge paid">Paid</span>
+          <% } else if (o.payment_method === "cod") { %>
+            <span class="pay-badge cod">Pay on delivery</span>
+          <% } else { %>
+            <span class="pay-badge unpaid">Unpaid</span>
+          <% } %>
+          <span class="recent-total"><%= o.grand_total %> Kyats</span>
+          <a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= row.n %>">🔍 Details</a>
+        </div>
+      <% }) %>
+    </div>
+    <% if (dayOrders.length > 5) { %>
+      <button type="button" class="btn sm" id="recentReadMore" style="margin-top:.7rem">📋 Read more — view all <%= dayOrders.length %> with dates →</button>
+    <% } else if (orders.length) { %>
+      <a class="btn sm" href="/orders" style="margin-top:.7rem">All orders →</a>
+    <% } %>
+
+    <!-- popup: today's orders with date + date search -->
+    <div class="modal-overlay" id="recentModal" style="display:none">
+      <div class="modal-box perf-modal-box">
+        <div class="perf-modal-head">🧾 Orders in the last 3 days — <%= dayOrders.length %></div>
+        <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem">
+          <label class="ot-field">From <input type="date" id="recFrom"></label>
+          <label class="ot-field">To <input type="date" id="recTo"></label>
+          <button type="button" class="btn sm" id="recSearch">🔍 Search</button>
+          <button type="button" class="btn sm gray" id="recClear">Clear</button>
+        </div>
+        <div class="perf-modal-scroll">
+          <table class="tbl" id="recTable">
+            <thead><tr><th>No.</th><th>📅 Date</th><th>🕐 Time</th><th>Status</th><th>Total (Kyats)</th><th>Action</th></tr></thead>
+            <tbody>
+              <% dayOrders.forEach(function(row, idx) { var o = row.o; var d = o.created_at ? o.created_at.substring(0,10) : ""; %>
+                <tr data-date="<%= d %>">
+                  <td><strong><%= idx + 1 %></strong></td>
+                  <td class="muted"><%= d || "—" %></td>
+                  <td class="muted"><%= o.created_at ? o.created_at.substring(11,16) : "—" %></td>
+                  <td><span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span></td>
+                  <td><%= o.grand_total %> Kyats</td>
+                  <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= row.n %>">🔍 Details</a></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          <p class="muted" id="recNoRows" style="display:none;padding:.6rem">No orders in this date range.</p>
+        </div>
+        <button type="button" class="btn" id="recClose" style="margin-top:.7rem">Close</button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var modal = document.getElementById("recentModal");
+        if (!modal) return;
+        var openBtn = document.getElementById("recentReadMore");
+        function open() { modal.style.display = "flex"; }
+        function close() { modal.style.display = "none"; }
+        if (openBtn) openBtn.addEventListener("click", open);
+        document.getElementById("recClose").addEventListener("click", close);
+        modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+        var from = document.getElementById("recFrom"), to = document.getElementById("recTo");
+        var rows = Array.prototype.slice.call(document.querySelectorAll("#recTable tbody tr"));
+        var noRows = document.getElementById("recNoRows");
+        function applyFilter() {
+          var f = from.value, t = to.value, shown = 0;
+          rows.forEach(function (tr) {
+            var d = tr.getAttribute("data-date") || "";
+            var ok = (!f || (d && d >= f)) && (!t || (d && d <= t));
+            tr.style.display = ok ? "" : "none";
+            if (ok) shown++;
+          });
+          noRows.style.display = shown ? "none" : "";
+        }
+        document.getElementById("recSearch").addEventListener("click", applyFilter);
+        document.getElementById("recClear").addEventListener("click", function () { from.value = ""; to.value = ""; applyFilter(); });
+      })();
+    </script>
+  </div>
+</div>
+
+<script>
+  window.CHART_DATA = <%- JSON.stringify(chart) %>;
+  window.addEventListener("load", function () {
+    if (CHART_DATA.labels && CHART_DATA.labels.length) {
+      // show "2026-06" as a clear month label like "Jun 2026" (it's a monthly total, no single day)
+      var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      var prettyLabels = CHART_DATA.labels.map(function (s) {
+        var p = String(s).split("-");
+        return p.length === 2 ? ((MON[parseInt(p[1], 10) - 1] || p[1]) + " " + p[0]) : s;
+      });
+      JaggeryCharts.spendBar("orderHistory", prettyLabels, CHART_DATA.values);
+    }
+  });
+</script>
+<%- include("../partials/footer") %>

@@ -1,0 +1,144 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">📦</span>
+  <div>
+    <strong>Current stock — all products</strong>
+    <span>Every product in your warehouse. Search by the date it was added; update quality &amp; price,
+      upload certificates, or remove items.</span>
+  </div>
+</div>
+
+<div class="card">
+  <form action="/warehouse/stock-all" method="get" class="orders-toolbar">
+    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 Search</button>
+    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/stock-all">Clear</a><% } %>
+    <a class="btn sm gray" href="/warehouse">← Back to home</a>
+  </form>
+
+  <% if (typeof newCount !== "undefined" && newCount > 0) { %>
+    <div class="new-cat-banner">
+      <span class="ncb-ico">🎉</span>
+      <span class="ncb-text"><strong><%= newCount %> new categor<%= newCount === 1 ? "y" : "ies" %></strong>
+        just added to your warehouse — highlighted <%= newCount === 1 ? "below" : "at the top" %>
+        with a <span class="ncb-tag">✨ NEW</span> tag.</span>
+    </div>
+  <% } %>
+
+  <p class="muted" style="margin:.6rem 0">
+    <strong><%= batches.length %></strong> product<%= batches.length === 1 ? "" : "s" %><%
+      if (from || to) { %> · added <%= from || "…" %> → <%= to || "…" %><% } %>
+  </p>
+
+  <% if (!batches.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">No products found</div>
+      <div class="empty-sub">Try a different date range.</div>
+    </div>
+  <% } else { %>
+    <form id="bulkStockAll" action="/warehouse/batches/bulk-delete" method="post" data-confirm="Delete the selected product(s)? They'll be removed from the shop and the admin notified.">
+      <input type="hidden" name="_back" value="all"></form>
+    <table class="tbl stock-tbl">
+      <thead><tr><th><input type="checkbox" class="bulk-all" data-group="stockAll" title="Select all"></th><th>📅 Added</th><th>No.</th><th>Category</th><th>Grade</th><th>Qty</th><th>Kyats/kg</th>
+        <th>Production Date</th><th>Photos</th><th>Update</th><th>Certificate</th></tr></thead>
+      <tbody>
+      <% batches.forEach((b, idx) => { %>
+        <tr class="<%= b.isNew ? 'new-cat-row ' : '' %><%= b.expiry_status === 'expired' ? 'expired-row' : (b.near_expiry ? 'expiry-row' : '') %>">
+          <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="stockAll" name="stock_ids" value="<%= b.id %>" form="bulkStockAll"></td>
+          <td data-label="Added" class="muted"><%= b.created_at ? b.created_at.substring(0,10) : "—" %></td>
+          <td data-label="No."><%= idx + 1 %></td>
+          <td data-label="Category"><%= b.batch_id %>
+            <% if (b.isNew) { %><span class="new-tag">✨ NEW</span><% } %>
+            <% if (b.expiry_status === 'expired') { %><span class="exp-badge">EXPIRED</span>
+            <% } else if (b.near_expiry) { %><span class="exp-badge near">near expiry</span><% } %>
+          </td>
+          <td data-label="Grade"><%= b.grade %></td>
+          <td data-label="Qty"><%= b.qty_kg %></td>
+          <td data-label="Kyats/kg"><%= b.price_per_kg %></td>
+          <td data-label="Production Date"><%= b.harvest_date %></td>
+          <td data-label="Photos" class="cell-block">
+            <div class="wh-imgs">
+              <% if (b.image_path) { %><span class="wh-img cover" title="Cover photo"><img src="/uploads/<%= b.image_path %>" alt="cover"></span><% } %>
+              <% (b.images || []).forEach(im => { %>
+                <span class="wh-img">
+                  <img src="/uploads/<%= im.image_path %>" alt="photo">
+                  <form action="/warehouse/batches/<%= b.id %>/images/<%= im.id %>/delete" method="post" data-confirm="Remove this photo?">
+                    <button class="cat-img-x" type="submit" title="Remove photo">✕</button>
+                  </form>
+                </span>
+              <% }) %>
+            </div>
+            <div class="wh-photo-actions">
+              <form action="/warehouse/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data">
+                <label class="btn sm upl-label" title="Set the cover photo — this is the picture shown across the whole system">🖼 Cover
+                  <input type="file" name="file" accept="image/*" class="js-img-input" onchange="if(!window.__inplaceImage)this.closest('form').submit()">
+                </label>
+              </form>
+              <form action="/warehouse/batches/<%= b.id %>/image/remove" method="post">
+                <button class="btn sm btn-outline" type="submit" <%= b.image_path ? "" : "disabled" %>>Remove cover</button>
+              </form>
+              <form action="/warehouse/batches/<%= b.id %>/images" method="post" enctype="multipart/form-data">
+                <label class="btn sm upl-label" title="Add more photos">➕ Add photos
+                  <input type="file" name="files" accept="image/*" multiple onchange="this.closest('form').submit()">
+                </label>
+              </form>
+            </div>
+          </td>
+          <td data-label="Update" class="cell-block">
+            <% const uf = "uf" + b.id; %>
+            <form id="<%= uf %>" action="/warehouse/batches/<%= b.id %>/update" method="post"></form>
+            <div class="inline" style="gap:.4rem;align-items:flex-end;flex-wrap:wrap">
+              <label class="upd-lbl">Quality<input name="qty_kg" form="<%= uf %>" type="text" inputmode="decimal"
+                value="<%= b.qty_kg %>" title="Quantity in kg"
+                oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+              <label class="upd-lbl">Price/kg<input name="price_per_kg" form="<%= uf %>" type="text" inputmode="numeric"
+                value="<%= b.price_per_kg %>" title="Whole numbers only"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"></label>
+              <div class="inline" style="gap:.4rem;flex-wrap:nowrap">
+                <button class="btn sm" type="submit" form="<%= uf %>">Save</button>
+              </div>
+            </div>
+          </td>
+          <td data-label="Certificate" class="cell-block">
+            <% if (b.certificate_path) { %><span class="muted">✔ uploaded</span><br><% } %>
+            <div class="inline" style="flex-wrap:wrap;gap:.3rem;align-items:center">
+              <form action="/warehouse/batches/<%= b.id %>/certificate" method="post"
+                    enctype="multipart/form-data" class="inline" style="gap:.3rem">
+                <input type="file" name="file" accept="application/pdf" style="max-width:150px">
+                <button class="btn sm" type="submit">Upload</button>
+              </form>
+              <a class="btn sm" href="/warehouse/batches/<%= b.id %>/qr" target="_blank">QR</a>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkStockAll">🗑 Delete selected</button>
+      <% if (batches.length > 5) { %>
+        <button type="button" class="btn sm" id="stockMoreBtn"></button>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<script>
+  // Show at most 5 products; reveal the rest with "See more" (toggle).
+  (function () {
+    var btn = document.getElementById("stockMoreBtn");
+    if (!btn) return;
+    var rows = Array.prototype.slice.call(document.querySelectorAll(".stock-tbl tbody tr"));
+    var CAP = 5, expanded = false;
+    function apply() {
+      rows.forEach(function (tr, i) { tr.style.display = (expanded || i < CAP) ? "" : "none"; });
+      btn.textContent = expanded ? "▲ Show less" : ("▾ See " + (rows.length - CAP) + " more products");
+    }
+    btn.addEventListener("click", function () { expanded = !expanded; apply(); });
+    apply();
+  })();
+</script>
+
+<%- include("../partials/footer") %>

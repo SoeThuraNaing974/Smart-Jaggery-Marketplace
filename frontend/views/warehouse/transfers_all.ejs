@@ -1,0 +1,50 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">🔄</span>
+  <div>
+    <strong>Transfer history</strong>
+    <span>Every stock transfer involving your warehouse. Search by the date it was requested.</span>
+  </div>
+</div>
+
+<div class="card">
+  <form action="/warehouse/transfers-all" method="get" class="orders-toolbar">
+    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 Search</button>
+    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/transfers-all">Clear</a><% } %>
+    <a class="btn sm gray" href="/warehouse/transfers">← Back</a>
+  </form>
+
+  <p class="muted" style="margin:.6rem 0">
+    <strong><%= transfers.length %></strong> transfer<%= transfers.length === 1 ? "" : "s" %><%
+      if (from || to) { %> · requested <%= from || "…" %> → <%= to || "…" %><% } %>
+  </p>
+
+  <% if (!transfers.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">🔄</div>
+      <div class="empty-title">No transfers found</div>
+      <div class="empty-sub">Try a different date range.</div>
+    </div>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>📅 Requested</th><th>Category</th><th>From → To</th><th>Qty</th><th>Status</th></tr></thead>
+      <tbody>
+      <% transfers.forEach((t, idx) => { %>
+        <tr>
+          <td><%= idx + 1 %></td>
+          <td class="muted"><%= t.requested_at ? t.requested_at.substring(0,10) : "—" %></td>
+          <td><%= t.batch_code %></td>
+          <td><%= t.from_warehouse %> → <%= t.to_warehouse %></td>
+          <td><%= t.quantity_kg %></td>
+          <td><span class="status status-<%= t.status === 'completed' ? 'delivered' : (t.status === 'pending' ? 'pending' : 'cancelled') %>"><%= t.status %></span></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include("../partials/footer") %>

@@ -1,0 +1,12 @@
+<%- include("partials/header") %>
+<div class="card narrow">
+  <h2>Login</h2>
+  <% if (error) { %><div class="alert err"><%= error %></div><% } %>
+  <form action="/login" method="post">
+    <label>Email <input type="email" name="email" required></label>
+    <label>Password <input type="password" name="password" required></label>
+    <button class="btn" type="submit">Login</button>
+  </form>
+  <p class="muted">No account? <a href="/register">Register as customer / warehouse</a></p>
+</div>
+<%- include("partials/footer") %>

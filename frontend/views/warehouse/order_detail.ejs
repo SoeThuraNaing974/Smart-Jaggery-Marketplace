@@ -1,0 +1,93 @@
+<%- include("../partials/header") %>
+
+<!-- summary banner -->
+<div class="card od-banner">
+  <div class="od-banner-main">
+    <div class="od-num">🧾 Order</div>
+    <div class="od-meta">Placed on <strong><%= order.created_at ? order.created_at.substring(0,10) : "—" %></strong>
+      · <%= order.items.length %> item<%= order.items.length === 1 ? "" : "s" %>
+      · <strong><%= order.customer_name %></strong></div>
+  </div>
+  <div class="od-banner-side">
+    <span class="od-status-pill status-<%= order.status %>"><%= whStatusLabel(order.status) %></span>
+    <% if (order.payment_status === "paid") { %>
+      <span class="pay-badge paid">✔ Paid<% if (order.payment_method_label) { %> · <%= order.payment_method_label %><% } %></span>
+    <% } else if (order.payment_method === "cod") { %>
+      <span class="pay-badge cod">Pay on delivery</span>
+    <% } else { %>
+      <span class="pay-badge unpaid">Unpaid</span>
+    <% } %>
+  </div>
+</div>
+
+<div class="cols">
+  <!-- customer & delivery -->
+  <div class="card">
+    <h3>👤 Customer &amp; delivery</h3>
+    <dl class="od-dl">
+      <div><dt>Customer</dt><dd><%= order.customer_name %></dd></div>
+      <div><dt>Address</dt><dd><%= order.delivery_address || "—" %></dd></div>
+      <div><dt>Voucher No.</dt><dd>VCH-<%= String(order.id).padStart(5, "0") %></dd></div>
+      <div><dt>Preferred date</dt><dd><%= order.preferred_date || "—" %></dd></div>
+      <div><dt>Warehouse</dt><dd><%= order.warehouse_name || "—" %></dd></div>
+    </dl>
+  </div>
+  <!-- payment -->
+  <div class="card">
+    <h3>💳 Payment</h3>
+    <dl class="od-dl">
+      <div><dt>Method</dt><dd><%= order.payment_method_label || order.payment_method || "—" %></dd></div>
+      <div><dt>Status</dt><dd><%= order.payment_status || "—" %></dd></div>
+      <div><dt>Reference</dt><dd><%= order.payment_reference || "—" %></dd></div>
+      <div><dt>Phone</dt><dd><%= order.payment_phone || "—" %></dd></div>
+    </dl>
+  </div>
+</div>
+
+<!-- items -->
+<div class="card">
+  <h3>📦 Items</h3>
+  <table class="tbl">
+    <thead><tr><th>No.</th><th>Product</th><th>Grade</th><th>Qty (kg)</th><th>Unit (Kyats)</th><th>Line Kyats </th></tr></thead>
+    <tbody>
+      <% order.items.forEach(function (it, i) { %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><strong><%= it.batch_id %></strong></td>
+          <td><%= it.grade %></td>
+          <td><%= it.qty_kg %></td>
+          <td><%= it.unit_price %> Kyats</td>
+          <td><%= it.line_total %> Kyats</td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="od-totals">
+    <div><span>Subtotal</span><span><%= order.subtotal %> Kyats</span></div>
+    <% if (order.discount_amount && Number(order.discount_amount) > 0) { %>
+      <div class="od-disc"><span>Discount</span><span>− <%= order.discount_amount %> Kyats</span></div>
+    <% } %>
+    <div><span>Delivery</span><span><%= order.delivery_charge %> Kyats</span></div>
+    <div class="od-grand"><span>Total</span><span><%= order.grand_total != null ? order.grand_total : order.total_price %> Kyats</span></div>
+  </div>
+</div>
+
+<!-- actions -->
+<div class="card od-actions">
+  <% if (order.status === "assigned") { %>
+    <form action="/warehouse/orders/<%= order.id %>/status" method="post" class="inline">
+      <input type="hidden" name="status" value="packed">
+      <button class="btn" type="submit">Waiting</button>
+    </form>
+  <% } else if (order.status === "packed") { %>
+    <form action="/warehouse/orders/<%= order.id %>/status" method="post" class="inline">
+      <input type="hidden" name="status" value="shipped">
+      <button class="btn danger" type="submit">Shipped</button>
+    </form>
+  <% } %>
+  <a class="btn" href="/warehouse/orders/<%= order.id %>/messages">💬 Message customer</a>
+  <a class="btn gray" href="/warehouse">← Back to home</a>
+</div>
+
+<%- include("../partials/footer") %>

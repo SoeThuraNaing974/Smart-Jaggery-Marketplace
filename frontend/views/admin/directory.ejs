@@ -1,0 +1,58 @@
+<%- include("../partials/header") %>
+<div class="page-intro"><h2>👥 Users &amp; Warehouses</h2></div>
+
+<div class="acc-summary">
+  <div class="acc-stat">
+    <span class="acc-stat-ico">👤</span>
+    <span class="acc-stat-num"><%= counts.users_total || 0 %></span>
+    <span class="acc-stat-lbl">Users</span>
+    <span class="acc-stat-sub"><span class="dot on"></span><%= counts.users_active || 0 %> active</span>
+  </div>
+  <div class="acc-stat">
+    <span class="acc-stat-ico">🏬</span>
+    <span class="acc-stat-num"><%= counts.warehouses_total || 0 %></span>
+    <span class="acc-stat-lbl">Warehouses</span>
+    <span class="acc-stat-sub"><span class="dot on"></span><%= counts.warehouses_active || 0 %> active</span>
+  </div>
+</div>
+
+<!-- Warehouses (first 5) -->
+<div class="card">
+  <div class="acc-head"><h3>🏬 Warehouses (<%= warehouses.length %>)</h3></div>
+  <% if (!warehouses.length) { %>
+    <p class="muted">No warehouses yet.</p>
+  <% } else { %>
+  <form action="/admin/directory/warehouses/delete" method="post" data-confirm="Delete the selected warehouse(s)? Their products & packages will be removed too.">
+    <table class="tbl">
+      <thead><tr><th><input type="checkbox" class="dir-all" title="Select all"></th><th>Warehouse</th><th>Email</th><th>Location</th><th>Staff</th><th>Package</th><th>Joined</th><th>Status</th></tr></thead>
+      <tbody><%- include("../partials/dir_wh_rows", { rows: warehouses.slice(0, 5) }) %></tbody>
+    </table>
+    <div class="acc-actions">
+      <button class="btn sm danger" type="submit">🗑 Delete selected</button>
+      <% if (warehouses.length > 5) { %>
+        <a class="btn sm" href="/admin/directory/warehouses">📋 Read more — view all <%= warehouses.length %> warehouses →</a>
+      <% } %>
+    </div>
+  </form>
+  <% } %>
+</div>
+
+<!-- Users (first 5) -->
+<div class="card">
+  <div class="acc-head"><h3>👤 Users (<%= users.length %>)</h3></div>
+  <form action="/admin/directory/users/delete" method="post" data-confirm="Delete the selected user(s)? This also removes their orders & related data.">
+    <table class="tbl">
+      <thead><tr><th><input type="checkbox" class="dir-all" title="Select all"></th><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Last active</th><th>Status</th></tr></thead>
+      <tbody><%- include("../partials/dir_user_rows", { rows: users.slice(0, 5) }) %></tbody>
+    </table>
+    <div class="acc-actions">
+      <button class="btn sm danger" type="submit">🗑 Delete selected</button>
+      <% if (users.length > 5) { %>
+        <a class="btn sm" href="/admin/directory/users">📋 Read more — view all <%= users.length %> users →</a>
+      <% } %>
+    </div>
+  </form>
+</div>
+
+<%- include("../partials/dir_filter_script") %>
+<%- include("../partials/footer") %>

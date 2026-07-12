@@ -1,0 +1,301 @@
+<%- include("../partials/header") %>
+
+<% if (promotions.length) { %>
+<div class="card promo">
+  <h3>🎉 Active Promotions</h3>
+  <ul>
+    <% promotions.forEach(p => { %>
+      <li><strong><%= p.title %></strong> (from <%= p.start_date %> to <%= p.end_date %>)</li>
+    <% }) %>
+  </ul>
+</div>
+<% } %>
+
+<h2>Jaggery Categories</h2>
+
+<div class="grade-filter">
+  <span class="muted">Filter by grade:</span>
+  <a class="grade-chip <%= !selectedGrade ? 'active' : '' %>" href="/batches">All</a>
+  <% ["A","B","C"].forEach(g => { %>
+    <a class="grade-chip grade-<%= g %> <%= selectedGrade === g ? 'active' : '' %>" href="/batches?grade=<%= g %>">Grade <%= g %></a>
+  <% }) %>
+</div>
+
+<% var newCount = batches.filter(b => b.isNew).length; %>
+<% if (newCount) { %>
+  <div class="new-cat-banner">
+    <span class="ncb-ico">🎉</span>
+    <span class="ncb-text"><strong><%= newCount %> new categor<%= newCount === 1 ? "y" : "ies" %></strong>
+      just added — highlighted <%= newCount === 1 ? "below" : "at the top" %> with a <span class="ncb-tag">✨ NEW</span> tag.</span>
+  </div>
+<% } %>
+
+<% if (!batches.length) { %>
+  <p class="muted">No products<%= selectedGrade ? " for grade " + selectedGrade : "" %>.</p>
+<% } %>
+<div class="grid">
+  <% batches.forEach(b => { %>
+    <div class="card batch <%= b.near_expiry ? 'expiry' : '' %> <%= b.isNew ? 'is-new' : '' %>">
+      <% if (b.isNew) { %><span class="new-ribbon">✨ NEW</span><% } %>
+      <% var imgs = (b.image_paths && b.image_paths.length) ? b.image_paths : (b.image_path ? [b.image_path] : []); %>
+      <div class="batch-img<%= imgs.length ? ' has-img' : '' %>"
+        <% if (imgs.length) { %>data-gallery='<%= JSON.stringify(imgs) %>' data-name="<%= b.batch_id %>" role="button" tabindex="0" title="Tap to view photos"<% } %>>
+        <% if (imgs.length) { %>
+          <img src="/uploads/<%= imgs[0] %>" alt="<%= b.batch_id %>">
+          <% if (imgs.length > 1) { %><span class="img-count">📷 <%= imgs.length %></span><% } %>
+        <% } else { %>
+          <span class="batch-img-ph">🟤 No image</span>
+        <% } %>
+      </div>
+      <div class="batch-head">
+        <span class="grade grade-<%= b.grade %>">Grade <%= b.grade %></span>
+      </div>
+      <div class="batch-name-box">
+        <p class="batch-name" title="<%= b.batch_id %>">Name: <strong><%= b.batch_id %></strong></p>
+        <button type="button" class="name-toggle" data-name="<%= b.batch_id %>">see more</button>
+      </div>
+      <p class="muted" title="<%= b.warehouse_name %>">Warehouse: <%= b.warehouse_name %></p>
+      <p class="price"><%= b.price_per_kg %> Kyats/kg</p>
+      <% const r = (typeof ratings !== "undefined") && ratings[b.warehouse_id]; %>
+      <% if (r) { %><p class="muted batch-rating">⭐ <%= r.avg %>/5 (<%= r.count %> review<%= r.count === 1 ? "" : "s" %>)</p>
+      <% } else { %><p class="muted batch-rating batch-rating-empty">☆ No reviews yet</p><% } %>
+      <p>Expire Date: <%= b.expiry_date %></p>
+      <p>Stock: <strong><%= b.qty_kg %> kg</strong></p>
+      <div class="batch-desc">
+        <strong>Ingredients & effectiveness:</strong>
+        <% if (b.description) { %>
+          <span class="desc-text"><%= b.description %></span>
+          <button type="button" class="desc-toggle"
+                  data-name="<%= b.batch_id %>" data-desc="<%= b.description %>">Read more</button>
+        <% } else { %>
+          <span class="desc-text desc-empty">No description provided.</span>
+          <button type="button" class="desc-toggle" aria-hidden="true" tabindex="-1">Read more</button>
+        <% } %>
+      </div>
+
+      <div class="batch-action">
+      <% if (b.expired) { %>
+        <div class="alert err">⛔ EXPIRED — cannot order</div>
+      <% } else { %>
+        <% if (b.near_expiry) { %><div class="alert err">⚠ Near expiry — order soon</div><% } %>
+        <% if (b.qty_kg <= 0) { %>
+          <div class="alert err">Out of stock</div>
+        <% } else if (user && user.role === "customer") { %>
+          <form action="/cart/add" method="post" class="order-form">
+            <input type="hidden" name="batch_pk" value="<%= b.id %>">
+            <label>Qty (kg)
+              <input type="number" name="qty_kg" min="0.5" step="0.5" max="<%= b.qty_kg %>" required>
+            </label>
+            <button class="btn" type="submit">Add to cart</button>
+          </form>
+        <% } %>
+      <% } %>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<!-- live "your selection" mini-cart (updates as you add/remove, no page jump) -->
+<% if (user && user.role === "customer") { %>
+<div id="miniCart" class="mini-cart">
+  <div class="mini-head">🛒 Your selection <span id="miniCount" class="mini-count">0</span></div>
+  <div id="miniList" class="mini-list"></div>
+  <p id="miniEmpty" class="mini-empty muted">No items yet — add products above.</p>
+  <div class="mini-foot">
+    <span>Subtotal: <strong id="miniSubtotal">0 Kyats</strong></span>
+    <a class="btn sm" href="/cart">Go to Cart →</a>
+  </div>
+</div>
+<% } %>
+
+<!-- toast shown after adding to cart (no page jump) -->
+<div id="toast" class="toast"></div>
+
+<!-- product photo gallery popup -->
+<div id="galleryModal" class="gallery-modal" style="display:none">
+  <div class="gallery-box">
+    <button type="button" class="gallery-close" id="galleryClose" aria-label="Close">✕</button>
+    <div class="gallery-title" id="galleryTitle"></div>
+    <div class="gallery-main">
+      <button type="button" class="gallery-nav prev" id="galleryPrev" aria-label="Previous">‹</button>
+      <img id="galleryImg" src="" alt="product photo">
+      <button type="button" class="gallery-nav next" id="galleryNext" aria-label="Next">›</button>
+    </div>
+    <div class="gallery-thumbs" id="galleryThumbs"></div>
+  </div>
+</div>
+<script>
+  (function () {
+    var modal = document.getElementById("galleryModal");
+    if (!modal) return;
+    var img = document.getElementById("galleryImg"),
+        thumbs = document.getElementById("galleryThumbs"),
+        title = document.getElementById("galleryTitle"),
+        prev = document.getElementById("galleryPrev"),
+        next = document.getElementById("galleryNext");
+    var list = [], idx = 0;
+    function show(i) {
+      idx = (i + list.length) % list.length;
+      img.src = "/uploads/" + list[idx];
+      Array.prototype.forEach.call(thumbs.children, function (t, k) { t.classList.toggle("active", k === idx); });
+    }
+    function open(images, name) {
+      list = images || []; if (!list.length) return;
+      title.textContent = name + (list.length > 1 ? "  ·  " + list.length + " photos" : "");
+      thumbs.innerHTML = "";
+      list.forEach(function (p, k) {
+        var t = document.createElement("img");
+        t.src = "/uploads/" + p;
+        t.addEventListener("click", function () { show(k); });
+        thumbs.appendChild(t);
+      });
+      var multi = list.length > 1;
+      thumbs.style.display = multi ? "" : "none";
+      prev.style.display = next.style.display = multi ? "" : "none";
+      show(0);
+      modal.style.display = "flex";
+    }
+    function close() { modal.style.display = "none"; }
+    document.querySelectorAll(".batch-img[data-gallery]").forEach(function (el) {
+      function go() { try { open(JSON.parse(el.getAttribute("data-gallery")), el.getAttribute("data-name") || ""); } catch (e) {} }
+      el.addEventListener("click", go);
+      el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    });
+    document.getElementById("galleryClose").addEventListener("click", close);
+    prev.addEventListener("click", function () { show(idx - 1); });
+    next.addEventListener("click", function () { show(idx + 1); });
+    modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+    document.addEventListener("keydown", function (e) {
+      if (modal.style.display === "none") return;
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowLeft") show(idx - 1);
+      else if (e.key === "ArrowRight") show(idx + 1);
+    });
+  })();
+</script>
+
+<!-- full-description popup (keeps product cards a fixed size) -->
+<div id="descModal" class="desc-modal" style="display:none">
+  <div class="desc-modal-box">
+    <button type="button" class="desc-modal-close" id="descModalClose">✕</button>
+    <h3 id="descModalTitle">Ingredients &amp; effectiveness</h3>
+    <p id="descModalBody"></p>
+  </div>
+</div>
+
+<script>
+  // The card shows a fixed 2-line teaser; "Read more" opens the full text in a
+  // popup so the product card itself never grows, no matter how long the text is.
+  window.addEventListener("load", function () {
+    var modal = document.getElementById("descModal"),
+        title = document.getElementById("descModalTitle"),
+        body  = document.getElementById("descModalBody");
+    document.querySelectorAll(".batch-desc").forEach(function (box) {
+      var text = box.querySelector(".desc-text");
+      var btn  = box.querySelector(".desc-toggle");
+      if (!text || !btn) return;
+      // reveal "Read more" only when the teaser is actually cut off
+      // (the button always reserves its line via CSS, so all boxes match height)
+      if (text.scrollHeight > text.clientHeight + 2) btn.style.visibility = "visible";
+      btn.addEventListener("click", function () {
+        title.textContent = (btn.dataset.name ? btn.dataset.name + " — " : "") + "Ingredients & effectiveness";
+        body.textContent = btn.dataset.desc || text.textContent;
+        modal.style.display = "flex";
+      });
+    });
+    // product name: show "see more" only when the 2-line name is cut off; the
+    // popup then shows the full name so the card itself never changes size
+    document.querySelectorAll(".batch-name-box").forEach(function (box) {
+      var nm  = box.querySelector(".batch-name");
+      var btn = box.querySelector(".name-toggle");
+      if (!nm || !btn) return;
+      if (nm.scrollHeight > nm.clientHeight + 2) btn.style.visibility = "visible";
+      btn.addEventListener("click", function () {
+        title.textContent = "Product name";
+        body.textContent = btn.dataset.name || nm.textContent;
+        modal.style.display = "flex";
+      });
+    });
+    function close() { modal.style.display = "none"; }
+    document.getElementById("descModalClose").addEventListener("click", close);
+    modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+  });
+
+  // Add/remove WITHOUT leaving the page: keep a live "Your selection" mini-cart,
+  // a toast, and the header badge in sync, so customers pick freely then visit the cart.
+  (function () {
+    var initial = <%- JSON.stringify({ items: cartItems || [], subtotal: cartSubtotal || 0 }) %>;
+    var toast = document.getElementById("toast");
+    var toastTimer;
+    function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+    function showToast(msg, isErr) {
+      toast.textContent = msg;
+      toast.className = "toast show" + (isErr ? " err" : "");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.className = "toast"; }, 2200);
+    }
+    function bumpBadge(count) {
+      var link = document.querySelector(".cart-link");
+      if (!link) return;
+      var badge = link.querySelector(".cart-count");
+      if (count > 0) {
+        if (!badge) { badge = document.createElement("span"); badge.className = "cart-count"; link.appendChild(badge); }
+        badge.textContent = count;
+        badge.classList.remove("pop"); void badge.offsetWidth; badge.classList.add("pop");
+      } else if (badge) { badge.remove(); }
+    }
+    function renderMini(items, subtotal) {
+      var list = document.getElementById("miniList");
+      var empty = document.getElementById("miniEmpty");
+      if (!list) return;
+      list.innerHTML = "";
+      empty.style.display = items.length ? "none" : "block";
+      items.forEach(function (it) {
+        var row = document.createElement("div"); row.className = "mini-row";
+        row.innerHTML = '<span class="mini-name">' + esc(it.name) + '</span>'
+          + '<span class="mini-qty">' + it.qty_kg + 'kg</span>'
+          + '<span class="mini-line">' + it.line_total + ' Kyats</span>'
+          + '<button class="mini-x" type="button" data-pk="' + it.batch_pk + '" title="Remove">✕</button>';
+        list.appendChild(row);
+      });
+      document.getElementById("miniCount").textContent = items.length;
+      document.getElementById("miniSubtotal").textContent = Math.round(subtotal) + " Kyats";
+      bumpBadge(items.length);
+      list.querySelectorAll(".mini-x").forEach(function (b) {
+        b.addEventListener("click", function () { removeItem(b.dataset.pk); });
+      });
+    }
+    function removeItem(pk) {
+      fetch("/cart/remove", {
+        method: "POST",
+        headers: { "X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded" },
+        body: "batch_pk=" + encodeURIComponent(pk)
+      }).then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.ok) { renderMini(d.items, d.subtotal); showToast("Removed"); } });
+    }
+    // initial render from the server
+    renderMini(initial.items, initial.subtotal);
+
+    document.querySelectorAll(".order-form").forEach(function (form) {
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (!form.reportValidity()) return;
+        var btn = form.querySelector('button[type="submit"]');
+        var body = new URLSearchParams(new FormData(form)).toString();
+        btn.disabled = true;
+        fetch("/cart/add", {
+          method: "POST",
+          headers: { "X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded" },
+          body: body
+        }).then(function (r) { return r.json(); })
+          .then(function (d) {
+            btn.disabled = false;
+            if (d && d.ok) { renderMini(d.items, d.subtotal); showToast("✓ Added to cart"); form.reset(); }
+            else { showToast((d && d.error) || "Could not add", true); }
+          })
+          .catch(function () { btn.disabled = false; showToast("Could not add", true); });
+      });
+    });
+  })();
+</script>
+<%- include("../partials/footer") %>

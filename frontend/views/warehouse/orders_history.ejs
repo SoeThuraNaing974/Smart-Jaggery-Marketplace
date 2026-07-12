@@ -1,0 +1,108 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">📦</span>
+  <div>
+    <strong>Orders history</strong>
+    <span>Your shipped, delivered &amp; cancelled orders — filter by date to check your own history &amp; revenue.
+      Still need to ship something? See <a href="/warehouse/orders-all">Assigned orders</a>.</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Revenue <span class="badge" id="ohTotal" style="font-size:1.15rem;padding:.3rem .7rem">= 0 Kyats</span>
+    <span class="muted" id="ohPeriodLabel" style="font-size:.85rem;font-weight:400"> · all time</span></h3>
+
+  <div class="orders-toolbar" style="justify-content:flex-start;margin:.3rem 0 .7rem;flex-wrap:wrap">
+    <label class="ot-field">📅 From <input type="date" id="ohFrom"></label>
+    <label class="ot-field">📅 To <input type="date" id="ohTo"></label>
+    <button type="button" class="btn sm" id="ohSearch">🔍 Search</button>
+    <a class="btn sm" id="ohPdf" href="/warehouse/orders-history/pdf" target="_blank">📄 Download PDF</a>
+    <a class="btn sm gray" href="/warehouse">← Back to home</a>
+  </div>
+
+  <p class="muted" id="ohCountLine" style="margin:.6rem 0"></p>
+
+  <% if (!orders.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">No past orders</div>
+      <div class="empty-sub">Shipped orders will appear here.</div>
+    </div>
+  <% } else { %>
+    <form id="bulkOh" action="/warehouse/orders/delete" method="post" data-confirm="Delete the selected order(s) from your history? This permanently removes them."></form>
+    <table class="tbl" id="ohTable">
+      <thead><tr><th><input type="checkbox" class="bulk-all" data-group="oh" title="Select all"></th><th>No.</th><th>📅 Date</th><th>Customer</th><th>Product</th><th>Price</th><th>Address</th><th>Total (Kyats)</th><th>Status</th><th>Message</th><th>Details</th></tr></thead>
+      <tbody>
+      <% orders.forEach((o) => { var od = o.created_at ? o.created_at.substring(0,10) : ""; %>
+        <tr data-date="<%= od %>">
+          <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="oh" name="order_ids" value="<%= o.id %>" form="bulkOh"></td>
+          <td class="oh-no"></td>
+          <td class="muted"><%= od || "—" %></td>
+          <td><%= o.customer_name %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.unit_price %> Kyats</div><% }) %></td>
+          <td class="muted"><%= o.delivery_address %></td>
+          <td><%= o.total_price %></td>
+          <td class="status-flat"><%= whStatusLabel(o.status) %></td>
+          <td><a class="btn sm" href="/warehouse/orders/<%= o.id %>/messages">💬</a></td>
+          <td><a class="btn sm row-view" href="/warehouse/orders/<%= o.id %>/details">🔍 View</a></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkOh">🗑 Delete selected</button></div>
+    <p class="muted" id="ohNoRows" style="display:none;padding:.6rem">No orders in this date range.</p>
+  <% } %>
+</div>
+
+<script>
+  (function () {
+    var data = <%- JSON.stringify((orders || []).map(function (o) { return { t: Number(o.total_price) || 0, d: o.created_at ? o.created_at.substring(0,10) : "", cancelled: (o.status === "cancelled") }; })) %>;
+    var totalEl = document.getElementById("ohTotal");
+    var labelEl = document.getElementById("ohPeriodLabel");
+    var countEl = document.getElementById("ohCountLine");
+    var fromEl = document.getElementById("ohFrom");
+    var toEl = document.getElementById("ohTo");
+    if (!totalEl || !fromEl) return;
+    var rows = Array.prototype.slice.call(document.querySelectorAll("#ohTable tbody tr"));
+    var noRows = document.getElementById("ohNoRows");
+    function inRange(d) {
+      var from = fromEl.value, to = toEl.value;
+      if (from && d && d < from) return false;
+      if (to && d && d > to) return false;
+      return true;
+    }
+    function render() {
+      var total = 0, shown = 0;
+      data.forEach(function (o) { if (!o.cancelled && o.d && inRange(o.d)) total += o.t; });
+      total = Math.round(total);
+      rows.forEach(function (tr) {
+        var ok = inRange(tr.getAttribute("data-date") || "");
+        tr.style.display = ok ? "" : "none";
+        if (ok) { shown++; var no = tr.querySelector(".oh-no"); if (no) no.textContent = shown; }
+        else { var cb = tr.querySelector(".bulk-cb"); if (cb) cb.checked = false; }  // hidden rows can't be submitted
+      });
+      var ohMaster = document.querySelector('.bulk-all[data-group="oh"]');
+      if (ohMaster) ohMaster.checked = false;
+      if (noRows) noRows.style.display = shown ? "none" : "";
+      totalEl.textContent = "= " + total + " Kyats";
+      var f = fromEl.value, t = toEl.value;
+      // keep the PDF link in sync with the chosen date range
+      var pdf = document.getElementById("ohPdf");
+      if (pdf) {
+        var q = [];
+        if (f) q.push("from=" + encodeURIComponent(f));
+        if (t) q.push("to=" + encodeURIComponent(t));
+        pdf.href = "/warehouse/orders-history/pdf" + (q.length ? "?" + q.join("&") : "");
+      }
+      labelEl.textContent = " · " + ((f || t) ? ((f || "start") + " → " + (t || "now")) : "all time");
+      countEl.innerHTML = "<strong>" + shown + "</strong> order" + (shown === 1 ? "" : "s") + " shown <span class='muted'>(revenue excludes cancelled)</span>";
+    }
+    [fromEl, toEl].forEach(function (el) { el.addEventListener("change", render); });
+    document.getElementById("ohSearch").addEventListener("click", render);
+    render();
+  })();
+</script>
+
+<%- include("../partials/footer") %>

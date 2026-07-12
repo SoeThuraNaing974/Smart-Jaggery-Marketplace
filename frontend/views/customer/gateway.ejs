@@ -1,0 +1,104 @@
+<%- include("../partials/header") %>
+<%
+  var colors = { kpay:"#1a73c4", wavepay:"#f5a623", ayapay:"#e8472b",
+                 cbpay:"#7a1fa2", yomapay:"#00897b", bank:"#37474f" };
+  var brand = colors[method.key] || "#7a4a1e";
+%>
+<a class="btn sm" href="/orders/<%= order.id %>/pay" style="display:inline-block;margin:.2rem 0 1rem">&larr; Back</a>
+
+<div class="pay-screen">
+  <div class="pay-card">
+    <div class="pay-banner" style="background:<%= brand %>">
+      <span class="pay-lock">🔒</span>
+      <div>
+        <div class="pay-provider"><%= method.label %></div>
+        <div class="pay-secure">Secure payment</div>
+      </div>
+    </div>
+
+    <div class="pay-body">
+      <p class="pay-to-label">Paying to</p>
+      <p class="pay-merchant">Smart Jaggery Marketplace</p>
+      <div class="pay-amount"><%= order.grand_total %> Kyats</div>
+
+      <div class="pay-details">
+        <div class="pay-row"><span><%= method.key === "bank" ? "Bank number" : "To phone" %></span><strong><%= phone %></strong></div>
+        <div class="pay-row"><span>Transaction ID</span><strong><%= reference %></strong></div>
+        <% if (payer) { %><div class="pay-row"><span>Note</span><strong><%= payer %></strong></div><% } %>
+      </div>
+
+      <!-- hidden details submitted with the OTP once verified -->
+      <form action="/orders/<%= order.id %>/pay" method="post" id="payForm">
+        <input type="hidden" name="method" value="<%= method.key %>">
+        <input type="hidden" name="phone" value="<%= phone %>">
+        <input type="hidden" name="reference" value="<%= reference %>">
+
+        <div id="otpPanel" class="otp-modal" style="display:none">
+          <div class="otp-box">
+            <button type="button" class="otp-close" id="otpClose">✕</button>
+            <div class="otp-icon">📧</div>
+            <h3 class="otp-title">Verify your payment</h3>
+            <p id="otpInfo" class="muted">Sending a verification code to your email…</p>
+            <input name="otp" id="otpInput" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                   autocomplete="one-time-code" placeholder="––––––" class="otp-input"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+            <button class="btn otp-verify" type="submit" style="background:<%= brand %>;border-color:<%= brand %>">Confirm payment — <%= order.grand_total %> Kyats</button>
+            <div class="otp-actions">
+              <button type="button" class="link-btn otp-autofill" id="otpAutofill" style="display:none">✨ Autofill code</button>
+              <button type="button" class="link-btn" id="otpResend" style="color:#1a3aa0">Resend code</button>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <button class="pay-btn" id="payBtn" style="background:<%= brand %>">Pay <%= order.grand_total %> Kyats</button>
+      <a class="pay-cancel" href="/orders?msg=Payment+cancelled">Cancel</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var payBtn = document.getElementById("payBtn");
+    var otpPanel = document.getElementById("otpPanel");
+    var otpInfo = document.getElementById("otpInfo");
+    var otpInput = document.getElementById("otpInput");
+    var otpAutofill = document.getElementById("otpAutofill");
+    var devCode = null;
+
+    async function requestCode() {
+      otpInfo.textContent = "Sending a verification code to your email…";
+      otpAutofill.style.display = "none"; devCode = null;
+      try {
+        var r = await fetch("/orders/<%= order.id %>/pay/otp", { method: "POST" });
+        var d = await r.json();
+        if (d.dev_code) {
+          devCode = d.dev_code; otpAutofill.style.display = "inline-block";
+          otpInfo.innerHTML = "Sent to <strong>" + (d.email || "your email") + "</strong>. Your code is <strong>" + d.dev_code + "</strong> — type it in, or tap Autofill.";
+        } else {
+          otpInfo.textContent = "Type the 6-digit code sent to " + (d.email || "your email") + ".";
+        }
+      } catch (e) { otpInfo.textContent = "Could not send the code. Tap Resend."; }
+    }
+    otpAutofill.addEventListener("click", function () {
+      if (!devCode) return;
+      otpInput.value = devCode;
+      otpInput.classList.add("otp-filled");
+      otpInput.focus();
+    });
+
+    payBtn.addEventListener("click", function () {
+      otpPanel.style.display = "flex";
+      otpInput.setAttribute("required", "required");
+      otpInput.value = "";
+      otpInput.focus();
+      requestCode();
+    });
+    document.getElementById("otpClose").addEventListener("click", function () {
+      otpPanel.style.display = "none";
+      otpInput.removeAttribute("required");
+    });
+    document.getElementById("otpResend").addEventListener("click", requestCode);
+  })();
+</script>
+<%- include("../partials/footer") %>

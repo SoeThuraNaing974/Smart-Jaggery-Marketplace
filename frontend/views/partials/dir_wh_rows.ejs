@@ -1,0 +1,15 @@
+<% rows.forEach(function (w) { %>
+  <tr data-active="<%= w.active ? '1' : '0' %>" data-search="<%= (w.name + ' ' + (w.email || '')).toLowerCase() %>" data-date="<%= w.created_at ? w.created_at.substring(0,10) : '' %>">
+    <td class="dir-chk"><input type="checkbox" name="wh_ids" value="<%= w.id %>" class="dir-cb"></td>
+    <td data-label="Warehouse"><strong><%= w.name %></strong></td>
+    <td data-label="Email" class="muted"><%= w.email || '—' %></td>
+    <td data-label="Location" class="muted"><%= w.location || '—' %></td>
+    <td data-label="Staff"><%= w.staff_count %></td>
+    <td data-label="Package" class="muted">
+      <% if (w.subscription) { %><%= w.subscription.plan_name || 'Plan' %> · ends <%= (w.subscription.end_date || '').substring(0,10) %>
+      <% } else { %>— none —<% } %>
+    </td>
+    <td data-label="Joined" class="muted"><%= w.created_at ? w.created_at.substring(0,10) : '—' %></td>
+    <td data-label="Status"><span class="acc-badge <%= w.active ? 'on' : 'off' %>"><%= w.active ? '● Active' : '○ Inactive' %></span></td>
+  </tr>
+<% }) %>

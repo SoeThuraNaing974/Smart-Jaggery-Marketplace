@@ -1,0 +1,64 @@
+<script>
+  // shared search + Active/Inactive filter for the directory full-list pages
+  (function () {
+    function applyFilters(tbl) {
+      if (!tbl) return;
+      var grp = document.querySelector('.acc-filter[data-target="' + tbl.id + '"]');
+      var f = grp ? (grp.querySelector('.acc-chip.active') || {}).dataset.f : 'all';
+      var searchInp = document.querySelector('.acc-search[data-target="' + tbl.id + '"]');
+      var q = searchInp ? searchInp.value.trim().toLowerCase() : '';
+      var fromInp = document.querySelector('.acc-from[data-target="' + tbl.id + '"]');
+      var toInp = document.querySelector('.acc-to[data-target="' + tbl.id + '"]');
+      var from = fromInp ? fromInp.value : '';   // 'YYYY-MM-DD' (ISO sorts as text)
+      var to = toInp ? toInp.value : '';
+      tbl.querySelectorAll('tbody tr').forEach(function (tr) {
+        var okF = f === 'all' || (f === 'active' && tr.dataset.active === '1') || (f === 'inactive' && tr.dataset.active === '0');
+        var okQ = !q || (tr.dataset.search || '').indexOf(q) !== -1;
+        var d = tr.dataset.date || '';
+        var okD = (!from || (d && d >= from)) && (!to || (d && d <= to));
+        tr.style.display = (okF && okQ && okD) ? '' : 'none';
+      });
+    }
+    document.querySelectorAll('.acc-filter').forEach(function (grp) {
+      var tbl = document.getElementById(grp.dataset.target);
+      grp.querySelectorAll('.acc-chip').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          grp.querySelectorAll('.acc-chip').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          applyFilters(tbl);
+        });
+      });
+    });
+    document.querySelectorAll('.acc-search').forEach(function (inp) {
+      inp.addEventListener('input', function () { applyFilters(document.getElementById(inp.dataset.target)); });
+    });
+    // date-range filter (From / To) on the Joined date
+    document.querySelectorAll('.acc-from, .acc-to').forEach(function (inp) {
+      inp.addEventListener('change', function () { applyFilters(document.getElementById(inp.dataset.target)); });
+    });
+    document.querySelectorAll('.acc-date-clear').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var t = btn.dataset.target;
+        var f = document.querySelector('.acc-from[data-target="' + t + '"]');
+        var to = document.querySelector('.acc-to[data-target="' + t + '"]');
+        if (f) f.value = ''; if (to) to.value = '';
+        applyFilters(document.getElementById(t));
+      });
+    });
+
+    // "Select all" — only ticks the visible, enabled checkboxes in that table
+    document.querySelectorAll('.dir-all').forEach(function (master) {
+      var table = master.closest('table');
+      if (!table) return;
+      function boxes() { return Array.prototype.slice.call(table.querySelectorAll('.dir-cb:not(:disabled)')); }
+      function visible() { return boxes().filter(function (cb) { return cb.closest('tr').style.display !== 'none'; }); }
+      master.addEventListener('change', function () { visible().forEach(function (cb) { cb.checked = master.checked; }); });
+      table.addEventListener('change', function (e) {
+        if (e.target && e.target.classList.contains('dir-cb')) {
+          var v = visible();
+          master.checked = v.length > 0 && v.every(function (cb) { return cb.checked; });
+        }
+      });
+    });
+  })();
+</script>

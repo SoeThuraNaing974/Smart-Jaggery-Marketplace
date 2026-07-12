@@ -1,0 +1,123 @@
+<%- include("../partials/header") %>
+<h2>Pay for your order</h2>
+<a class="btn sm" href="/orders" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; Back to my orders</a>
+
+<% if (error) { %><div class="alert err"><%= error %></div><% } %>
+
+<div class="cols">
+  <div class="card">
+    <h3>Order summary</h3>
+    <table class="tbl">
+      <thead><tr><th>Category</th><th>Warehouse</th><th>Grade</th><th>Qty (kg)</th><th>Line Kyats </th></tr></thead>
+      <tbody>
+        <% order.items.forEach(it => { %>
+          <tr><td><%= it.batch_id %></td><td><%= it.warehouse_name || "—" %></td><td><%= it.grade %></td>
+              <td><%= it.qty_kg %></td><td><%= it.line_total %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <p>Subtotal: <%= order.subtotal %> Kyats
+      <% if (order.discount_amount > 0) { %> · Discount −<%= order.discount_amount %> Kyats<% } %></p>
+    <p>Delivery (<%= order.fulfillment %>): <%= order.delivery_charge %> Kyats</p>
+    <p class="price"><strong>Amount to pay: <%= order.grand_total %> Kyats</strong></p>
+  </div>
+
+  <div class="card">
+    <h3>Choose how to pay</h3>
+    <form action="/orders/<%= order.id %>/gateway" method="post">
+      <div class="pay-methods">
+        <% methods.forEach((m, i) => { %>
+          <label class="pay-opt">
+            <input type="radio" name="method" value="<%= m.key %>"
+                   <%= i === 0 ? "checked" : "" %> required>
+            <span><%= m.label %></span>
+          </label>
+        <% }) %>
+      </div>
+
+      <%
+        // pre-fill with the purchased warehouse's phone (the account being paid to)
+        var whPhone = (typeof phone !== "undefined" && phone) ? String(phone).trim() : "";
+        var ccCodes = ["+880","+977","+95","+66","+91","+65","+60","+86","+44","+61","+81","+82","+84","+62","+63","+1"];
+        var ccSel = "+95"; var localPhone = whPhone.replace(/\D/g, "");
+        for (var i = 0; i < ccCodes.length; i++) {
+          if (whPhone.indexOf(ccCodes[i]) === 0) { ccSel = ccCodes[i]; localPhone = whPhone.slice(ccCodes[i].length).replace(/\D/g, ""); break; }
+        }
+      %>
+      <label id="phoneLabel">Phone Number :</label>
+      <div class="phone-group">
+        <select name="country_code" class="phone-cc-select" id="phoneCc"><%- include("../partials/ccodes", { selected: ccSel }) %></select>
+        <input name="phone" type="tel" inputmode="numeric" value="<%= localPhone %>"
+               placeholder="9xxxxxxxx" required maxlength="9" pattern="[0-9]{1,9}"
+               title="Up to 9 digits" id="phoneInput">
+      </div>
+      <p class="muted" id="phoneHint" style="margin:.2rem 0 .6rem;font-size:.8rem">
+        This is the warehouse's mobile wallet — the account you're paying <strong>to</strong>.</p>
+
+      <label>Description:
+        <input name="payer" id="descInput">
+      </label>
+      <div class="note-chips">
+        <% ["Transfer","Payment","Gift","Chilling"].forEach(function(p){ %>
+          <button type="button" class="note-chip" data-note="<%= p %>"><%= p %></button>
+        <% }) %>
+      </div>
+
+      <button class="btn" type="submit">Continue to payment →</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var phone = document.getElementById("phoneInput");
+    var phoneLabel = document.getElementById("phoneLabel");
+    var phoneCc = document.getElementById("phoneCc");
+    var phoneHint = document.getElementById("phoneHint");
+
+    var prevIsBank = null;
+    function applyMode() {
+      var sel = document.querySelector('input[name="method"]:checked');
+      var isBank = sel && sel.value === "bank";
+      // switching between phone(wallet) and bank clears the field so it isn't reused
+      if (prevIsBank !== null && isBank !== prevIsBank) phone.value = "";
+      prevIsBank = isBank;
+      if (isBank) {
+        phoneLabel.textContent = "Warehouse bank number";
+        if (phoneHint) phoneHint.innerHTML = "This is the warehouse's bank account — the account you're paying <strong>to</strong>.";
+        phoneCc.style.display = "none";
+        phone.placeholder = "Enter your bank account number";
+        phone.maxLength = 20;
+        phone.removeAttribute("pattern");
+        phone.title = "";
+        phone.classList.add("no-cc");
+      } else {
+        phoneLabel.textContent = "Phone Number :";
+        if (phoneHint) phoneHint.innerHTML = "This is the warehouse's mobile wallet — the account you're paying <strong>to</strong>.";
+        phoneCc.style.display = "";
+        phone.classList.remove("no-cc");
+        if (window.applyPhoneLen) { window.applyPhoneLen(phone, phoneCc.value); }
+        else { phone.maxLength = 9; phone.setAttribute("pattern", "[0-9]{1,9}"); phone.title = "Up to 9 digits"; }
+      }
+    }
+    if (phone) {
+      phone.addEventListener("input", function () {
+        this.value = this.value.replace(/\D/g, "").slice(0, this.maxLength);
+      });
+      document.querySelectorAll('input[name="method"]').forEach(function (r) {
+        r.addEventListener("change", applyMode);
+      });
+      applyMode();
+    }
+    var input = document.getElementById("descInput");
+    document.querySelectorAll(".note-chip").forEach(function (c) {
+      c.addEventListener("click", function () {
+        input.value = this.dataset.note;
+        document.querySelectorAll(".note-chip").forEach(function (x) { x.classList.remove("active"); });
+        this.classList.add("active");
+        input.focus();
+      });
+    });
+  })();
+</script>
+<%- include("../partials/footer") %>

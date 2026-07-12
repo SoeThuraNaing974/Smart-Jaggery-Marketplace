@@ -1,0 +1,219 @@
+<%- include("../partials/header") %>
+<%
+  // Split a stored "Ingredients: … / Effectiveness: …" description back into its
+  // two parts so the admin can edit each separately.
+  function splitDesc(d) {
+    d = d || "";
+    var ing = "", eff = "";
+    var mi = d.match(/Ingredients:\s*([\s\S]*?)(?:\n+\s*Effectiveness:|$)/i);
+    var me = d.match(/Effectiveness:\s*([\s\S]*)$/i);
+    if (mi) ing = (mi[1] || "").trim();
+    if (me) eff = (me[1] || "").trim();
+    if (!mi && !me && d.trim()) ing = d.trim();
+    return { ing: ing, eff: eff };
+  }
+%>
+<h2>Category Management</h2>
+
+<% if (typeof deletedStocks !== "undefined" && deletedStocks.length) { %>
+<div class="card del-alert">
+  <div class="del-alert-head">
+    <h3>🗑️ Stock deleted by warehouses <span class="del-count"><%= deletedStocks.length %></span></h3>
+    <form action="/admin/deleted-stocks/ack-all" method="post" class="inline">
+      <button class="btn sm" type="submit">✓ Acknowledge all</button>
+    </form>
+  </div>
+  <p class="muted del-alert-sub">A warehouse removed these products — they're already hidden from customers. Acknowledge to clear them from here.</p>
+  <div class="del-grid">
+    <% deletedStocks.forEach(function (b) { %>
+      <div class="del-card">
+        <div class="del-card-top">
+          <% if (b.image_path) { %><img src="<%= apiBase %>/uploads/<%= b.image_path %>" alt="" class="del-thumb">
+          <% } else { %><span class="del-thumb noimg">🟤</span><% } %>
+          <div class="del-info">
+            <div class="del-name"><%= b.batch_id %></div>
+            <div class="muted del-meta">🏬 <%= b.warehouse_name %> · Grade <%= b.grade %> · <%= b.qty_kg %>kg</div>
+            <div class="muted del-meta">🕒 deleted <%= b.deleted_at ? b.deleted_at.substring(0,16).replace("T"," ") : "" %></div>
+          </div>
+        </div>
+        <form action="/admin/deleted-stocks/<%= b.id %>/ack" method="post">
+          <button class="btn sm btn-outline" type="submit">✓ Got it</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+
+<% if (typeof added !== "undefined" && added) { %>
+<div class="modal-overlay" id="addModal">
+  <div class="modal-box">
+    <div class="modal-check">✓</div>
+    <h3 class="modal-title">Category added!</h3>
+    <p class="modal-text">The new category is now <strong>live on the Categories page</strong>
+      and ready for customers to browse and buy.</p>
+    <button class="btn" id="addModalClose">Got it</button>
+  </div>
+</div>
+<script>
+  (function () {
+    var m = document.getElementById("addModal");
+    function close() {
+      m.style.display = "none";
+      if (history.replaceState) history.replaceState({}, "", "/admin/batches");
+    }
+    document.getElementById("addModalClose").addEventListener("click", close);
+    m.addEventListener("click", function (e) { if (e.target === m) close(); });
+  })();
+</script>
+<% } %>
+
+<div class="card">
+  <h3>Pending product requests from Warehouses</h3>
+  <% if (!requests || !requests.length) { %>
+    <div class="empty-mini">
+      <div class="empty-mini-icon">📭</div>
+      <div class="empty-mini-title">No pending requests</div>
+      <div class="empty-mini-sub">You're all caught up — new product requests will appear here.</div>
+    </div>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>Image</th><th>Warehouse</th><th>Product</th><th>Grade</th><th>Qty</th><th>Kyats/kg</th><th>Production Date</th><th>By</th><th>Decision</th></tr></thead>
+      <tbody>
+        <% requests.forEach(r => { %>
+          <tr class="<%= r.isNew ? 'new-req-row' : '' %>">
+            <td><% if (r.image_path) { %><img src="<%= apiBase %>/uploads/<%= r.image_path %>" alt="" class="thumb"><% } else { %><span class="muted">—</span><% } %></td>
+            <td><%= r.warehouse_name %></td>
+            <td><%= r.batch_code %><% if (r.isNew) { %> <span class="new-badge">🆕 NEW</span><% } %></td>
+            <td><%= r.grade %></td>
+            <td><%= r.qty_kg %></td><td><%= r.price_per_kg %></td><td class="muted"><%= r.harvest_date %></td>
+            <td class="muted"><%= r.requested_by_name || '—' %></td>
+            <td>
+              <form action="/admin/product-requests/<%= r.id %>/decision" method="post" class="inline">
+                <button class="btn sm" name="decision" value="approved" type="submit">Approve</button>
+                <button class="btn sm danger" name="decision" value="rejected" type="submit">Reject</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="card">
+  <h3>Add a category</h3>
+  <form action="/admin/batches" method="post" class="row-form">
+    <select name="warehouse_id" required>
+      <option value="">— warehouse —</option>
+      <% warehouses.forEach(w => { %><option value="<%= w.id %>"><%= w.name %></option><% }) %>
+    </select>
+    <input name="batch_id" placeholder="Product Name" required>
+    <select name="grade"><option>A</option><option>B</option><option>C</option></select>
+    <input name="qty_kg" type="number" step="0.5" placeholder="Qty kg" required>
+    <input name="harvest_date" type="date" required>
+    <input name="price_per_kg" type="number" step="0.5" placeholder="Kyats/kg" required>
+    <div class="desc-split">
+      <label class="desc-col">
+        <span class="desc-col-head">🧪 Ingredients</span>
+        <input type="text" name="ingredients" maxlength="200"
+               placeholder="e.g. pure sugarcane juice, no additives">
+      </label>
+      <label class="desc-col">
+        <span class="desc-col-head">💪 Effectiveness</span>
+        <input type="text" name="effectiveness" maxlength="200"
+               placeholder="e.g. rich in iron, boosts energy, aids digestion">
+      </label>
+    </div>
+    <button class="btn sm" type="submit" style="margin-top:.2rem">Create</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>All categories (<%= batches.length %>)</h3>
+  <div class="cat-grid">
+    <% batches.slice(0, 6).forEach(b => { const fid = "bf" + b.id; const dd = splitDesc(b.description); %>
+      <div class="cat-card <%= b.expired ? 'expired' : '' %>">
+        <div class="cat-top">
+          <div class="cat-thumb">
+            <% if (b.image_path) { %>
+              <img src="<%= apiBase %>/uploads/<%= b.image_path %>" alt="jaggery">
+            <% } else { %>
+              <span class="cat-noimg">No image</span>
+            <% } %>
+          </div>
+          <div class="cat-meta">
+            <strong class="cat-name"><%= b.batch_id %></strong>
+            <span class="muted"><%= b.warehouse_name %></span>
+            <span class="status status-<%= b.expiry_status === 'expired' ? 'cancelled' : (b.expiry_status === 'near_expiry' ? 'pending' : 'delivered') %>"><%= b.expiry_status %></span>
+          </div>
+        </div>
+        <% if (b.images && b.images.length) { %>
+          <div class="cat-imgs">
+            <% b.images.forEach(im => { %>
+              <span class="cat-img-thumb">
+                <img src="/uploads/<%= im.image_path %>" alt="extra photo">
+                <form action="/admin/batches/<%= b.id %>/images/<%= im.id %>/delete" method="post" data-confirm="Remove this photo?">
+                  <button class="cat-img-x" type="submit" title="Remove photo">✕</button>
+                </form>
+              </span>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <form id="<%= fid %>" action="/admin/batches/<%= b.id %>/update" method="post" class="cat-fields">
+          <label>Grade
+            <select name="grade">
+              <% ["A","B","C"].forEach(g => { %><option <%= b.grade === g ? "selected" : "" %>><%= g %></option><% }) %>
+            </select>
+          </label>
+          <label>Qty (kg)<input name="qty_kg" type="number" step="0.5" value="<%= b.qty_kg %>"></label>
+          <label>Kyats/kg<input name="price_per_kg" type="number" step="0.5" value="<%= b.price_per_kg %>"></label>
+          <label class="cat-active"><input type="checkbox" name="is_active" <%= b.is_active ? "checked" : "" %>> Active</label>
+          <div class="desc-edit">
+            <div class="de-col">
+              <span class="de-head">🧪 Ingredients</span>
+              <input type="text" name="ingredients" class="de-input" value="<%= dd.ing %>" placeholder="e.g. pure sugarcane juice">
+            </div>
+            <div class="de-col">
+              <span class="de-head">💪 Effectiveness</span>
+              <input type="text" name="effectiveness" class="de-input" value="<%= dd.eff %>" placeholder="e.g. rich in iron, aids digestion">
+            </div>
+            <button type="button" class="de-more" data-form="<%= fid %>" data-name="<%= b.batch_id %>">See more &amp; edit ⤢</button>
+          </div>
+        </form>
+
+        <p class="muted cat-date">Production date: <%= b.harvest_date %></p>
+
+        <div class="cat-toolbar">
+          <form action="/admin/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data" class="ct-form">
+            <label class="btn sm btn-outline upl-label" title="Set the cover photo">⬆ Cover
+              <input type="file" name="file" accept="image/*" class="js-img-input" onchange="if(!window.__inplaceImage)this.closest('form').submit()">
+            </label>
+          </form>
+          <form action="/admin/batches/<%= b.id %>/images" method="post" enctype="multipart/form-data" class="ct-form">
+            <label class="btn sm btn-outline upl-label" title="Add more photos">➕ Photos
+              <input type="file" name="files" accept="image/*" multiple onchange="this.closest('form').submit()">
+            </label>
+          </form>
+          <form action="/admin/batches/<%= b.id %>/image/remove" method="post" class="ct-form">
+            <button class="btn sm btn-outline" type="submit" <%= b.image_path ? "" : "disabled" %>>Remove image</button>
+          </form>
+          <span class="spacer"></span>
+          <button class="btn sm" type="submit" form="<%= fid %>">Save</button>
+          <form action="/admin/batches/<%= b.id %>/delete" method="post" class="ct-form"
+                data-confirm="Delete category <%= b.batch_id %>?">
+            <button class="btn sm danger" type="submit">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+  <% if (batches.length > 6) { %>
+    <a class="btn sm" href="/admin/categories">📋 Read more — view all <%= batches.length %> categories →</a>
+  <% } else if (batches.length) { %>
+    <a class="btn sm" href="/admin/categories">View all categories · search by date →</a>
+  <% } %>
+</div>
+<%- include("../partials/desc_edit_modal") %>
+<%- include("../partials/footer") %>

@@ -1,0 +1,192 @@
+<%- include("../partials/header") %>
+<%- include("../partials/pay_success_modal") %>
+
+<% if (typeof cancelled !== "undefined" && cancelled) { %>
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-box">
+    <div class="modal-check">✓</div>
+    <h3 class="modal-title">Order cancelled</h3>
+    <p class="modal-text">Your order has been cancelled successfully. Any reserved stock has been
+      released, and you won't be charged.</p>
+    <button class="btn" id="cancelModalClose">Got it</button>
+  </div>
+</div>
+<script>
+  (function () {
+    var m = document.getElementById("cancelModal");
+    function close() {
+      m.style.display = "none";
+      if (history.replaceState) history.replaceState({}, "", "/orders");
+    }
+    document.getElementById("cancelModalClose").addEventListener("click", close);
+    m.addEventListener("click", function (e) { if (e.target === m) close(); });
+  })();
+</script>
+<% } %>
+
+<% if (!orders.length) { %>
+  <div class="empty-state">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">No orders yet</div>
+    <div class="empty-sub">When you place an order, it'll show up here.</div>
+    <a class="btn" href="/batches">Browse categories</a>
+  </div>
+<% } else { %>
+<h2>My Orders</h2>
+<% if (typeof updateCount !== "undefined" && updateCount > 0) { %>
+  <div class="order-update-banner">
+    <span class="oub-ico">🚚</span>
+    <span><strong><%= updateCount %> of your orders</strong>
+      just shipped / delivered — highlighted <%= updateCount === 1 ? "below" : "at the top" %>
+      with a <span class="oub-tag">✓ Update</span> tag.</span>
+  </div>
+<% } %>
+<% var steps = ["pending","waiting","shipped"]; %>
+<% cardOrders.slice(0, 5).forEach(function(o, i) { %>
+  <% var si = steps.indexOf(o.status); var cancelled = (o.status === "cancelled"); %>
+  <div class="order-card <%= o.isUpdate ? 'is-update' : '' %>">
+    <% if (o.isUpdate) { %><span class="order-update-ribbon"><%= o.status === "delivered" ? "📦 Delivered" : "🚚 Shipped" %></span><% } %>
+    <div class="order-head">
+      <div class="order-id">🧾 Order: <%= o.displayNo %>
+        <span class="order-date"><%= o.created_at ? o.created_at.substring(0,10) : "" %></span>
+      </div>
+      <div class="order-badges">
+        <span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span>
+        <% if (o.payment_status === "paid") { %>
+          <span class="pay-badge paid">✔ Paid<% if (o.payment_method_label) { %> · <%= o.payment_method_label %><% } %></span>
+        <% } else if (o.payment_method === "cod") { %>
+          <span class="pay-badge cod">Pay on delivery</span>
+        <% } else { %>
+          <span class="pay-badge unpaid">Unpaid</span>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (!cancelled) { %>
+      <div class="order-steps">
+        <% steps.forEach(function(s, i){ %>
+          <div class="ostep <%= i < si ? 'done' : (i === si ? 'active' : '') %>">
+            <span class="odot"></span><span class="olabel"><%= statusLabel(s) %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="order-cancelled">✕ Order cancelled</div>
+    <% } %>
+
+    <p class="muted order-meta">📍 <%= o.delivery_address %><% if (o.warehouse_name) { %> &nbsp;·&nbsp; 🏬 <%= o.warehouse_name %><% } %></p>
+
+    <table class="tbl">
+      <thead><tr><th>Category</th><th>Grade</th><th>Qty (kg)</th><th>Unit (Kyats)</th><th>Line Kyats </th></tr></thead>
+      <tbody>
+        <% o.items.forEach(it => { %>
+          <tr><td><%= it.batch_id %></td><td><%= it.grade %></td><td><%= it.qty_kg %></td>
+              <td><%= it.unit_price %></td><td><%= it.line_total %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <div class="order-total-row">
+      <span class="muted">Subtotal <%= o.subtotal %> Kyats<% if (o.discount_amount > 0) { %> · Discount −<%= o.discount_amount %> Kyats<% } %> · Delivery <%= o.delivery_charge %> Kyats</span>
+      <span class="order-grand">Total <%= o.grand_total %> Kyats</span>
+    </div>
+
+    <div class="inline" style="flex-wrap:wrap;gap:.4rem;margin-top:.6rem">
+      <% if (o.payment_status !== "paid" && o.payment_method !== "cod" && o.status !== "cancelled") { %>
+        <a class="btn sm" href="/orders/<%= o.id %>/pay">💳 Pay now</a>
+      <% } %>
+      <% if (o.payment_status === "paid") { %>
+        <a class="btn sm" href="/orders/<%= o.id %>/payment-slip" target="_blank">🧾 Payment slip</a>
+      <% } %>
+      <% if (o.status === "pending" || o.status === "waiting") { %>
+        <form action="/orders/<%= o.id %>/cancel" method="post" class="inline">
+          <button class="btn danger sm" type="submit">Cancel</button>
+        </form>
+      <% } %>
+      <% if (o.status === "shipped") { %>
+        <a class="btn sm" href="/orders/<%= o.id %>/invoice" target="_blank">Invoice PDF</a>
+      <% } %>
+      <a class="btn sm" href="/orders/<%= o.id %>/messages">📝 Note</a>
+    </div>
+
+    <% if (o.status === "shipped" && !o.has_review) { %>
+      <form action="/orders/<%= o.id %>/review" method="post" class="row-form" style="margin-top:.5rem">
+        <select name="rating" required>
+          <option value="">Rating…</option>
+          <% for (let r=5; r>=1; r--) { %><option value="<%= r %>"><%= "★".repeat(r) %></option><% } %>
+        </select>
+        <input name="comment" placeholder="Your review (optional)">
+        <button class="btn sm" type="submit">Submit review</button>
+      </form>
+    <% } else if (o.has_review) { %>
+      <p class="muted">✔ You reviewed this order.</p>
+    <% } %>
+  </div>
+<% }) %>
+
+<% if (orders.length > 5) { %>
+  <button type="button" class="btn" id="ordersReadMore" style="margin-top:.4rem">📋 Read more — view all <%= orders.length %> orders with dates →</button>
+<% } %>
+
+<!-- popup: all orders with date + date search -->
+<div class="modal-overlay" id="ordersModal" style="display:none">
+  <div class="modal-box perf-modal-box">
+    <div class="perf-modal-head">🧾 All my orders — <%= orders.length %></div>
+    <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem">
+      <label class="ot-field">From <input type="date" id="ordFrom"></label>
+      <label class="ot-field">To <input type="date" id="ordTo"></label>
+      <button type="button" class="btn sm" id="ordSearch">🔍 Search</button>
+      <button type="button" class="btn sm gray" id="ordClear">Clear</button>
+    </div>
+    <div class="perf-modal-scroll">
+      <table class="tbl" id="ordTable">
+        <thead><tr><th>No.</th><th>📅 Date</th><th>Category</th><th>Status</th><th>Payment</th><th>Total (Kyats)</th><th>Action</th></tr></thead>
+        <tbody>
+          <% orders.forEach(function(o, i) { var d = o.created_at ? o.created_at.substring(0,10) : ""; %>
+            <tr data-date="<%= d %>">
+              <td><strong><%= orders.length - i %></strong></td>
+              <td class="muted"><%= d || "—" %></td>
+              <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %> <span class="muted">×<%= it.qty_kg %>kg</span></div><% }) %></td>
+              <td><span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span></td>
+              <td><%= o.payment_status === "paid" ? "Paid" : (o.payment_method === "cod" ? "On delivery" : "Unpaid") %></td>
+              <td><%= o.grand_total %> Kyats</td>
+              <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= orders.length - i %>">🔍 Details</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <p class="muted" id="ordNoRows" style="display:none;padding:.6rem">No orders in this date range.</p>
+    </div>
+    <button type="button" class="btn" id="ordClose" style="margin-top:.7rem">Close</button>
+  </div>
+</div>
+<script>
+  (function () {
+    var modal = document.getElementById("ordersModal");
+    if (!modal) return;
+    var openBtn = document.getElementById("ordersReadMore");
+    function open() { modal.style.display = "flex"; }
+    function close() { modal.style.display = "none"; }
+    if (openBtn) openBtn.addEventListener("click", open);
+    document.getElementById("ordClose").addEventListener("click", close);
+    modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+    var from = document.getElementById("ordFrom"), to = document.getElementById("ordTo");
+    var rows = Array.prototype.slice.call(document.querySelectorAll("#ordTable tbody tr"));
+    var noRows = document.getElementById("ordNoRows");
+    function applyFilter() {
+      var f = from.value, t = to.value, shown = 0;
+      rows.forEach(function (tr) {
+        var d = tr.getAttribute("data-date") || "";
+        var ok = (!f || (d && d >= f)) && (!t || (d && d <= t));
+        tr.style.display = ok ? "" : "none";
+        if (ok) shown++;
+      });
+      noRows.style.display = shown ? "none" : "";
+    }
+    document.getElementById("ordSearch").addEventListener("click", applyFilter);
+    document.getElementById("ordClear").addEventListener("click", function () { from.value = ""; to.value = ""; applyFilter(); });
+  })();
+</script>
+<% } %>
+
+<%- include("../partials/footer") %>

@@ -1,0 +1,24 @@
+<%- include("partials/header") %>
+<h2>Messages — Order</h2>
+<a class="btn sm" href="<%= backUrl %>" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; Back</a>
+
+<div class="card">
+  <% if (!messages.length) { %><p class="muted">No messages yet. Start the conversation below.</p><% } %>
+  <div class="thread">
+    <% messages.forEach(m => { %>
+      <div class="msg <%= m.sender_role === user.role ? 'mine' : 'theirs' %>">
+        <div class="msg-meta"><strong><%= m.sender_name %></strong>
+          <span class="badge"><%= m.sender_role %></span>
+          <span class="muted"><%= m.created_at ? m.created_at.substring(0,16).replace("T"," ") : "" %></span>
+        </div>
+        <div class="msg-body"><%= m.message %></div>
+      </div>
+    <% }) %>
+  </div>
+
+  <form action="<%= postUrl %>" method="post" class="row-form" style="margin-top:1rem">
+    <input name="message" placeholder="Type a message…" required style="flex:1">
+    <button class="btn" type="submit">Send</button>
+  </form>
+</div>
+<%- include("partials/footer") %>

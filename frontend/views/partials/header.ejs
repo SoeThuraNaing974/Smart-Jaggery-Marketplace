@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Local Jaggery</title>
+
+  <!-- No-reload engine: track page-level listeners/timers so they can be cleanly
+       torn down & re-initialised when <main> is swapped in place (see ajax-forms.js). -->
+  <script>
+    (function () {
+      window.__L = { recording: false, listeners: [], timers: [] };
+      function wrapAdd(target) {
+        var orig = target.addEventListener;
+        if (!orig) return;
+        target.addEventListener = function (type, fn, opts) {
+          if (window.__L.recording) { try { window.__L.listeners.push({ t: this, type: type, fn: fn, opts: opts }); } catch (e) {} }
+          return orig.call(this, type, fn, opts);
+        };
+      }
+      wrapAdd(document); wrapAdd(window);
+      var si = window.setInterval, st = window.setTimeout;
+      window.setInterval = function () { var id = si.apply(window, arguments); if (window.__L.recording) try { window.__L.timers.push(id); } catch (e) {} return id; };
+      window.setTimeout = function () { var id = st.apply(window, arguments); if (window.__L.recording) try { window.__L.timers.push(id); } catch (e) {} return id; };
+      // markers used by header (just before <main>) and footer (just after </main>)
+      window.__pageScriptsBegin = function () { window.__L.recording = true; };
+      window.__pageScriptsEnd = function () { window.__L.recording = false; };
+    })();
+  </script>
+
+  <!-- PWA: installable app on home screen -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#7a4a1e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Local Jaggery" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        // Auto-update on mobile/PWA: if a service worker already controls this page,
+        // a later controllerchange means a NEW version activated — reload once so the
+        // phone instantly runs the latest app instead of a stale cached copy.
+        var hadController = !!navigator.serviceWorker.controller, reloaded = false;
+        if (hadController) {
+          navigator.serviceWorker.addEventListener("controllerchange", function () {
+            if (reloaded) return; reloaded = true; window.location.reload();
+          });
+        }
+        navigator.serviceWorker.register("/sw.js").then(function (reg) {
+          if (reg && reg.update) { try { reg.update(); } catch (e) {} }
+        }).catch(function () {});
+      });
+    }
+  </script>
+
+  <link rel="stylesheet" href="/css/style.css?v=164" />
+  <%
+    // Chart.js is heavy (~200KB). Only load it on the 4 pages that actually draw
+    // charts — every other page loads much lighter & faster (especially on mobile).
+    var _cur = (typeof currentPath !== "undefined" && currentPath) ? currentPath : "";
+    var _needsCharts = ["/dashboard", "/admin", "/admin/insights", "/warehouse"].indexOf(_cur) !== -1;
+  %>
+  <% if (_needsCharts) { %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="/js/charts.js?v=6" defer></script>
+  <% } %>
+  <script src="/js/phone.js?v=1" defer></script>
+  <script src="/js/scroll-keep.js?v=1"></script>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"></span>Smart Jaggery Marketplace</a>
+    <input type="checkbox" id="navToggle" class="nav-toggle" hidden>
+    <label for="navToggle" class="nav-burger" aria-label="Toggle menu">&#9776;</label>
+    <div class="nav-links">
+      <%
+        var cur = (typeof currentPath !== "undefined" && currentPath) ? currentPath : "/";
+        var navRoots = ["/dashboard", "/admin", "/warehouse", "/"];
+        function navCls(href) {
+          var active = (navRoots.indexOf(href) !== -1)
+            ? cur === href
+            : (cur === href || cur.indexOf(href + "/") === 0);
+          return active ? "nav-link active" : "nav-link";
+        }
+      %>
+      <% if (user) { %>
+        <% if (user.role === "customer") { %>
+          <a href="/dashboard" class="<%= navCls('/dashboard') %>">Home</a>
+          <a href="/batches" class="<%= navCls('/batches') %> notif-link">Category<% if (typeof newCategoryCount !== "undefined" && newCategoryCount > 0) { %><span class="fb-badge" title="<%= newCategoryCount %> new categor<%= newCategoryCount === 1 ? 'y' : 'ies' %> added"><%= newCategoryCount > 9 ? '9+' : newCategoryCount %></span><% } %></a>
+          <a href="/cart" class="<%= navCls('/cart') %> cart-link">🛒 Cart<% if (cartCount) { %><span class="cart-count"><%= cartCount %></span><% } %></a>
+          <a href="/orders" class="<%= navCls('/orders') %> notif-link">My Order<% if (typeof orderUpdateCount !== "undefined" && orderUpdateCount > 0) { %><span class="fb-badge" title="<%= orderUpdateCount %> order update(s)"><%= orderUpdateCount > 9 ? '9+' : orderUpdateCount %></span><% } %></a>
+        <% } else if (user.role === "warehouse") { %>
+          <a href="/warehouse" class="<%= navCls('/warehouse') %> notif-link">Home<% if (typeof whOrderCount !== "undefined" && whOrderCount > 0) { %><span class="fb-badge" title="<%= whOrderCount %> new customer order(s)"><%= whOrderCount > 9 ? '9+' : whOrderCount %></span><% } %></a>
+          <a href="/warehouse/stock-all" class="<%= navCls('/warehouse/stock-all') %> notif-link">Category<% if (typeof whCategoryCount !== "undefined" && whCategoryCount > 0) { %><span class="fb-badge" title="<%= whCategoryCount %> new categor<%= whCategoryCount === 1 ? 'y' : 'ies' %> in your stock"><%= whCategoryCount > 9 ? '9+' : whCategoryCount %></span><% } %></a>
+          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>">Request</a>
+          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link">Package<% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= whPlanCount %> new package plan(s)"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
+        <% } else if (user.role === "admin") { %>
+          <a href="/admin" class="<%= navCls('/admin') %>">Home</a>
+          <% var catAttn = (typeof pendingRequestCount !== "undefined" ? pendingRequestCount : 0) + (typeof deletedStockCount !== "undefined" ? deletedStockCount : 0); %>
+          <a href="/admin/batches" class="<%= navCls('/admin/batches') %> notif-link">Category<% if (catAttn > 0) { %><span class="fb-badge" title="<%= catAttn %> item(s) need attention"><%= catAttn > 9 ? '9+' : catAttn %></span><% } %></a>
+          <a href="/admin/promotions" class="<%= navCls('/admin/promotions') %>">Promotion</a>
+          <a href="/admin/advertisements" class="<%= navCls('/admin/advertisements') %>">Advertise</a>
+          <a href="/admin/subscriptions" class="<%= navCls('/admin/subscriptions') %> notif-link">Package<% if (typeof newPaymentCount !== "undefined" && newPaymentCount > 0) { %><span class="fb-badge" title="<%= newPaymentCount %> new package payment(s)"><%= newPaymentCount > 9 ? '9+' : newPaymentCount %></span><% } %></a>
+          <a href="/admin/insights" class="<%= navCls('/admin/insights') %>">Insight</a>
+          <% var accAttn = (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) + (typeof newUserCount !== "undefined" ? newUserCount : 0); %>
+          <a href="/admin/ops" class="<%= navCls('/admin/ops') %> notif-link">Maintain<% if (accAttn > 0) { %><span class="fb-badge" title="<%= accAttn %> new registration(s)"><%= accAttn > 9 ? '9+' : accAttn %></span><% } %></a>
+          <a href="/admin/directory" class="<%= navCls('/admin/directory') %>">Accounts</a>
+        <% } %>
+        <a href="/profile" class="<%= navCls('/profile') %>">Profile</a>
+        <span class="user-pill">
+          <span class="user-ava" title="<%= user.name || user.role %>">
+            <% if (user.avatar_path) { %>
+              <img class="user-ava-img" src="/uploads/<%= user.avatar_path %>" alt="<%= user.name || user.role %>">
+            <% } else { %>
+              <span class="user-ava-img user-ava-initial"><%= (user.name || user.role || '?').trim().charAt(0).toUpperCase() %></span>
+            <% } %>
+            <span class="user-ava-dot" aria-hidden="true"></span>
+          </span>
+          <%= user.name || user.role %>
+        </span>
+        <form action="/logout" method="post" style="display:inline">
+          <button class="logout-btn" type="submit"><svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.75v8.5"/><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0"/></svg> Logout</button>
+        </form>
+      <% } else { %>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+      <% } %>
+    </div>
+  </nav>
+
+  <% if (user && user.role === "customer") { %>
+  <script>
+    // Live header notifications (Facebook-style badge + slide-in pop-up):
+    //   • Category — a newly published jaggery category
+    //   • My Order — when a warehouse ships / delivers the customer's order
+    (function () {
+      var stack;
+      function ensureStack() {
+        if (!stack) { stack = document.createElement("div"); stack.className = "cat-popup-stack"; document.body.appendChild(stack); }
+        return stack;
+      }
+      // one independent notification "channel" per nav link
+      function makeChannel(opts) {
+        var link = opts.link;
+        if (!link) return { update: function () {} };
+        var popupEl = null;
+        function badgeCount() { var b = link.querySelector(".fb-badge"); if (!b) return 0; var t = (b.textContent || "").trim(); return t === "9+" ? 10 : (parseInt(t, 10) || 0); }
+        var prev = badgeCount(); // server-rendered starting point — no pop-up on first load
+        function setBadge(count) {
+          var b = link.querySelector(".fb-badge");
+          if (count > 0) {
+            var txt = count > 9 ? "9+" : String(count);
+            if (!b) { b = document.createElement("span"); b.className = "fb-badge"; link.appendChild(b); }
+            if (b.textContent !== txt) { b.textContent = txt; b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; }
+          } else if (b) { b.remove(); }
+        }
+        function showPopup(title) {
+          if (!popupEl) {
+            popupEl = document.createElement("div");
+            popupEl.className = "cat-popup";
+            popupEl.innerHTML =
+              '<span class="cp-ico">' + (opts.icon || "🔔") + '</span>' +
+              '<div class="cp-body"><div class="cp-title"></div><div class="cp-sub">' + opts.subText + '</div></div>' +
+              '<button type="button" class="cp-view">View</button>' +
+              '<button type="button" class="cp-close" aria-label="Dismiss">✕</button>';
+            ensureStack().appendChild(popupEl);
+            popupEl.querySelector(".cp-view").addEventListener("click", function () {
+              if (location.pathname === opts.viewUrl) location.reload(); else location.href = opts.viewUrl;
+            });
+            popupEl.querySelector(".cp-close").addEventListener("click", function () { popupEl.classList.remove("show"); });
+          }
+          popupEl.querySelector(".cp-title").textContent = title;
+          popupEl.classList.remove("show"); void popupEl.offsetWidth; popupEl.classList.add("show");
+          // no auto-hide — stays until checked (View / ✕) or the page is refreshed/left
+        }
+        var firstRun = true;
+        return { update: function (count, data) {
+          setBadge(count);
+          // categories: pop only when the count rises. orders (showOnLoad): pop on EVERY page
+          // while there's an unchecked update, so it follows the customer until they open My Order.
+          if ((count > prev) || (opts.showOnLoad && firstRun && count > 0)) showPopup(opts.buildTitle(count, data));
+          prev = count; firstRun = false;
+        } };
+      }
+
+      var catCh = makeChannel({
+        link: document.querySelector('.nav-links a[href="/batches"]'),
+        viewUrl: "/batches", icon: "🎉", subText: "A new jaggery category is available.",
+        showOnLoad: true, // keep showing on every page until checked on the Category page
+        buildTitle: function (c) { return "🎉 " + c + " new categor" + (c === 1 ? "y" : "ies") + " added!"; }
+      });
+      var ordCh = makeChannel({
+        link: document.querySelector('.nav-links a[href="/orders"]'),
+        viewUrl: "/orders", icon: "🚚", subText: "Tap View to track your order.",
+        showOnLoad: true, // keep showing on every page until checked on My Order
+        buildTitle: function (c, data) {
+          if (data && data.items && data.items.length === 1) {
+            var it = data.items[0];
+            return it.status === "delivered"
+              ? ("📦 Your order (No-" + it.seq + ") has been delivered!")
+              : ("🚚 Your order (No-" + it.seq + ") has been shipped!");
+          }
+          return "🚚 " + c + " order update" + (c === 1 ? "" : "s") + "!";
+        }
+      });
+
+      var polling = false;
+      function poll() {
+        if (polling) return;
+        polling = true;
+        Promise.all([
+          fetch("/notifications/categories", { headers: { "X-Requested-With": "fetch" } }).then(function (r) { return r.ok ? r.json() : { count: 0 }; }).catch(function () { return { count: 0 }; }),
+          fetch("/orders/notifications", { headers: { "X-Requested-With": "fetch" } }).then(function (r) { return r.ok ? r.json() : { count: 0 }; }).catch(function () { return { count: 0 }; })
+        ]).then(function (res) {
+          catCh.update(Number(res[0].count) || 0, res[0]);
+          ordCh.update(Number(res[1].count) || 0, res[1]);
+        }).then(function () { polling = false; }, function () { polling = false; });
+      }
+      setTimeout(poll, 800);   // show quickly on every page load
+      setInterval(poll, 15000);
+      window.addEventListener("focus", poll);
+      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") poll(); });
+    })();
+  </script>
+  <% } %>
+
+  <% if (user && user.role === "warehouse") { %>
+  <script>
+    // Warehouse header notifications: same badge + slide-in pop-up as the customer side,
+    // for (1) new product categories in this warehouse's stock and (2) new package plans.
+    (function () {
+      var stack;
+      function ensureStack() {
+        if (!stack) { stack = document.createElement("div"); stack.className = "cat-popup-stack"; document.body.appendChild(stack); }
+        return stack;
+      }
+      // one independent notification "channel" per nav link
+      function makeChannel(link, viewUrl, labelOne, labelMany, subText, showOnLoad, icon) {
+        if (!link) return { update: function () {} };
+        var popupEl = null;
+        function badgeCount() {
+          var b = link.querySelector(".fb-badge");
+          if (!b) return 0;
+          var t = (b.textContent || "").trim();
+          return t === "9+" ? 10 : (parseInt(t, 10) || 0);
+        }
+        var prev = badgeCount();
+        function setBadge(count) {
+          var b = link.querySelector(".fb-badge");
+          if (count > 0) {
+            var txt = count > 9 ? "9+" : String(count);
+            if (!b) { b = document.createElement("span"); b.className = "fb-badge"; link.appendChild(b); }
+            if (b.textContent !== txt) { b.textContent = txt; b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; }
+          } else if (b) { b.remove(); }
+        }
+        function showPopup(count) {
+          if (!popupEl) {
+            popupEl = document.createElement("div");
+            popupEl.className = "cat-popup";
+            popupEl.innerHTML =
+              '<span class="cp-ico">🔔</span>' +
+              '<div class="cp-body"><div class="cp-title"></div><div class="cp-sub">' + subText + '</div></div>' +
+              '<button type="button" class="cp-view">View</button>' +
+              '<button type="button" class="cp-close" aria-label="Dismiss">✕</button>';
+            ensureStack().appendChild(popupEl);
+            popupEl.querySelector(".cp-view").addEventListener("click", function () {
+              if (location.pathname === viewUrl) location.reload(); else location.href = viewUrl;
+            });
+            popupEl.querySelector(".cp-close").addEventListener("click", function () { popupEl.classList.remove("show"); });
+          }
+          popupEl.querySelector(".cp-title").textContent = (icon || "🎉") + " " + count + " " + (count === 1 ? labelOne : labelMany) + "!";
+          popupEl.classList.remove("show"); void popupEl.offsetWidth; popupEl.classList.add("show");
+          // no auto-hide — stays until checked (View / ✕) or the page is refreshed/left
+        }
+        var firstRun = true;
+        return { update: function (count) {
+          setBadge(count);
+          if ((count > prev) || (showOnLoad && firstRun && count > 0)) showPopup(count);
+          prev = count; firstRun = false;
+        } };
+      }
+      var catCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/stock-all"]'),
+        "/warehouse/stock-all", "new category", "new categories", "New product categories are in your stock.", true, "🎉");
+      var subCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/subscription"]'),
+        "/warehouse/subscription", "new package plan", "new package plans", "A new package plan is available.", false, "💳");
+      var ordCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse"]'),
+        "/warehouse", "new customer order", "new customer orders", "A customer just placed an order — open Home to handle it.", true, "🛒");
+
+      var polling = false;
+      function poll() {
+        if (polling) return;
+        polling = true;
+        fetch("/warehouse/notifications", { headers: { "X-Requested-With": "fetch" } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { if (!d) return; catCh.update(Number(d.categories) || 0); subCh.update(Number(d.plans) || 0); ordCh.update(Number(d.orders) || 0); })
+          .catch(function () { /* offline / transient — keep current badges */ })
+          .then(function () { polling = false; });
+      }
+      setTimeout(poll, 800);   // show quickly on every page load
+      setInterval(poll, 15000);
+      window.addEventListener("focus", poll);
+      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") poll(); });
+    })();
+  </script>
+  <% } %>
+
+  <% if (user && user.role === "admin") { %>
+  <script>
+    // Admin header notifications: badge + slide-in pop-up for (1) new product requests,
+    // (2) stocks DELETED by a warehouse (alarm — stays until acknowledged), and
+    // (3) new package payments. Requests + deleted stock share the Category badge.
+    (function () {
+      var stack;
+      function ensureStack() {
+        if (!stack) { stack = document.createElement("div"); stack.className = "cat-popup-stack"; document.body.appendChild(stack); }
+        return stack;
+      }
+      var catLink = document.querySelector('.nav-links a[href="/admin/batches"]');
+      var subLink = document.querySelector('.nav-links a[href="/admin/subscriptions"]');
+      var opsLink = document.querySelector('.nav-links a[href="/admin/ops"]');
+      function setBadge(link, count) {
+        if (!link) return;
+        var b = link.querySelector(".fb-badge");
+        if (count > 0) {
+          var txt = count > 9 ? "9+" : String(count);
+          if (!b) { b = document.createElement("span"); b.className = "fb-badge"; link.appendChild(b); }
+          if (b.textContent !== txt) { b.textContent = txt; b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; }
+        } else if (b) { b.remove(); }
+      }
+      // popup-only channel (badges are managed separately so two channels can share one link)
+      function popupChannel(opts) {
+        var popupEl = null, prev = opts.baseline || 0, firstRun = true;
+        function showPopup(count) {
+          if (!popupEl) {
+            popupEl = document.createElement("div");
+            popupEl.className = "cat-popup" + (opts.alarm ? " alarm" : "");
+            popupEl.innerHTML =
+              '<span class="cp-ico">' + opts.icon + '</span>' +
+              '<div class="cp-body"><div class="cp-title"></div><div class="cp-sub">' + opts.subText + '</div></div>' +
+              '<button type="button" class="cp-view">View</button>' +
+              '<button type="button" class="cp-close" aria-label="Dismiss">✕</button>';
+            ensureStack().appendChild(popupEl);
+            popupEl.querySelector(".cp-view").addEventListener("click", function () {
+              if (location.pathname === opts.viewUrl) location.reload(); else location.href = opts.viewUrl;
+            });
+            popupEl.querySelector(".cp-close").addEventListener("click", function () { popupEl.classList.remove("show"); });
+          }
+          popupEl.querySelector(".cp-title").textContent = opts.icon + " " + count + " " + (count === 1 ? opts.one : opts.many) + "!";
+          popupEl.classList.remove("show"); void popupEl.offsetWidth; popupEl.classList.add("show");
+        }
+        return { update: function (count) {
+          if ((count > prev) || (opts.showOnLoad && firstRun && count > 0)) showPopup(count);
+          prev = count; firstRun = false;
+        } };
+      }
+      var reqCh = popupChannel({ icon: "🆕", viewUrl: "/admin/batches", showOnLoad: true,
+        baseline: <%= (typeof pendingRequestCount !== "undefined" ? pendingRequestCount : 0) %>,
+        one: "new product request", many: "new product requests", subText: "A warehouse is requesting a new product." });
+      var delCh = popupChannel({ icon: "🗑️", viewUrl: "/admin/batches", showOnLoad: true, alarm: true,
+        baseline: <%= (typeof deletedStockCount !== "undefined" ? deletedStockCount : 0) %>,
+        one: "stock deleted by a warehouse", many: "stocks deleted by warehouses", subText: "Review the deleted stock on the Category page." });
+      var payCh = popupChannel({ icon: "💳", viewUrl: "/admin/subscriptions", showOnLoad: true,
+        baseline: <%= (typeof newPaymentCount !== "undefined" ? newPaymentCount : 0) %>,
+        one: "new package payment", many: "new package payments", subText: "A warehouse bought / extended a package." });
+      var whAccCh = popupChannel({ icon: "🏬", viewUrl: "/admin/ops", showOnLoad: true,
+        baseline: <%= (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) %>,
+        one: "new warehouse registered", many: "new warehouses registered", subText: "A new warehouse just registered — review it on the Maintain page." });
+      var userAccCh = popupChannel({ icon: "🧑", viewUrl: "/admin/ops", showOnLoad: true,
+        baseline: <%= (typeof newUserCount !== "undefined" ? newUserCount : 0) %>,
+        one: "new user registered", many: "new users registered", subText: "A new user just registered — review it on the Maintain page." });
+
+      var polling = false;
+      function poll() {
+        if (polling) return;
+        polling = true;
+        fetch("/admin/notifications", { headers: { "X-Requested-With": "fetch" } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d) return;
+            var req = Number(d.requests) || 0, del = Number(d.deletedStocks) || 0, pay = Number(d.payments) || 0;
+            var newWh = Number(d.newWarehouses) || 0, newU = Number(d.newUsers) || 0;
+            setBadge(catLink, req + del);   // Category badge = requests + deleted stock
+            setBadge(subLink, pay);
+            setBadge(opsLink, newWh + newU);   // Maintain badge = new warehouses + new users
+            reqCh.update(req); delCh.update(del); payCh.update(pay);
+            whAccCh.update(newWh); userAccCh.update(newU);
+          })
+          .catch(function () { /* offline / transient — keep current badges */ })
+          .then(function () { polling = false; });
+      }
+      setTimeout(poll, 800);
+      setInterval(poll, 15000);
+      window.addEventListener("focus", poll);
+      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") poll(); });
+    })();
+  </script>
+  <% } %>
+
+  <script>window.__pageScriptsBegin && window.__pageScriptsBegin();</script>
+  <main class="container">
+    <% if (typeof flash !== "undefined" && flash) { %><div class="alert ok"><%= flash %></div><% } %>
+    <% if (typeof error !== "undefined" && error) { %><div class="alert err"><%= error %></div><% } %>

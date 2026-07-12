@@ -1,0 +1,52 @@
+<!-- Shared "Ingredients & Effectiveness" expand/edit modal (admin category cards).
+     A card's "See more ⤢" button opens this with both fields side by side and roomy;
+     Save writes the values back into that card's inputs and submits its form. -->
+<div id="descEditModal" class="dem-overlay" style="display:none">
+  <div class="dem-box" role="dialog" aria-modal="true" aria-label="Edit ingredients and effectiveness">
+    <div class="dem-head"><span id="demTitle">Ingredients &amp; Effectiveness</span>
+      <button type="button" class="dem-close" id="demClose" aria-label="Close">✕</button></div>
+    <div class="dem-body">
+      <label class="dem-col"><span>🧪 Ingredients</span>
+        <textarea id="demIng" rows="6" maxlength="300" placeholder="e.g. pure sugarcane juice, no additives"></textarea></label>
+      <label class="dem-col"><span>💪 Effectiveness</span>
+        <textarea id="demEff" rows="6" maxlength="300" placeholder="e.g. rich in iron, boosts energy, aids digestion"></textarea></label>
+    </div>
+    <div class="dem-foot">
+      <button type="button" class="btn gray" id="demCancel">Cancel</button>
+      <button type="button" class="btn" id="demSave">💾 Save</button>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    var modal = document.getElementById("descEditModal");
+    if (!modal) return;
+    var ing = document.getElementById("demIng"), eff = document.getElementById("demEff"),
+        title = document.getElementById("demTitle"), curForm = null;
+    function fld(f, n) { return f ? f.querySelector('[name="' + n + '"]') : null; }
+    function open(formId, name) {
+      curForm = document.getElementById(formId); if (!curForm) return;
+      ing.value = (fld(curForm, "ingredients") || {}).value || "";
+      eff.value = (fld(curForm, "effectiveness") || {}).value || "";
+      title.textContent = (name ? name + " — " : "") + "Ingredients & Effectiveness";
+      modal.style.display = "flex";
+      setTimeout(function () { ing.focus(); }, 30);
+    }
+    function close() { modal.style.display = "none"; curForm = null; }
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest(".de-more");
+      if (b) { e.preventDefault(); open(b.dataset.form, b.dataset.name || ""); }
+    });
+    document.getElementById("demClose").addEventListener("click", close);
+    document.getElementById("demCancel").addEventListener("click", close);
+    modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && modal.style.display !== "none") close(); });
+    document.getElementById("demSave").addEventListener("click", function () {
+      if (!curForm) return;
+      var i = fld(curForm, "ingredients"), f = fld(curForm, "effectiveness");
+      if (i) i.value = ing.value;
+      if (f) f.value = eff.value;
+      curForm.submit();   // persists grade/qty/price/active + the edited text
+    });
+  })();
+</script>

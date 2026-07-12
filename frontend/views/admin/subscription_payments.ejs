@@ -1,0 +1,123 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">💰</span>
+  <div>
+    <strong>Package payments received</strong>
+    <span>Every payment collected from warehouses — filter by warehouse and date.</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Payments received <span class="badge" id="payTotal" style="font-size:1.15rem;padding:.3rem .7rem">= <%= totalCollected %> Kyats</span>
+    <span class="muted" id="payPeriodLabel" style="font-size:.85rem;font-weight:400"> · all time</span></h3>
+
+  <div class="orders-toolbar" style="justify-content:flex-start;margin:.3rem 0 .7rem;flex-wrap:wrap">
+    <label class="ot-field">🏬 Warehouse <select id="payWhSel" style="padding:.25rem .4rem"></select></label>
+    <label class="ot-field">📅 From <input type="date" id="payFrom"></label>
+    <label class="ot-field">📅 To <input type="date" id="payTo"></label>
+    <button type="button" class="btn sm" id="paySearch">🔍 Search</button>
+    <button type="button" class="btn sm gray" id="payClear">Clear</button>
+    <a class="btn sm" id="payPdf" href="/admin/payments/pdf" target="_blank">⬇ Download PDF slip</a>
+    <a class="btn sm gray" href="/admin/subscriptions">← Back to packages</a>
+  </div>
+
+  <p class="muted" id="payCountLine" style="margin:.6rem 0"></p>
+
+  <% if (!payments.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">🧾</div>
+      <div class="empty-title">No payments yet</div>
+      <div class="empty-sub">Package payments will appear here.</div>
+    </div>
+  <% } else { %>
+    <form id="bulkPay" action="/admin/payments/delete" method="post" data-confirm="Delete the selected payment record(s)? This only removes the receipts; packages stay active."></form>
+    <table class="tbl" id="payTable">
+      <thead>
+        <tr><th><input type="checkbox" class="bulk-all" data-group="pay" title="Select all"></th><th>No.</th><th>📅 Date</th><th>Warehouse</th><th>Plan</th>
+          <th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <% payments.forEach((p) => { var pd = p.created_at ? p.created_at.substring(0,10) : ""; %>
+          <tr data-date="<%= pd %>" data-wh="<%= p.warehouse_name || '' %>">
+            <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="pay" name="payment_ids" value="<%= p.id %>" form="bulkPay"></td>
+            <td class="pay-no"></td>
+            <td class="muted"><%= pd %></td>
+            <td><strong><%= p.warehouse_name %></strong></td>
+            <td><%= p.plan_name || "—" %></td>
+            <td><%= p.amount %></td>
+            <td><%= p.method_label %></td>
+            <td class="muted"><%= p.reference %></td>
+            <td><span class="status status-<%= p.status === 'paid' ? 'delivered' : 'pending' %>"><%= p.status %></span></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkPay">🗑 Delete selected</button></div>
+    <p class="muted" id="payNoRows" style="display:none;padding:.6rem">No payments in this range.</p>
+  <% } %>
+</div>
+
+<script>
+  (function () {
+    var data = <%- JSON.stringify((payments || []).map(function (p) { return { a: Number(p.amount) || 0, d: p.created_at ? p.created_at.substring(0,10) : "", paid: (p.status === "paid"), w: p.warehouse_name || "" }; })) %>;
+    var totalEl = document.getElementById("payTotal");
+    var labelEl = document.getElementById("payPeriodLabel");
+    var countEl = document.getElementById("payCountLine");
+    var whSel = document.getElementById("payWhSel");
+    var fromEl = document.getElementById("payFrom");
+    var toEl = document.getElementById("payTo");
+    if (!totalEl || !whSel) return;
+    var rows = Array.prototype.slice.call(document.querySelectorAll("#payTable tbody tr"));
+    var noRows = document.getElementById("payNoRows");
+    function match(d, w) {
+      var wh = whSel.value, from = fromEl.value, to = toEl.value;
+      if (wh && w !== wh) return false;
+      if (from && d && d < from) return false;
+      if (to && d && d > to) return false;
+      return true;
+    }
+    function render() {
+      var total = 0, shown = 0;
+      data.forEach(function (p) { if (p.paid && p.d && match(p.d, p.w)) total += p.a; });
+      total = Math.round(total);
+      // re-number + show/hide table rows
+      rows.forEach(function (tr) {
+        var ok = match(tr.getAttribute("data-date") || "", tr.getAttribute("data-wh") || "");
+        tr.style.display = ok ? "" : "none";
+        if (ok) { shown++; var no = tr.querySelector(".pay-no"); if (no) no.textContent = shown; }
+        else { var cb = tr.querySelector(".bulk-cb"); if (cb) cb.checked = false; }  // hidden rows can't be submitted
+      });
+      var payMaster = document.querySelector('.bulk-all[data-group="pay"]');
+      if (payMaster) payMaster.checked = false;
+      if (noRows) noRows.style.display = shown ? "none" : "";
+      totalEl.textContent = "= " + total + " Kyats";
+      // keep the PDF-slip link in sync with the active filter
+      var pdf = document.getElementById("payPdf");
+      if (pdf) {
+        var pq = [];
+        if (fromEl.value) pq.push("from=" + encodeURIComponent(fromEl.value));
+        if (toEl.value) pq.push("to=" + encodeURIComponent(toEl.value));
+        if (whSel.value) pq.push("warehouse=" + encodeURIComponent(whSel.value));
+        pdf.href = "/admin/payments/pdf" + (pq.length ? "?" + pq.join("&") : "");
+      }
+      var f = fromEl.value, t = toEl.value, parts = [];
+      parts.push((f || t) ? ((f || "start") + " → " + (t || "now")) : "all time");
+      if (whSel.value) parts.push(whSel.value);
+      labelEl.textContent = " · " + parts.join(" · ");
+      countEl.innerHTML = "<strong>" + shown + "</strong> payment" + (shown === 1 ? "" : "s") + " shown";
+    }
+    var whs = {};
+    data.forEach(function (p) { if (p.w) whs[p.w] = true; });
+    whSel.innerHTML = '<option value="">All warehouses</option>' +
+      Object.keys(whs).sort().map(function (w) { return '<option value="' + w + '">' + w + '</option>'; }).join("");
+    [whSel, fromEl, toEl].forEach(function (el) { el.addEventListener("change", render); });
+    document.getElementById("paySearch").addEventListener("click", render);
+    document.getElementById("payClear").addEventListener("click", function () {
+      whSel.value = ""; fromEl.value = ""; toEl.value = ""; render();
+    });
+    render();
+  })();
+</script>
+
+<%- include("../partials/footer") %>

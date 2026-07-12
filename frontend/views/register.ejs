@@ -1,0 +1,111 @@
+<%- include("partials/header") %>
+<div class="card narrow">
+  <h2>Create your account</h2>
+  <% if (error) { %><div class="alert err"><%= error %></div><% } %>
+
+  <form action="/register" method="post" id="regForm">
+    <!-- choose account type -->
+    <div class="reg-type" id="regType">
+      <input type="radio" name="account_type" id="rtCustomer" value="customer" checked>
+      <label for="rtCustomer">🛍️ I'm a Customer</label>
+      <input type="radio" name="account_type" id="rtWarehouse" value="warehouse">
+      <label for="rtWarehouse">🏬 I'm a Warehouse</label>
+    </div>
+
+    <label><span id="nameTxt">Name</span> <input type="text" name="name" required></label>
+    <label>Email <input type="email" name="email" required></label>
+
+    <!-- warehouse-only fields -->
+    <div class="wh-only" id="whFields" hidden>
+      <label>📍 Address <input type="text" name="location" id="whLoc" placeholder="Type your address, or use the button below"></label>
+      <button type="button" class="loc-btn" id="useLocBtn">
+        <span class="loc-pin" aria-hidden="true"></span>
+        <span class="loc-btn-txt">Use my current location</span>
+      </button>
+      <span class="loc-status" id="locStatus"></span>
+    </div>
+
+    <!-- customer-only address (mirrors the warehouse location field) -->
+    <div class="cust-only" id="custFields">
+      <label>📍 Address <input type="text" name="address" id="custLoc" placeholder="Type your address, or use the button below"></label>
+      <button type="button" class="loc-btn" id="useCustLocBtn">
+        <span class="loc-pin" aria-hidden="true"></span>
+        <span class="loc-btn-txt">Use my current location</span>
+      </button>
+      <span class="loc-status" id="custLocStatus"></span>
+    </div>
+
+    <label>📱 Phone Number</label>
+    <div class="phone-group">
+      <select name="country_code" class="phone-cc-select"><%- include("partials/ccodes", { selected: "+95" }) %></select>
+      <input name="phone" type="tel" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}"
+             title="Phone number" placeholder="9xxxxxxxxx">
+    </div>
+    <label>Password <input type="password" name="password" minlength="6" required></label>
+    <button class="btn" type="submit" id="regSubmit">Create account</button>
+  </form>
+  <p class="muted">Already registered? <a href="/login">Login</a></p>
+</div>
+
+<script>
+  (function () {
+    var rc = document.getElementById("rtCustomer"), rw = document.getElementById("rtWarehouse");
+    var wh = document.getElementById("whFields"),
+        whLoc = document.getElementById("whLoc");
+    var cust = document.getElementById("custFields"), custLoc = document.getElementById("custLoc");
+    var nameTxt = document.getElementById("nameTxt"),
+        submit = document.getElementById("regSubmit"), regType = document.getElementById("regType");
+    function sync() {
+      var isWh = rw.checked;
+      wh.hidden = !isWh;
+      cust.hidden = isWh;
+      whLoc.required = isWh;
+      custLoc.required = !isWh;
+      nameTxt.textContent = isWh ? "🏬 Warehouse / business name" : "Name";
+      submit.textContent = isWh ? "Create warehouse account" : "Create account";
+      regType.classList.toggle("is-wh", isWh);
+    }
+    rc.addEventListener("change", sync);
+    rw.addEventListener("change", sync);
+    sync();
+  })();
+
+  // Optional "use my current location": fills an address field from the device's
+  // GPS (with the user's permission). If they decline or it fails, they just type it.
+  // Wired to both the warehouse Location field and the customer Address field.
+  function wireLoc(btnId, inpId, stId) {
+    var btn = document.getElementById(btnId),
+        inp = document.getElementById(inpId),
+        st  = document.getElementById(stId);
+    if (!btn || !inp) return;
+    function set(msg, kind) { st.textContent = msg || ""; st.className = "loc-status" + (kind ? " " + kind : ""); }
+    btn.addEventListener("click", function () {
+      if (!navigator.geolocation) { set("Your browser can't share location — please type it.", "err"); return; }
+      btn.disabled = true; set("📍 Getting your location…");
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var lat = pos.coords.latitude, lon = pos.coords.longitude;
+        set("Finding your address…");
+        fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=" + lat + "&lon=" + lon,
+              { headers: { "Accept": "application/json" } })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            inp.value = (d && d.display_name) ? d.display_name : (lat.toFixed(5) + ", " + lon.toFixed(5));
+            set("✓ Location added — edit it if you like.", "ok");
+          })
+          .catch(function () {
+            inp.value = lat.toFixed(5) + ", " + lon.toFixed(5);
+            set("✓ Coordinates added (address lookup failed).", "ok");
+          })
+          .then(function () { btn.disabled = false; });
+      }, function (err) {
+        btn.disabled = false;
+        set(err && err.code === 1
+          ? "Permission denied — no problem, just type your location."
+          : "Couldn't get your location — please type it.", "err");
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    });
+  }
+  wireLoc("useLocBtn", "whLoc", "locStatus");
+  wireLoc("useCustLocBtn", "custLoc", "custLocStatus");
+</script>
+<%- include("partials/footer") %>

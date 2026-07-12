@@ -1,0 +1,59 @@
+<%- include("../partials/header") %>
+<h2>Promotion Management</h2>
+
+<div class="card">
+  <h3>Create a promotion</h3>
+  <form action="/admin/promotions" method="post" class="promo-form">
+    <label class="full">Title<input name="title" placeholder="e.g. 10% off on 5kg+" required></label>
+    <label>Discount %<input name="discount_percent" type="text" inputmode="decimal" required
+      oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+    <label>Minimum Kg<input name="min_qty" type="text" inputmode="decimal" required
+      oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+    <label>Start date<input name="start_date" type="date" required></label>
+    <label>End date<input name="end_date" type="date" required></label>
+    <div class="promo-form-actions"><button class="btn" type="submit">Create promotion</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>All promotions (<%= promotions.length %>)</h3>
+  <% if (!promotions.length) { %>
+    <div class="empty-mini">
+      <div class="empty-mini-icon">🏷️</div>
+      <div class="empty-mini-title">No promotions yet</div>
+      <div class="empty-mini-sub">Create one above and it'll appear here.</div>
+    </div>
+  <% } else { %>
+    <div class="promo-grid">
+      <% promotions.slice(0, 3).forEach(p => { const fid = "pf" + p.id; const s = stats[p.id] || {}; %>
+        <div class="promo-card <%= p.is_active ? '' : 'inactive' %>">
+          <form id="<%= fid %>" action="/admin/promotions/<%= p.id %>/update" method="post" class="promo-fields">
+            <label class="full">Title<input name="title" value="<%= p.title %>"></label>
+            <label>Discount %<input name="discount_percent" type="text" inputmode="decimal" value="<%= p.discount_percent %>"
+              oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+            <label>Minimum Kg<input name="min_qty" type="text" inputmode="decimal" value="<%= p.min_qty %>"
+              oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
+            <label>Start date<input name="start_date" type="date" value="<%= p.start_date %>"></label>
+            <label>End date<input name="end_date" type="date" value="<%= p.end_date %>"></label>
+            <label class="promo-active full"><input type="checkbox" name="is_active" <%= p.is_active ? "checked" : "" %>> Active</label>
+          </form>
+          <p class="promo-stats">📊 Used <strong><%= s.orders || 0 %></strong> · Revenue <strong><%= s.revenue || 0 %> Kyats</strong></p>
+          <div class="cat-toolbar">
+            <span class="spacer"></span>
+            <button class="btn sm" type="submit" form="<%= fid %>">Save</button>
+            <form action="/admin/promotions/<%= p.id %>/delete" method="post" class="ct-form"
+                  data-confirm="Delete promotion <%= p.title %>?">
+              <button class="btn sm danger" type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <% if (promotions.length > 3) { %>
+      <a class="btn sm" href="/admin/promotions-all">📋 Read more — view all <%= promotions.length %> promotions →</a>
+    <% } else { %>
+      <a class="btn sm" href="/admin/promotions-all">View all · search by date →</a>
+    <% } %>
+  <% } %>
+</div>
+<%- include("../partials/footer") %>

@@ -1,0 +1,111 @@
+<%- include("../partials/header") %>
+<%- include("../partials/pay_success_modal") %>
+<h2>Package</h2>
+
+<div class="card">
+  <h3>Current status</h3>
+  <% if (sub.active) { %>
+    <div class="alert-card ok">
+      <span class="alert-ico">✅</span>
+      <div class="alert-body">
+        <div class="alert-title">Package active</div>
+        <div class="alert-text"><strong><%= sub.current.plan_name %></strong> · active until
+          <strong><%= sub.current.end_date %></strong> · <%= sub.current.days_remaining %> day(s) left</div>
+      </div>
+    </div>
+  <% } else if (sub.current) { %>
+    <div class="alert-card warn">
+      <span class="alert-ico">⏳</span>
+      <div class="alert-body">
+        <div class="alert-title">Package expired</div>
+        <div class="alert-text">Your <strong><%= sub.current.plan_name %></strong> expired on
+          <%= sub.current.end_date %>. Renew below to keep selling.</div>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="alert-card danger">
+      <span class="alert-ico">🚀</span>
+      <div class="alert-body">
+        <div class="alert-title">No package yet</div>
+        <div class="alert-text">Pick a plan below to start listing your products and selling to customers.</div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<h3>Choose a plan</h3>
+<%
+  var rates = plans.map(function (p) { return p.price / p.duration_months; });
+  var baseRate = rates.length ? Math.max.apply(null, rates) : 0;
+  var maxMonths = plans.length ? Math.max.apply(null, plans.map(function (p) { return p.duration_months; })) : 0;
+  var icons = { 1: "🌱", 2: "📦", 6: "⭐", 12: "👑" };
+%>
+<div class="plan-grid">
+  <% plans.forEach(p => {
+       var perMonth = p.price / p.duration_months;
+       var savePct = baseRate > 0 ? Math.round((1 - (perMonth / baseRate)) * 100) : 0;
+       var isBest = (p.duration_months === maxMonths);
+       var icon = icons[p.duration_months] || "🗓️";
+  %>
+    <div class="plan-card <%= isBest ? 'plan-best' : '' %>">
+      <% if (isBest) { %><div class="plan-ribbon">Best value</div><% } %>
+      <div class="plan-icon"><%= icon %></div>
+      <div class="plan-name"><%= p.name %></div>
+      <div class="plan-dur"><%= p.duration_months %> month<%= p.duration_months > 1 ? "s" : "" %></div>
+      <div class="plan-price"><%= p.price %> Kyats</div>
+      <div class="plan-permo"><%= perMonth.toFixed(0) %> Kyats/mo<% if (savePct > 0) { %> · <span class="plan-save">save <%= savePct %>%</span><% } %></div>
+      <a class="btn plan-btn" href="/warehouse/subscription/checkout?plan_id=<%= p.id %>">
+        <%= sub.active ? "Extend / Buy" : "Choose plan" %>
+      </a>
+    </div>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h3>Purchase history <span class="muted">(<%= sub.history.length %>)</span></h3>
+  <% if (!sub.history.length) { %><p class="muted">No purchases yet.</p><% } %>
+  <table class="tbl">
+    <thead><tr><th>Plan</th><th>From</th><th>To</th><th>Paid (Kyats)</th><th>Status</th></tr></thead>
+    <tbody>
+      <% sub.history.slice(0, 3).forEach(h => { %>
+        <tr>
+          <td><%= h.plan_name || "—" %></td><td><%= h.start_date %></td><td><%= h.end_date %></td>
+          <td><%= h.price_paid %></td>
+          <td><span class="status status-<%= h.active ? 'delivered' : 'cancelled' %>"><%= h.active ? "active" : "expired" %></span></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% if (sub.history.length > 3) { %>
+    <a class="btn sm" href="/warehouse/purchase-history-all">🧾 Read more — view all <%= sub.history.length %> purchases →</a>
+  <% } else if (sub.history.length) { %>
+    <a class="btn sm" href="/warehouse/purchase-history-all">View all · search by date →</a>
+  <% } %>
+</div>
+
+<div class="card">
+  <h3>Payment history <span class="muted">(<%= payments ? payments.length : 0 %>)</span></h3>
+  <% if (!payments || !payments.length) { %><p class="muted">No payments yet.</p><% } else { %>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Plan</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
+      <tbody>
+        <% payments.slice(0, 3).forEach(p => { %>
+          <tr>
+            <td class="muted"><%= p.created_at ? p.created_at.substring(0,10) : "" %></td>
+            <td><%= p.plan_name || "—" %></td><td><%= p.amount %></td>
+            <td><%= p.method_label %></td><td class="muted"><%= p.reference %></td>
+            <td><span class="status status-delivered"><%= p.status %></span></td>
+            <td><a class="btn sm" href="/warehouse/payments/<%= p.id %>/slip" target="_blank">🧾 PDF</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (payments.length > 3) { %>
+      <a class="btn sm" href="/warehouse/payment-history-all">💳 Read more — view all <%= payments.length %> payments →</a>
+    <% } else { %>
+      <a class="btn sm" href="/warehouse/payment-history-all">View all · search by date →</a>
+    <% } %>
+  <% } %>
+</div>
+
+<%- include("../partials/footer") %>

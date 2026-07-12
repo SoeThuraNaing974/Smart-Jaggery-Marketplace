@@ -1,0 +1,71 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">🏬</span>
+  <div>
+    <strong>Warehouse package status</strong>
+    <span>Every warehouse and the plan it is on — search by the date the package started.</span>
+  </div>
+</div>
+
+<div class="card">
+  <form action="/admin/subscription-statuses" method="get" class="orders-toolbar">
+    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 Search</button>
+    <% if (from || to) { %><a class="btn sm gray" href="/admin/subscription-statuses">Clear</a><% } %>
+    <a class="btn sm gray" href="/admin/subscriptions">← Back to packages</a>
+  </form>
+
+  <p class="muted" style="margin:.6rem 0">
+    <strong><%= subs.length %></strong> warehouse<%= subs.length === 1 ? "" : "s" %><%
+      if (from || to) { %> · started <%= from || "…" %> → <%= to || "…" %><% } %>
+  </p>
+
+  <% if (!subs.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <% if (from || to) { %>
+        <div class="empty-title">No packages in this date range</div>
+        <div class="empty-sub">Try a different date range.</div>
+      <% } else { %>
+        <div class="empty-title">No packages bought yet</div>
+        <div class="empty-sub">When a warehouse buys a package, it appears here. Warehouses that haven't bought one aren't listed.</div>
+      <% } %>
+    </div>
+  <% } else { %>
+    <form id="bulkSubAll" action="/admin/subscriptions/bulk-delete" method="post" data-confirm="Delete the selected package(s)?">
+      <input type="hidden" name="_back" value="statuses"></form>
+    <table class="tbl">
+      <thead>
+        <tr><th><input type="checkbox" class="bulk-all" data-group="subAll" title="Select all"></th><th>No.</th><th>Warehouse</th><th>Status</th><th>Plan</th>
+          <th>📅 Started</th><th>Expires</th><th>Days left</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <% subs.forEach((s, i) => { %>
+          <tr>
+            <td class="dir-chk"><% if (s.current) { %><input type="checkbox" class="bulk-cb" data-group="subAll" name="sub_ids" value="<%= s.current.id %>" form="bulkSubAll"><% } %></td>
+            <td><%= i + 1 %></td>
+            <td><strong><%= s.warehouse %></strong></td>
+            <td><span class="status status-<%= s.subscribed ? 'delivered' : 'pending' %>"><%= s.subscribed ? "active" : "expired" %></span></td>
+            <td><%= s.current ? s.current.plan_name : "—" %></td>
+            <td class="muted"><%= s.current && s.current.start_date ? s.current.start_date.substring(0,10) : "—" %></td>
+            <td><%= s.current ? s.current.end_date : "—" %></td>
+            <td><%= s.current ? s.current.days_remaining : "—" %></td>
+            <td>
+              <% if (s.current) { %>
+                <form action="/admin/subscriptions/<%= s.current.id %>/delete" method="post" class="ct-form"
+                      data-confirm="Delete <%= s.warehouse %>'s package?">
+                  <button class="btn sm danger" type="submit">Delete</button>
+                </form>
+              <% } else { %><span class="muted">—</span><% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkSubAll">🗑 Delete selected</button></div>
+  <% } %>
+</div>
+
+<%- include("../partials/footer") %>

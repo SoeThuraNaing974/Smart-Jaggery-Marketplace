@@ -1,0 +1,38 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <h2>📣 All Advertisements</h2>
+</div>
+
+<div class="card">
+  <form action="/admin/advertisements-all" method="get" class="orders-toolbar">
+    <label class="ot-field">Name <input type="text" name="q" value="<%= q %>" placeholder="Search title…"></label>
+    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 Search</button>
+    <% if (q || from || to) { %><a class="btn sm gray" href="/admin/advertisements-all">Clear</a><% } %>
+    <a class="btn sm gray" href="/admin/advertisements">← Back</a>
+  </form>
+
+  <p class="muted" style="margin:.6rem 0">
+    <strong><%= ads.length %></strong> advertisement<%= ads.length === 1 ? "" : "s" %><%
+      if (q) { %> · name “<%= q %>”<% }
+      if (from || to) { %> · running <%= from || "…" %> → <%= to || "…" %><% } %>
+  </p>
+
+  <% if (!ads.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">No advertisements found</div>
+      <div class="empty-sub">Try a different name or date range.</div>
+    </div>
+  <% } else { %>
+    <div class="ad-admin-grid">
+      <% ads.forEach(function (ad) { %>
+        <%- include("../partials/ad_admin_card", { ad: ad }) %>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<%- include("../partials/footer") %>

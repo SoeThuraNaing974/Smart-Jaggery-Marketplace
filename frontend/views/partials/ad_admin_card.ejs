@@ -1,0 +1,32 @@
+<%
+  // Renders one admin advertisement card. Expects `ad`.
+  var live = ad.is_live;
+  var status = !ad.is_active ? "Off" : (live ? "Live" : "Scheduled");
+  var scls = !ad.is_active ? "off" : (live ? "live" : "sched");
+%>
+<div class="ad-admin-card accent-<%= ad.accent || 'amber' %> <%= ad.is_active ? '' : 'is-off' %>">
+  <span class="ad-status <%= scls %>"><%= status %></span>
+  <div class="ad-admin-top">
+    <span class="ad-ico sm"><%= ad.icon || '📣' %></span>
+    <div>
+      <div class="ad-admin-title"><%= ad.title %></div>
+      <% if (ad.body) { %><div class="ad-admin-body"><%= ad.body %></div><% } %>
+    </div>
+  </div>
+  <div class="ad-admin-meta">
+    <% if (ad.link_url) { %><span>🔗 <%= ad.link_label || 'Link' %></span><% } %>
+    <% if (ad.starts_on || ad.ends_on) { %>
+      <span>📅 <%= ad.starts_on || '…' %> → <%= ad.ends_on || '…' %></span>
+    <% } else { %><span>📅 Always</span><% } %>
+  </div>
+  <div class="cat-toolbar ad-admin-actions">
+    <form action="/admin/advertisements/<%= ad.id %>/toggle" method="post" class="ct-form">
+      <input type="hidden" name="is_active" value="<%= ad.is_active ? '' : 'on' %>">
+      <button class="btn sm <%= ad.is_active ? 'gray' : '' %>" type="submit"><%= ad.is_active ? 'Turn off' : 'Turn on' %></button>
+    </form>
+    <form action="/admin/advertisements/<%= ad.id %>/delete" method="post" class="ct-form"
+          data-confirm="Delete advertisement &quot;<%= ad.title %>&quot;?">
+      <button class="btn sm danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>

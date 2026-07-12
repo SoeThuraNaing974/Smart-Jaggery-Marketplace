@@ -1,0 +1,50 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">💳</span>
+  <div>
+    <strong>Payment history</strong>
+    <span>Every package payment you've made. Search by the date it was paid.</span>
+  </div>
+</div>
+
+<div class="card">
+  <form action="/warehouse/payment-history-all" method="get" class="orders-toolbar">
+    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 Search</button>
+    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/payment-history-all">Clear</a><% } %>
+    <a class="btn sm gray" href="/warehouse/subscription">← Back</a>
+  </form>
+
+  <p class="muted" style="margin:.6rem 0">
+    <strong><%= payments.length %></strong> payment<%= payments.length === 1 ? "" : "s" %><%
+      if (from || to) { %> · paid <%= from || "…" %> → <%= to || "…" %><% } %>
+  </p>
+
+  <% if (!payments.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">💳</div>
+      <div class="empty-title">No payments found</div>
+      <div class="empty-sub">Try a different date range.</div>
+    </div>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>📅 Date</th><th>Plan</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
+      <tbody>
+        <% payments.forEach((p, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td class="muted"><%= p.created_at ? p.created_at.substring(0,10) : "" %></td>
+            <td><%= p.plan_name || "—" %></td><td><%= p.amount %></td>
+            <td><%= p.method_label %></td><td class="muted"><%= p.reference %></td>
+            <td><span class="status status-delivered"><%= p.status %></span></td>
+            <td><a class="btn sm" href="/warehouse/payments/<%= p.id %>/slip" target="_blank">🧾 PDF</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include("../partials/footer") %>
