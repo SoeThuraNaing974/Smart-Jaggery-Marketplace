@@ -1,0 +1,46 @@
+# Render Blueprint — deploys the whole marketplace in one click:
+#   1 free PostgreSQL database + 2 free web services (Flask API + Express site).
+# On render.com: New → Blueprint → pick this repo. After the first deploy,
+# set the frontend's API_BASE to the backend's public URL (see README steps).
+databases:
+  - name: jaggery-db
+    plan: free
+
+services:
+  # ---- Flask API ----
+  - type: web
+    name: jaggery-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jaggery-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true # random secret, shared with the frontend below
+      - key: PYTHON_VERSION
+        value: 3.12.7 # psycopg2-binary 2.9.9 has no wheels for newer Pythons
+
+  # ---- Express frontend (BFF) ----
+  - type: web
+    name: jaggery-frontend
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      # Public URL of the backend service — paste it in the Render dashboard
+      # after the backend's first deploy (e.g. https://jaggery-backend-xxxx.onrender.com)
+      - key: API_BASE
+        sync: false
+      # must match the backend's secret — the frontend verifies login tokens with it
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: jaggery-backend
+          envVarKey: JWT_SECRET
