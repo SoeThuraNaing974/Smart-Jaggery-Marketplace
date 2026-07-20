@@ -1,39 +1,35 @@
 @echo off
-title Jaggery - Put website online (STABLE link)
-cd /d "C:\Users\soeth.LENOVO-974\Documents\Odoo\Projects\my_project"
+title Jaggery - Run website LOCALLY
+cd /d "%~dp0"
 
 echo ============================================================
-echo   Smart Jaggery Marketplace - going ONLINE (stable link)
+echo   Smart Jaggery Marketplace - running LOCALLY (this PC only)
 echo ============================================================
 echo.
-echo [1/3] Starting the backend (Flask)...
-start "Jaggery Backend"  cmd /k "cd /d %CD%\backend && py app.py"
+echo [1/2] Starting the backend (Flask)...
+start "Jaggery Backend"  cmd /k "cd /d %~dp0backend && py app.py"
 
-echo [2/3] Starting the website (Express)...
-start "Jaggery Frontend" cmd /k "cd /d %CD%\frontend && npm start"
+echo [2/2] Starting the website (Express)...
+start "Jaggery Frontend" cmd /k "cd /d %~dp0frontend && npm start"
 
 echo      waiting a few seconds for the servers to wake up...
 timeout /t 9 /nobreak >nul
 
-echo [3/3] Opening your public link (Cloudflare Tunnel - no warning page)...
-start "Jaggery PUBLIC LINK" cmd /k "cloudflared.exe tunnel --url http://localhost:3000"
+echo      opening your local website...
+start "" http://localhost:3000
 
 echo.
 echo ============================================================
 echo   ALL STARTED!
 echo.
-echo   Your public website link appears in the "Jaggery PUBLIC LINK"
-echo   window - look for a line like:
-echo       https://something-random.trycloudflare.com
+echo   Your website is now running on THIS computer only:
+echo       http://localhost:3000
 echo.
-echo   Open THAT link on any phone/computer. No "Visit Site" page,
-echo   and the styling/CSS loads correctly (unlike ngrok free).
+echo   It is NOT shared online - no public link is created.
 echo.
-echo   NOTE: the link is different each time you start. To get a
-echo   permanent custom link, set up a named Cloudflare tunnel.
-echo.
-echo   Keep ALL the windows open while you use the site.
-echo   To STOP the website: just close those 3 windows.
+echo   Keep BOTH the "Backend" and "Frontend" windows open while
+echo   you use the site.
+echo   To STOP the website: just close those 2 windows.
 echo ============================================================
 echo.
 pause

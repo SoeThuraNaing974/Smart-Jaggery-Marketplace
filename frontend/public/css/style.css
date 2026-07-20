@@ -968,17 +968,74 @@ input, select { width:100%; padding:.45rem; border:1px solid #ccc; border-radius
 
 /* ---------------------------------------------------------------- responsive */
 .nav-burger { display:none; cursor:pointer; font-size:1.5rem; line-height:1; color:#fff; user-select:none; }
+/* dimmed backdrop behind the open mobile menu — never shown on desktop */
+.nav-backdrop { display:none; }
 @media (max-width:760px){
-  /* nav stays on ONE horizontal line (scrolls sideways if wider than the screen) */
-  .nav { flex-wrap:wrap; }
-  .brand { font-size:.95rem; }
-  .nav-burger { display:none; }                 /* no hamburger — menus shown inline */
-  .nav-links { display:flex !important; width:100%; flex-direction:row; flex-wrap:nowrap;
-    align-items:center; gap:.7rem; padding-top:.5rem;
-    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
-  .nav-links a, .nav-links .link-btn { padding:.2rem 0; white-space:nowrap; flex:0 0 auto; }
-  .nav-links a, .nav a { margin-right:0; }
-  .user-pill, .logout-btn { flex:0 0 auto; white-space:nowrap; }
+  /* ---- attractive mobile header: brand + hamburger, elegant slide-down menu ----
+     replaces the old cramped side-scrolling nav row (no horizontal scrollbar) */
+  .nav { flex-wrap:nowrap; padding:.6rem 1rem; }
+  .brand { font-size:1rem; }
+
+  /* the hamburger — a tidy rounded button that flips to ✕ when the menu is open
+     (kept above the backdrop so the ✕ stays crisp while the page dims) */
+  .nav-burger {
+    display:inline-flex; align-items:center; justify-content:center;
+    position:relative; z-index:130;
+    width:42px; height:42px; margin:0; padding:0; border-radius:12px; font-size:0;
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3);
+    transition:background .18s, transform .12s; }
+  .nav-burger::before { content:"\2630"; font-size:1.45rem; line-height:1; }
+  .nav-burger:active { transform:scale(.92); }
+  .nav-toggle:checked ~ .nav-burger { background:rgba(255,255,255,.24); }
+  .nav-toggle:checked ~ .nav-burger::before { content:"\2715"; font-size:1.2rem; }
+
+  /* dim the page behind the open menu; tapping it closes the menu */
+  .nav-backdrop {
+    display:block; position:fixed; inset:0; z-index:110;
+    background:rgba(25,12,0,.4); opacity:0; pointer-events:none;
+    transition:opacity .25s ease; }
+  .nav-toggle:checked ~ .nav-backdrop { opacity:1; pointer-events:auto; }
+
+  /* the menu — a floating rounded card that expands from the top-right */
+  .nav-links {
+    position:absolute; top:calc(100% + 6px); left:10px; right:10px; z-index:120;
+    display:flex !important; flex-direction:column; align-items:stretch; width:auto;
+    gap:.12rem; padding:0 .5rem;
+    background:linear-gradient(180deg,#8a5626,#6b3d17);
+    border:1px solid rgba(255,255,255,.16); border-radius:16px;
+    box-shadow:0 18px 38px rgba(0,0,0,.34);
+    max-height:0; opacity:0; overflow:hidden; pointer-events:none;
+    transform:translateY(-8px) scale(.98); transform-origin:top right;
+    transition:max-height .3s ease, opacity .22s ease,
+               transform .26s cubic-bezier(.2,.85,.25,1), padding .26s ease; }
+  .nav-toggle:checked ~ .nav-links {
+    max-height:82vh; opacity:1; pointer-events:auto; padding:.5rem;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
+    transform:translateY(0) scale(1); }
+
+  /* each entry = a full-width, comfortably tappable row */
+  .nav-links a, .nav-links .link-btn, .nav-link {
+    display:flex; align-items:center; width:100%; margin:0;
+    padding:.72rem .8rem; border-radius:11px; font-size:1rem; font-weight:500;
+    white-space:nowrap; opacity:.97; text-align:left; transition:background .15s; }
+  .nav-links a:active, .nav-links .link-btn:active { background:rgba(255,255,255,.16); }
+  .nav-link::after { display:none; }               /* drop the desktop underline indicator */
+  .nav-link.active { background:rgba(255,210,122,.2); box-shadow:inset 3px 0 0 #ffd27a; opacity:1; }
+
+  /* notification / cart badges sit flush to the right edge of their row */
+  .nav-links .cart-count, .nav-links .fb-badge { margin-left:auto; }
+  .cart-link { gap:.45rem; }
+  .fb-badge { position:static; top:auto; right:auto; border:none; box-shadow:none; animation:none; }
+  .fb-badge::before { display:none; }              /* no pulsing ring inside the menu */
+
+  /* identity + logout form the menu's footer */
+  .user-pill {
+    width:100%; justify-content:flex-start; gap:.6rem; margin-top:.35rem;
+    padding:.55rem .7rem; font-size:.95rem; border-radius:12px;
+    background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.3); }
+  .nav-links form { display:block !important; width:100%; margin:0; }
+  .logout-btn { width:100%; justify-content:center; margin-top:.35rem; padding:.66rem; font-size:.95rem; }
+
   /* wide tables scroll horizontally instead of breaking the layout */
   .tbl { display:block; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch; }
   /* the compact category table: on phones use natural widths + scroll (readable) */

@@ -57,7 +57,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/css/style.css?v=164" />
+  <link rel="stylesheet" href="/css/style.css?v=166" />
   <%
     // Chart.js is heavy (~200KB). Only load it on the 4 pages that actually draw
     // charts — every other page loads much lighter & faster (especially on mobile).
@@ -130,6 +130,8 @@
         <a href="/register">Register</a>
       <% } %>
     </div>
+    <!-- dimmed backdrop behind the open mobile menu; tapping it closes the menu -->
+    <label for="navToggle" class="nav-backdrop" aria-hidden="true"></label>
   </nav>
 
   <% if (user && user.role === "customer") { %>
