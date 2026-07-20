@@ -26,8 +26,9 @@ services:
         value: 3.12.7 # psycopg2-binary 2.9.9 has no wheels for newer Pythons
 
   # ---- Express frontend (BFF) ----
+  # the service name becomes the public link: https://smart-jaggery-xxxx.onrender.com
   - type: web
-    name: jaggery-frontend
+    name: smart-jaggery
     runtime: node
     plan: free
     rootDir: frontend
