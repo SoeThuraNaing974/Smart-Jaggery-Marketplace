@@ -248,6 +248,26 @@ input, select { width:100%; padding:.45rem; border:1px solid #ccc; border-radius
   padding:.1rem .45rem; border-radius:5px; vertical-align:middle;
 }
 
+/* ---- unpaid order highlight — static red card (design #12, no motion) — customer side only ---- */
+body.role-customer .order-card.is-unpaid {
+  background:#fceeee;
+  border:2px solid #e24b4a; border-top:4px solid #a32d2d;
+  box-shadow:0 8px 22px rgba(163,45,45,.16);
+}
+body.role-customer .order-card.is-unpaid .order-total-row { border-top-color:#f0c4c4; }
+/* stand-out Pay now button */
+.btn.pay-now-btn {
+  background:#c62828; border:none; color:#fff;
+  font-weight:800; box-shadow:0 4px 12px rgba(198,40,40,.35);
+}
+.btn.pay-now-btn:hover { filter:brightness(1.08); }
+/* unpaid tag inside the all-orders table */
+.unpaid-cell-tag {
+  display:inline-block; background:#c62828; color:#fff;
+  font-weight:800; font-size:.66rem; letter-spacing:.04em; padding:.1rem .45rem; border-radius:999px;
+  white-space:nowrap;
+}
+
 /* warehouse category page — newly added category row highlight */
 .stock-tbl tr.new-cat-row > td { background:#fff4e1; }
 .stock-tbl tr.new-cat-row > td:first-child { box-shadow:inset 5px 0 0 #e07f17; }
@@ -265,6 +285,8 @@ input, select { width:100%; padding:.45rem; border:1px solid #ccc; border-radius
 .pay-badge.paid { background:#1f7a3d; }
 .pay-badge.cod { background:#b06a00; }
 .pay-badge.unpaid { background:#a12d2d; }
+/* customer orders page only — brighter red to match the unpaid card */
+body.role-customer .pay-badge.unpaid { background:#c62828; }
 .order-steps { display:flex; justify-content:space-between; margin:1rem 0 .8rem; position:relative; }
 .order-steps::before { content:""; position:absolute; top:8px; left:8%; right:8%; height:2px;
   background:#e6dccb; z-index:0; }
@@ -1049,6 +1071,39 @@ input, select { width:100%; padding:.45rem; border:1px solid #ccc; border-radius
   .cat-grid, .promo-grid { grid-template-columns:1fr; }
   .promo-form, .promo-fields { grid-template-columns:1fr 1fr; }
   .cat-toolbar .spacer { display:none; }
+}
+
+/* ---- admin & warehouse on laptop/desktop: the header becomes a fixed left sidebar ----
+   mobile (≤760px) keeps the normal top bar + hamburger menu */
+@media (min-width:761px){
+  :is(body.role-admin, body.role-warehouse) { padding-left:232px; }
+  :is(body.role-admin, body.role-warehouse) .nav {
+    position:fixed; top:0; left:0; bottom:0; width:232px;
+    flex-direction:column; justify-content:flex-start; align-items:stretch;
+    gap:.9rem; padding:1rem .8rem; overflow-y:auto;
+    box-shadow:2px 0 8px #0002;
+  }
+  :is(body.role-admin, body.role-warehouse) .brand { margin:0; white-space:normal; line-height:1.3; font-size:1.02rem; }
+  :is(body.role-admin, body.role-warehouse) .nav-links {
+    flex:1; flex-direction:column; align-items:stretch; width:100%; gap:.2rem;
+  }
+  :is(body.role-admin, body.role-warehouse) .nav-links a,
+  :is(body.role-admin, body.role-warehouse) .nav-link {
+    display:flex; align-items:center; width:100%; margin:0;
+    padding:.55rem .7rem; border-radius:9px; transition:background .15s;
+  }
+  :is(body.role-admin, body.role-warehouse) .nav-links a:hover { background:rgba(255,255,255,.12); }
+  :is(body.role-admin, body.role-warehouse) .nav-link::after { display:none; }   /* vertical menu: left bar instead of underline */
+  :is(body.role-admin, body.role-warehouse) .nav-link.active { background:rgba(255,210,122,.2); box-shadow:inset 3px 0 0 #ffd27a; opacity:1; }
+  :is(body.role-admin, body.role-warehouse) .nav-links .fb-badge {
+    position:static; margin-left:auto; border:none; box-shadow:none; animation:none; }
+  :is(body.role-admin, body.role-warehouse) .nav-links .fb-badge::before { display:none; }
+  /* identity + logout pinned to the bottom of the sidebar */
+  :is(body.role-admin, body.role-warehouse) .user-pill {
+    width:100%; margin-top:auto; justify-content:flex-start; gap:.6rem;
+    padding:.45rem .7rem .45rem .3rem; border-radius:12px; }
+  :is(body.role-admin, body.role-warehouse) .nav-links form { width:100%; margin:0; }
+  :is(body.role-admin, body.role-warehouse) .logout-btn { width:100%; justify-content:center; margin-top:.35rem; padding:.55rem; }
 }
 
 /* never let images overflow their container on any screen */

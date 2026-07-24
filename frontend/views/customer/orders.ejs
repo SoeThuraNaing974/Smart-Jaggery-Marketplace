@@ -44,7 +44,8 @@
 <% var steps = ["pending","waiting","shipped"]; %>
 <% cardOrders.slice(0, 5).forEach(function(o, i) { %>
   <% var si = steps.indexOf(o.status); var cancelled = (o.status === "cancelled"); %>
-  <div class="order-card <%= o.isUpdate ? 'is-update' : '' %>">
+  <% var needsPay = (o.payment_status !== "paid" && o.payment_method !== "cod" && o.status !== "cancelled"); %>
+  <div class="order-card <%= o.isUpdate ? 'is-update' : '' %> <%= needsPay ? 'is-unpaid' : '' %>">
     <% if (o.isUpdate) { %><span class="order-update-ribbon"><%= o.status === "delivered" ? "📦 Delivered" : "🚚 Shipped" %></span><% } %>
     <div class="order-head">
       <div class="order-id">🧾 Order: <%= o.displayNo %>
@@ -92,8 +93,8 @@
     </div>
 
     <div class="inline" style="flex-wrap:wrap;gap:.4rem;margin-top:.6rem">
-      <% if (o.payment_status !== "paid" && o.payment_method !== "cod" && o.status !== "cancelled") { %>
-        <a class="btn sm" href="/orders/<%= o.id %>/pay">💳 Pay now</a>
+      <% if (needsPay) { %>
+        <a class="btn sm pay-now-btn" href="/orders/<%= o.id %>/pay">💳 Pay now</a>
       <% } %>
       <% if (o.payment_status === "paid") { %>
         <a class="btn sm" href="/orders/<%= o.id %>/payment-slip" target="_blank">🧾 Payment slip</a>
@@ -148,7 +149,7 @@
               <td class="muted"><%= d || "—" %></td>
               <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %> <span class="muted">×<%= it.qty_kg %>kg</span></div><% }) %></td>
               <td><span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span></td>
-              <td><%= o.payment_status === "paid" ? "Paid" : (o.payment_method === "cod" ? "On delivery" : "Unpaid") %></td>
+              <td><% if (o.payment_status === "paid") { %>Paid<% } else if (o.payment_method === "cod") { %>On delivery<% } else if (o.status === "cancelled") { %>Unpaid<% } else { %><span class="unpaid-cell-tag">💰 Unpaid</span><% } %></td>
               <td><%= o.grand_total %> Kyats</td>
               <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= orders.length - i %>">🔍 Details</a></td>
             </tr>

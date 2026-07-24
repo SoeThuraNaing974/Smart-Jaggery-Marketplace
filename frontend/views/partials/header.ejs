@@ -57,7 +57,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/css/style.css?v=166" />
+  <link rel="stylesheet" href="/css/style.css?v=170" />
   <%
     // Chart.js is heavy (~200KB). Only load it on the 4 pages that actually draw
     // charts — every other page loads much lighter & faster (especially on mobile).
@@ -71,7 +71,7 @@
   <script src="/js/phone.js?v=1" defer></script>
   <script src="/js/scroll-keep.js?v=1"></script>
 </head>
-<body>
+<body class="<%= (typeof user !== 'undefined' && user) ? 'role-' + user.role : '' %>">
   <nav class="nav">
     <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"></span>Smart Jaggery Marketplace</a>
     <input type="checkbox" id="navToggle" class="nav-toggle" hidden>
