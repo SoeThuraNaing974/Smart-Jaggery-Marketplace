@@ -88,7 +88,7 @@
     if (!/JaggeryCharts|chart\.umd|<canvas/i.test(html)) return Promise.resolve();
     var p = Promise.resolve();
     if (typeof window.Chart === "undefined") p = p.then(function () { return loadScript("https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"); });
-    p = p.then(function () { if (typeof window.JaggeryCharts === "undefined") return loadScript("/js/charts.js?v=6"); });
+    p = p.then(function () { if (typeof window.JaggeryCharts === "undefined") return loadScript("/js/charts.js?v=7"); });
     return p;
   }
 

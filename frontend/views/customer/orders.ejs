@@ -42,6 +42,7 @@
   </div>
 <% } %>
 <% var steps = ["pending","waiting","shipped"]; %>
+<div class="orders-grid">
 <% cardOrders.slice(0, 5).forEach(function(o, i) { %>
   <% var si = steps.indexOf(o.status); var cancelled = (o.status === "cancelled"); %>
   <% var needsPay = (o.payment_status !== "paid" && o.payment_method !== "cod" && o.status !== "cancelled"); %>
@@ -124,6 +125,7 @@
     <% } %>
   </div>
 <% }) %>
+</div>
 
 <% if (orders.length > 5) { %>
   <button type="button" class="btn" id="ordersReadMore" style="margin-top:.4rem">📋 Read more — view all <%= orders.length %> orders with dates →</button>

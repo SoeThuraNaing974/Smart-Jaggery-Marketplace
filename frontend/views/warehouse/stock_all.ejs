@@ -5,7 +5,7 @@
   <div>
     <strong>Current stock — all products</strong>
     <span>Every product in your warehouse. Search by the date it was added; update quality &amp; price,
-      upload certificates, or remove items.</span>
+      upload photos, or remove items.</span>
   </div>
 </div>
 
@@ -43,7 +43,7 @@
       <input type="hidden" name="_back" value="all"></form>
     <table class="tbl stock-tbl">
       <thead><tr><th><input type="checkbox" class="bulk-all" data-group="stockAll" title="Select all"></th><th>📅 Added</th><th>No.</th><th>Category</th><th>Grade</th><th>Qty</th><th>Kyats/kg</th>
-        <th>Production Date</th><th>Photos</th><th>Update</th><th>Certificate</th></tr></thead>
+        <th>Production Date</th><th>Photos</th><th>Update</th><th></th></tr></thead>
       <tbody>
       <% batches.forEach((b, idx) => { %>
         <tr class="<%= b.isNew ? 'new-cat-row ' : '' %><%= b.expiry_status === 'expired' ? 'expired-row' : (b.near_expiry ? 'expiry-row' : '') %>">
@@ -61,7 +61,14 @@
           <td data-label="Production Date"><%= b.harvest_date %></td>
           <td data-label="Photos" class="cell-block">
             <div class="wh-imgs">
-              <% if (b.image_path) { %><span class="wh-img cover" title="Cover photo"><img src="/uploads/<%= b.image_path %>" alt="cover"></span><% } %>
+              <% if (b.image_path) { %>
+                <span class="wh-img cover" title="Cover photo">
+                  <img src="/uploads/<%= b.image_path %>" alt="cover">
+                  <form action="/warehouse/batches/<%= b.id %>/image/remove" method="post" data-confirm="Remove the cover photo?">
+                    <button class="cat-img-x" type="submit" title="Remove cover photo">✕</button>
+                  </form>
+                </span>
+              <% } %>
               <% (b.images || []).forEach(im => { %>
                 <span class="wh-img">
                   <img src="/uploads/<%= im.image_path %>" alt="photo">
@@ -70,21 +77,7 @@
                   </form>
                 </span>
               <% }) %>
-            </div>
-            <div class="wh-photo-actions">
-              <form action="/warehouse/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data">
-                <label class="btn sm upl-label" title="Set the cover photo — this is the picture shown across the whole system">🖼 Cover
-                  <input type="file" name="file" accept="image/*" class="js-img-input" onchange="if(!window.__inplaceImage)this.closest('form').submit()">
-                </label>
-              </form>
-              <form action="/warehouse/batches/<%= b.id %>/image/remove" method="post">
-                <button class="btn sm btn-outline" type="submit" <%= b.image_path ? "" : "disabled" %>>Remove cover</button>
-              </form>
-              <form action="/warehouse/batches/<%= b.id %>/images" method="post" enctype="multipart/form-data">
-                <label class="btn sm upl-label" title="Add more photos">➕ Add photos
-                  <input type="file" name="files" accept="image/*" multiple onchange="this.closest('form').submit()">
-                </label>
-              </form>
+              <% if (!b.image_path && !(b.images || []).length) { %><span class="muted wh-noimg">No photos yet</span><% } %>
             </div>
           </td>
           <td data-label="Update" class="cell-block">
@@ -102,15 +95,44 @@
               </div>
             </div>
           </td>
-          <td data-label="Certificate" class="cell-block">
-            <% if (b.certificate_path) { %><span class="muted">✔ uploaded</span><br><% } %>
-            <div class="inline" style="flex-wrap:wrap;gap:.3rem;align-items:center">
-              <form action="/warehouse/batches/<%= b.id %>/certificate" method="post"
-                    enctype="multipart/form-data" class="inline" style="gap:.3rem">
-                <input type="file" name="file" accept="application/pdf" style="max-width:150px">
-                <button class="btn sm" type="submit">Upload</button>
-              </form>
-              <a class="btn sm" href="/warehouse/batches/<%= b.id %>/qr" target="_blank">QR</a>
+          <td data-label="" class="cell-block">
+            <% if (b.certificate_path) { %><span class="muted">✔ Certificate on file</span><br><% } %>
+            <div class="inline" style="flex-wrap:wrap;gap:.4rem;align-items:center">
+              <div class="upl-menu-wrap">
+                <button type="button" class="btn sm upl-menu-btn" aria-expanded="false">
+                  <svg class="upl-btn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                  Upload <span class="upl-caret">▾</span>
+                </button>
+                <div class="upl-menu" hidden>
+                  <div class="upl-menu-head">Choose what to upload</div>
+                  <form action="/warehouse/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data" class="upl-menu-item">
+                    <label class="upl-label" title="Set the cover photo — shown across the whole system, replaces the current one">
+                      <span class="upl-menu-ico upl-ico-cover" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.6" cy="9.6" r="1.5"/><path d="M3.6 17.8 9 12.4l3.6 3.6 2.6-2.6 5.2 5.2"/></svg>
+                      </span>
+                      <span class="upl-menu-txt">
+                        <span class="upl-menu-title">Cover photo</span>
+                        <span class="upl-menu-sub">1 image · replaces current</span>
+                      </span>
+                      <span class="upl-menu-go" aria-hidden="true">›</span>
+                      <input type="file" name="file" accept="image/*" class="js-img-input" onchange="if(!window.__inplaceImage)this.closest('form').submit()">
+                    </label>
+                  </form>
+                  <form action="/warehouse/batches/<%= b.id %>/images" method="post" enctype="multipart/form-data" class="upl-menu-item">
+                    <label class="upl-label" title="Add extra photos — you can add several at once">
+                      <span class="upl-menu-ico upl-ico-photos" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><rect x="7" y="3.5" width="13.5" height="13.5" rx="3"/><path d="M16.5 20.5H6a2.5 2.5 0 0 1-2.5-2.5V7.5"/><path d="M7.4 13.6 11 10l2.8 2.8 2-2 4.7 4.7"/></svg>
+                      </span>
+                      <span class="upl-menu-txt">
+                        <span class="upl-menu-title">Side Photos</span>
+                        <span class="upl-menu-sub">Add several at once</span>
+                      </span>
+                      <span class="upl-menu-go" aria-hidden="true">›</span>
+                      <input type="file" name="files" accept="image/*" multiple onchange="this.closest('form').submit()">
+                    </label>
+                  </form>
+                </div>
+              </div>
             </div>
           </td>
         </tr>

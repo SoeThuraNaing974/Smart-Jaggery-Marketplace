@@ -11,17 +11,13 @@ const upload = multer({ storage: multer.memoryStorage() });
 // ---------------------------------------------------- dashboard (KPIs+charts)
 router.get("/", adminOnly, async (req, res) => {
   const api = client(req.token);
-  const [kpis, charts, orders, warehouses] = await Promise.all([
+  const [kpis, charts] = await Promise.all([
     api.get("/api/admin/kpis"),
     api.get("/api/admin/charts"),
-    api.get("/api/admin/orders"),
-    api.get("/api/admin/warehouses"),
   ]);
   res.render("admin/dashboard", {
     kpis: kpis.data || {},
     charts: charts.data || { revenue_30d: { labels: [], values: [] }, top_warehouses: { labels: [], values: [] } },
-    orders: orders.data || [],
-    warehouses: warehouses.data || [],
     flash: req.query.msg || null, error: req.query.err || null,
   });
 });
@@ -68,22 +64,6 @@ router.get("/categories", adminOnly, async (req, res) => {
   res.render("admin/categories_all", { batches: r.data || [], from, to });
 });
 
-// ----------------------------------------------------------------- insights
-router.get("/insights", adminOnly, async (req, res) => {
-  const api = client(req.token);
-  const [segments, promoAnalytics, perf] = await Promise.all([
-    api.get("/api/admin/segments"),
-    api.get("/api/admin/promotions/analytics"),
-    api.get("/api/admin/warehouses/performance"),
-  ]);
-  res.render("admin/insights", {
-    segments: segments.data || { counts: {}, segments: {} },
-    promoAnalytics: promoAnalytics.data || [],
-    performance: perf.data || [],
-    flash: req.query.msg || null, error: req.query.err || null,
-  });
-});
-
 // --------------------------------------------------------- batch management
 // Live notification counts for the admin header (polled by the client):
 // new warehouse product requests + new subscription payments.
@@ -128,11 +108,12 @@ router.get("/notifications", adminOnly, async (req, res) => {
 
 router.get("/batches", adminOnly, async (req, res) => {
   const api = client(req.token);
-  const [batches, warehouses, requests, deleted] = await Promise.all([
+  const [batches, warehouses, requests, deleted, approved] = await Promise.all([
     api.get("/api/admin/batches"),
     api.get("/api/admin/warehouses"),
     api.get("/api/admin/product-requests?status=pending"),
     api.get("/api/admin/deleted-stocks"),
+    api.get("/api/admin/product-requests?status=approved"),
   ]);
   const reqList = requests.data || [];
   const deletedStocks = Array.isArray(deleted.data) ? deleted.data : [];
@@ -146,6 +127,7 @@ router.get("/batches", adminOnly, async (req, res) => {
   res.render("admin/batches", {
     batches: batches.data || [], warehouses: warehouses.data || [],
     requests: reqList, deletedStocks,
+    approvedRequests: approved.data || [],
     added: req.query.added === "1",
     flash: req.query.msg || null, error: req.query.err || null,
   });
@@ -163,9 +145,7 @@ router.post("/product-requests/:id/decision", adminOnly, async (req, res) => {
   const r = await client(req.token).post(`/api/admin/product-requests/${req.params.id}/decision`, {
     decision: req.body.decision, note: req.body.note || "",
   });
-  // return to whichever page the admin acted from (Operations or Category Management)
-  const back = (req.get("Referer") || "").includes("/admin/ops") ? "/admin/ops" : "/admin/batches";
-  res.redirect(back + (r.status === 200 ? "?msg=Request+" + req.body.decision : "?err=" + encodeURIComponent(r.data.error)));
+  res.redirect("/admin/batches" + (r.status === 200 ? "?msg=Request+" + req.body.decision : "?err=" + encodeURIComponent(r.data.error)));
 });
 router.post("/batches", adminOnly, async (req, res) => {
   // combine the two halves into the product description shown on the catalogue
@@ -385,6 +365,14 @@ router.get("/directory", adminOnly, async (req, res) => {
     users_total: users.length,
     users_active: users.filter((u) => u.active).length,
   });
+  // Mark newly-registered warehouses/users as seen so the header badge + pop-up
+  // clears (this page is where new registrations are reviewed).
+  const whMax = (d.warehouses || []).reduce((m, w) => Math.max(m, Number(w.id) || 0), 0);
+  const userMax = users.reduce((m, u) => Math.max(m, Number(u.id) || 0), 0);
+  res.cookie("wh_acc_seen", String(whMax), { httpOnly: true, sameSite: "lax", maxAge: 31536000000 });
+  res.cookie("user_acc_seen", String(userMax), { httpOnly: true, sameSite: "lax", maxAge: 31536000000 });
+  res.locals.newWarehouseCount = 0;
+  res.locals.newUserCount = 0;
   res.render("admin/directory", {
     users, warehouses: d.warehouses || [], counts,
     flash: req.query.msg || null, error: req.query.err || null,
@@ -441,10 +429,8 @@ function bulkDelete(apiPath, field, back, okMsg) {
     res.redirect(back + (r.status === 200 ? "?msg=" + encodeURIComponent(okMsg) : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
   };
 }
-router.post("/delivery-charges/bulk-delete", adminOnly, bulkDelete("/api/admin/delivery-charges/delete", "dc_ids", "/admin/ops", "Charges deleted"));
-router.post("/announcements/bulk-delete", adminOnly, bulkDelete("/api/admin/announcements/delete", "ann_ids", "/admin/ops", "Announcements deleted"));
-router.post("/warehouses/bulk-delete", adminOnly, bulkDelete("/api/admin/warehouses/delete", "wh_ids", "/admin/ops", "Warehouses deleted"));
-router.post("/users/bulk-delete", adminOnly, bulkDelete("/api/admin/users/delete", "user_ids", "/admin/ops", "Users deleted"));
+router.post("/delivery-charges/bulk-delete", adminOnly, bulkDelete("/api/admin/delivery-charges/delete", "dc_ids", "/admin/delivery-charges", "Charges deleted"));
+router.post("/announcements/bulk-delete", adminOnly, bulkDelete("/api/admin/announcements/delete", "ann_ids", "/admin/announcements", "Announcements deleted"));
 router.post("/payments/delete", adminOnly, bulkDelete("/api/admin/payments/delete", "payment_ids", "/admin/subscription-payments", "Payments deleted"));
 router.post("/subscription-plans/bulk-delete", adminOnly, bulkDelete("/api/admin/subscription-plans/delete", "plan_ids", "/admin/subscriptions", "Plans deleted"));
 router.post("/subscriptions/bulk-delete", adminOnly, async (req, res) => {
@@ -456,117 +442,23 @@ router.post("/subscriptions/bulk-delete", adminOnly, async (req, res) => {
   res.redirect(back + (r.status === 200 ? "?msg=Packages+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
 });
 
-// ----------------------------------------------------------- operations hub
-router.get("/ops", adminOnly, async (req, res) => {
-  const api = client(req.token);
-  const [warehouses, staff, promos, charges, anns, audit, transfers, carts, preqs, dir] = await Promise.all([
-    api.get("/api/admin/warehouses"),
-    api.get("/api/admin/staff"),
-    api.get("/api/admin/promotions"),
-    api.get("/api/admin/delivery-charges"),
-    api.get("/api/admin/announcements"),
-    api.get("/api/admin/audit-logs?limit=30"),
-    api.get("/api/admin/transfers"),
-    api.get("/api/admin/abandoned-carts"),
-    api.get("/api/admin/product-requests?status=pending"),
-    api.get("/api/admin/directory"),
-  ]);
-  // Flag warehouses/users that registered since the admin last opened Maintain, then
-  // mark them seen so the header badge + pop-up clears. New ones are sorted to the top
-  // so they're obvious among the rest.
-  const whList = warehouses.data || [];
-  const userList = (dir.data && dir.data.users) || [];
-  const prevWhSeen = parseInt(req.cookies.wh_acc_seen || "0", 10) || 0;
-  const prevUserSeen = parseInt(req.cookies.user_acc_seen || "0", 10) || 0;
-  whList.forEach((w) => { w.isNew = Number(w.id) > prevWhSeen; });
-  userList.forEach((u) => { u.isNew = Number(u.id) > prevUserSeen; });
-  whList.sort((a, b) => (b.isNew === true) - (a.isNew === true) || Number(b.id) - Number(a.id));
-  userList.sort((a, b) => (b.isNew === true) - (a.isNew === true) || Number(b.id) - Number(a.id));
-  const whMax = whList.reduce((m, w) => Math.max(m, Number(w.id) || 0), 0);
-  const userMax = userList.reduce((m, u) => Math.max(m, Number(u.id) || 0), 0);
-  res.cookie("wh_acc_seen", String(whMax), { httpOnly: true, sameSite: "lax", maxAge: 31536000000 });
-  res.cookie("user_acc_seen", String(userMax), { httpOnly: true, sameSite: "lax", maxAge: 31536000000 });
-  res.locals.newWarehouseCount = 0;
-  res.locals.newUserCount = 0;
-  res.render("admin/ops", {
-    warehouses: whList, staff: staff.data || [], promotions: promos.data || [],
-    charges: charges.data || [], announcements: anns.data || [], audit: audit.data || [],
-    transfers: transfers.data || [], carts: carts.data || [],
-    productRequests: preqs.data || [],
-    users: userList,
+// ------------------------------------------- delivery charges & announcements
+// Each split out of the operations hub onto its own page.
+router.get("/delivery-charges", adminOnly, async (req, res) => {
+  const r = await client(req.token).get("/api/admin/delivery-charges");
+  res.render("admin/delivery_charges", {
+    charges: r.data || [],
+    flash: req.query.msg || null, error: req.query.err || null,
+  });
+});
+router.get("/announcements", adminOnly, async (req, res) => {
+  const r = await client(req.token).get("/api/admin/announcements");
+  res.render("admin/announcements", {
+    announcements: r.data || [],
     flash: req.query.msg || null, error: req.query.err || null,
   });
 });
 
-// --------------------------------------------------------- report exports
-function streamProxy(path, contentType, filename) {
-  return async (req, res) => {
-    const period = req.query.period || "monthly";
-    const r = await client(req.token).get(`${path}?period=${encodeURIComponent(period)}`, { responseType: "arraybuffer" });
-    if (r.status !== 200) return res.redirect("/admin?err=Export+failed");
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Disposition", `attachment; filename=${filename(period)}`);
-    res.send(Buffer.from(r.data));
-  };
-}
-router.get("/reports/export", adminOnly, streamProxy("/api/admin/reports/export", "text/csv", p => `sales_${p}.csv`));
-router.get("/reports/pdf", adminOnly, streamProxy("/api/admin/reports/pdf", "application/pdf", p => `sales_${p}.pdf`));
-router.get("/reports/excel", adminOnly,
-  streamProxy("/api/admin/reports/excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", p => `sales_${p}.xlsx`));
-
-// -------------------------------------------------------------- mutations
-const back = (res, ok, okMsg, r) =>
-  res.redirect((ok ? "?msg=" + encodeURIComponent(okMsg) : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
-
-// Warehouse detail page (admin)
-router.get("/warehouses/:id", adminOnly, async (req, res) => {
-  const api = client(req.token);
-  const [whs, batches, staff, subs] = await Promise.all([
-    api.get("/api/admin/warehouses"),
-    api.get("/api/admin/batches?warehouse_id=" + req.params.id),
-    api.get("/api/admin/staff"),
-    api.get("/api/admin/subscriptions"),
-  ]);
-  const warehouse = (whs.data || []).find(w => String(w.id) === String(req.params.id));
-  if (!warehouse) return res.redirect("/admin/ops?err=Warehouse+not+found");
-  res.render("admin/warehouse_detail", {
-    warehouse,
-    batches: batches.data || [],
-    staff: (staff.data || []).filter(s => String(s.warehouse_id) === String(req.params.id)),
-    sub: (subs.data || []).find(s => String(s.warehouse_id) === String(req.params.id)) || null,
-  });
-});
-
-router.post("/warehouses", adminOnly, async (req, res) => {
-  const r = await client(req.token).post("/api/admin/warehouses", req.body);
-  res.redirect("/admin/ops" + (r.status === 201 ? "?msg=Warehouse+created" : "?err=" + encodeURIComponent(r.data.error)));
-});
-router.post("/warehouses/:id/delete", adminOnly, async (req, res) => {
-  const r = await client(req.token).delete(`/api/admin/warehouses/${req.params.id}`);
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Deleted" : "?err=" + encodeURIComponent(r.data.error)));
-});
-router.post("/users/:id/delete", adminOnly, async (req, res) => {
-  const r = await client(req.token).post("/api/admin/users/delete", { ids: [Number(req.params.id)] });
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
-});
-// Block / unblock (suspend) — keeps all data, just locks the account.
-// Block carries an optional time limit (minutes preset OR an absolute `until` ISO).
-const blockProxy = (apiPath, okMsg) => async (req, res) => {
-  const body = { minutes: req.body.minutes ? Number(req.body.minutes) : null, until: req.body.until || null };
-  const r = await client(req.token).post(apiPath(req.params.id), body);
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=" + encodeURIComponent(okMsg) : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
-};
-router.post("/users/:id/block", adminOnly, blockProxy((id) => `/api/admin/users/${id}/block`, "User blocked"));
-router.post("/users/:id/unblock", adminOnly, blockProxy((id) => `/api/admin/users/${id}/unblock`, "User unblocked"));
-router.post("/warehouses/:id/block", adminOnly, blockProxy((id) => `/api/admin/warehouses/${id}/block`, "Warehouse blocked"));
-router.post("/warehouses/:id/unblock", adminOnly, blockProxy((id) => `/api/admin/warehouses/${id}/unblock`, "Warehouse unblocked"));
-router.post("/staff", adminOnly, async (req, res) => {
-  const r = await client(req.token).post("/api/admin/staff", {
-    name: req.body.name, email: req.body.email, password: req.body.password,
-    warehouse_id: Number(req.body.warehouse_id),
-  });
-  res.redirect("/admin/ops" + (r.status === 201 ? "?msg=Staff+created" : "?err=" + encodeURIComponent(r.data.error)));
-});
 // --------------------------------------------------------- promotion management
 router.get("/promotions", adminOnly, async (req, res) => {
   const [promos, analytics] = await Promise.all([
@@ -629,62 +521,28 @@ router.post("/delivery-charges", adminOnly, async (req, res) => {
   const r = await client(req.token).post("/api/admin/delivery-charges", {
     pincode: req.body.pincode, charge_amount: Number(req.body.charge_amount),
   });
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Charge+saved" : "?err=" + encodeURIComponent(r.data.error)));
+  res.redirect("/admin/delivery-charges" + (r.status === 200 ? "?msg=Charge+saved" : "?err=" + encodeURIComponent(r.data.error)));
 });
 router.post("/delivery-charges/:id/delete", adminOnly, async (req, res) => {
   const r = await client(req.token).delete(`/api/admin/delivery-charges/${req.params.id}`);
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Charge+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
+  res.redirect("/admin/delivery-charges" + (r.status === 200 ? "?msg=Charge+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
 });
 router.post("/announcements", adminOnly, async (req, res) => {
   const r = await client(req.token).post("/api/admin/announcements", {
     title: req.body.title, message: req.body.message, expires_at: req.body.expires_at || null,
   });
-  res.redirect("/admin/ops" + (r.status === 201 ? "?msg=Announcement+posted" : "?err=" + encodeURIComponent(r.data.error)));
-});
-router.post("/abandoned-carts/delete", adminOnly, async (req, res) => {
-  let ids = req.body.cart_ids || [];
-  if (!Array.isArray(ids)) ids = [ids];
-  ids = ids.map(Number).filter(Boolean);
-  const r = await client(req.token).post("/api/admin/abandoned-carts/delete", { ids });
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Carts+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
-});
-router.post("/audit-logs/delete", adminOnly, async (req, res) => {
-  let ids = req.body.audit_ids || [];
-  if (!Array.isArray(ids)) ids = [ids];
-  ids = ids.map(Number).filter(Boolean);
-  if (!ids.length) return res.redirect("/admin/ops?err=" + encodeURIComponent("Select at least one log"));
-  const r = await client(req.token).post("/api/admin/audit-logs/delete", { ids });
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Audit+logs+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
+  res.redirect("/admin/announcements" + (r.status === 201 ? "?msg=Announcement+posted" : "?err=" + encodeURIComponent(r.data.error)));
 });
 router.post("/announcements/:id/delete", adminOnly, async (req, res) => {
   const r = await client(req.token).delete(`/api/admin/announcements/${req.params.id}`);
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Announcement+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
+  res.redirect("/admin/announcements" + (r.status === 200 ? "?msg=Announcement+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
 });
-router.post("/transfers/delete", adminOnly, async (req, res) => {
-  let ids = req.body.transfer_ids || [];
-  if (!Array.isArray(ids)) ids = [ids];
-  ids = ids.map(Number).filter(Boolean);
-  const r = await client(req.token).post("/api/admin/transfers/delete", { ids });
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Transfers+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
-});
-router.post("/transfers/:id/decision", adminOnly, async (req, res) => {
-  const r = await client(req.token).post(`/api/admin/transfers/${req.params.id}/decision`, { decision: req.body.decision });
-  res.redirect("/admin/ops" + (r.status === 200 ? "?msg=Transfer+" + req.body.decision : "?err=" + encodeURIComponent(r.data.error)));
-});
-
 // assignment stays on the dashboard
 router.post("/orders/:id/assign", adminOnly, async (req, res) => {
   const r = await client(req.token).post(`/api/admin/orders/${req.params.id}/assign`, {
     warehouse_id: Number(req.body.warehouse_id),
   });
   res.redirect("/admin" + (r.status === 200 ? "?msg=Order+assigned" : "?err=" + encodeURIComponent(r.data.error)));
-});
-router.post("/backup", adminOnly, async (req, res) => {
-  const r = await client(req.token).post("/api/admin/backup", {}, { responseType: "arraybuffer" });
-  if (r.status !== 200) return res.redirect("/admin/ops?err=" + encodeURIComponent("Backup failed"));
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", "attachment; filename=backup_slip.pdf");
-  res.send(Buffer.from(r.data));
 });
 router.post("/email/bulk", adminOnly, async (req, res) => {
   const r = await client(req.token).post("/api/admin/email/bulk", {
@@ -693,7 +551,7 @@ router.post("/email/bulk", adminOnly, async (req, res) => {
   let msg = r.data && r.data.error ? r.data.error
     : r.data.status === "sent" ? `Sent to ${r.data.count} customers`
     : `Dry-run (${r.data.count} recipients) — set SMTP_* in .env to send for real`;
-  res.redirect("/admin/ops?msg=" + encodeURIComponent(msg));
+  res.redirect("/admin/announcements?msg=" + encodeURIComponent(msg));
 });
 
 module.exports = router;

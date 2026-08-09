@@ -1,0 +1,181 @@
+<%- include("../partials/header") %>
+<div class="page-intro">
+  <span class="page-intro-ico">🚚</span>
+  <div>
+    <strong>Delivery charges</strong>
+    <span>One charge per location. Customers pay the amount that matches their city at checkout.</span>
+  </div>
+</div>
+
+  <div class="card">
+    <h3>Delivery charges (per Location) <span class="muted">(<%= charges.length %>)</span></h3>
+    <% if (!charges.length) { %><p class="muted">No delivery charges yet — add one below.</p><% } else { %>
+      <form id="bulkDc" action="/admin/delivery-charges/bulk-delete" method="post" data-confirm="Delete the selected delivery charge(s)?"></form>
+      <table class="tbl">
+        <thead><tr><th><input type="checkbox" class="bulk-all" data-group="dc" title="Select all"></th><th>No.</th><th>📍 Location</th><th>📅 Added</th><th style="text-align:center">Charge (Kyats)</th><th style="text-align:center">Action</th></tr></thead>
+        <tbody>
+          <% charges.slice(0,3).forEach((c, idx) => { %>
+            <tr>
+              <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="dc" name="dc_ids" value="<%= c.id %>" form="bulkDc"></td>
+              <td><%= idx + 1 %></td>
+              <td><strong><%= c.pincode %></strong></td>
+              <td class="muted"><%= c.created_at ? c.created_at.substring(0,10) : "—" %></td>
+              <td>
+                <form action="/admin/delivery-charges" method="post" class="inline" style="gap:.3rem;display:flex;justify-content:center">
+                  <input type="hidden" name="pincode" value="<%= c.pincode %>">
+                  <input name="charge_amount" type="text" inputmode="numeric" value="<%= c.charge_amount %>" style="width:75px"
+                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"> Kyats
+                  <button class="btn sm" type="submit">Save</button>
+                </form>
+              </td>
+              <td style="text-align:center">
+                <form action="/admin/delivery-charges/<%= c.id %>/delete" method="post" class="inline"
+                      data-confirm="Delete delivery charge for <%= c.pincode %>?">
+                  <button class="btn sm danger" type="submit">🗑 Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkDc">🗑 Delete selected</button></div>
+      <% if (charges.length > 3) { %>
+        <button type="button" class="btn sm" id="dcReadMore" style="margin:.3rem 0 .7rem">🚚 Read more — view all <%= charges.length %> locations →</button>
+      <% } %>
+    <% } %>
+
+    <form action="/admin/delivery-charges" method="post" class="row-form" id="dcAddForm">
+      <input name="pincode" placeholder="City (optional)" list="mmCities" autocomplete="off">
+      <input name="charge_amount" type="text" inputmode="numeric" placeholder="Amount (Kyats)" required
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <button class="btn sm" type="submit">Add</button>
+    </form>
+    <datalist id="mmCities">
+      <% [
+        "Yangon","Mandalay","Naypyitaw","Bago","Mawlamyine","Taunggyi","Pathein",
+        "Monywa","Meiktila","Myitkyina","Sittwe","Pyay","Hpa-An","Magway","Dawei",
+        "Lashio","Pakokku","Hinthada","Myingyan","Pyin Oo Lwin","Kalaw","Nyaung-U"
+      ].forEach(function (c) { %><option value="<%= c %>"></option><% }) %>
+    </datalist>
+
+    <!-- popup: all delivery charges + search by location -->
+    <div class="modal-overlay" id="dcModal" style="display:none">
+      <div class="modal-box perf-modal-box">
+        <div class="perf-modal-head">🚚 All delivery charges — <%= charges.length %></div>
+        <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem;flex-wrap:wrap">
+          <label class="ot-field">🔎 <input type="text" id="dcSearchInput" placeholder="Search location…" style="width:140px"></label>
+          <label class="ot-field">From <input type="date" id="dcFrom"></label>
+          <label class="ot-field">To <input type="date" id="dcTo"></label>
+          <button type="button" class="btn sm gray" id="dcClear">Clear</button>
+        </div>
+        <div class="perf-modal-scroll">
+          <form id="bulkDcAll" action="/admin/delivery-charges/bulk-delete" method="post" data-confirm="Delete the selected delivery charge(s)?"></form>
+          <table class="tbl" id="dcTable">
+            <thead><tr><th><input type="checkbox" class="bulk-all" data-group="dcAll" title="Select all"></th><th>No.</th><th>📍 Location</th><th>📅 Added</th><th style="text-align:center">Charge (Kyats)</th><th>Action</th></tr></thead>
+            <tbody>
+              <% charges.forEach((c, idx) => { var dd = c.created_at ? c.created_at.substring(0,10) : ""; %>
+                <tr data-loc="<%= String(c.pincode).toLowerCase() %>" data-date="<%= dd %>">
+                  <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="dcAll" name="dc_ids" value="<%= c.id %>" form="bulkDcAll"></td>
+                  <td><strong><%= idx + 1 %></strong></td>
+                  <td><%= c.pincode %></td>
+                  <td class="muted"><%= dd || "—" %></td>
+                  <td>
+                    <form action="/admin/delivery-charges" method="post" class="inline" style="gap:.3rem">
+                      <input type="hidden" name="pincode" value="<%= c.pincode %>">
+                      <input name="charge_amount" type="text" inputmode="numeric" value="<%= c.charge_amount %>" style="width:75px"
+                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"> Kyats
+                      <button class="btn sm" type="submit">Save</button>
+                    </form>
+                  </td>
+                  <td>
+                    <form action="/admin/delivery-charges/<%= c.id %>/delete" method="post" class="inline"
+                          data-confirm="Delete delivery charge for <%= c.pincode %>?">
+                      <button class="btn sm danger" type="submit">🗑</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          <p class="muted" id="dcNoRows" style="display:none;padding:.6rem">No matching location.</p>
+        </div>
+        <div class="acc-actions" style="margin-top:.7rem">
+          <button class="btn sm danger" type="submit" form="bulkDcAll">🗑 Delete selected</button>
+          <button type="button" class="btn" id="dcClose">Close</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var modal = document.getElementById("dcModal");
+        if (!modal) return;
+        var openBtn = document.getElementById("dcReadMore");
+        function open() { modal.style.display = "flex"; }
+        function close() { modal.style.display = "none"; }
+        if (openBtn) openBtn.addEventListener("click", open);
+        document.getElementById("dcClose").addEventListener("click", close);
+        modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+        var input = document.getElementById("dcSearchInput");
+        var from = document.getElementById("dcFrom"), to = document.getElementById("dcTo");
+        var rows = Array.prototype.slice.call(document.querySelectorAll("#dcTable tbody tr"));
+        var noRows = document.getElementById("dcNoRows");
+        function applyFilter() {
+          var q = (input.value || "").trim().toLowerCase(), f = from.value, t = to.value, shown = 0;
+          rows.forEach(function (tr) {
+            var loc = tr.getAttribute("data-loc") || "", d = tr.getAttribute("data-date") || "";
+            var ok = (!q || loc.indexOf(q) !== -1)
+                  && (!f || (d && d >= f)) && (!t || (d && d <= t));
+            tr.style.display = ok ? "" : "none";
+            if (ok) shown++; else { var cb = tr.querySelector(".bulk-cb"); if (cb) cb.checked = false; }  // hidden rows can't be submitted
+          });
+          var dcMaster = document.querySelector('.bulk-all[data-group="dcAll"]');
+          if (dcMaster) dcMaster.checked = false;
+          noRows.style.display = shown ? "none" : "";
+        }
+        input.addEventListener("input", applyFilter);
+        from.addEventListener("change", applyFilter);
+        to.addEventListener("change", applyFilter);
+        document.getElementById("dcClear").addEventListener("click", function () { input.value = ""; from.value = ""; to.value = ""; applyFilter(); });
+      })();
+    </script>
+
+    <!-- duplicate-location confirmation popup -->
+    <div class="modal-overlay" id="dupModal" style="display:none">
+      <div class="modal-box confirm-box">
+        <div class="confirm-ico" style="background:#fff4e0">📍</div>
+        <h3 class="confirm-title">Location already added</h3>
+        <p class="confirm-msg"><strong id="dupCity"></strong> already has a delivery charge.
+          Do you want to <strong>update</strong> it with the new amount instead?</p>
+        <div class="confirm-actions">
+          <button type="button" class="btn confirm-cancel" id="dupCancel">✕ Cancel</button>
+          <button type="button" class="btn bright" id="dupOk">✓ Yes, update it</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var addForm = document.getElementById("dcAddForm");
+        if (!addForm) return;
+        var existing = <%- JSON.stringify(charges.map(function (c) { return String(c.pincode).trim().toLowerCase(); })) %>;
+        var modal = document.getElementById("dupModal");
+        var cityEl = document.getElementById("dupCity");
+        var cityInput = addForm.querySelector('[name="pincode"]');
+        addForm.addEventListener("submit", function (e) {
+          var val = (cityInput.value || "").trim().toLowerCase();
+          if (val && existing.indexOf(val) !== -1 && addForm.dataset.confirmed !== "1") {
+            e.preventDefault();
+            cityEl.textContent = cityInput.value.trim();
+            modal.style.display = "flex";
+          }
+        });
+        document.getElementById("dupOk").addEventListener("click", function () {
+          addForm.dataset.confirmed = "1";
+          modal.style.display = "none";
+          addForm.submit();
+        });
+        document.getElementById("dupCancel").addEventListener("click", function () { modal.style.display = "none"; });
+        modal.addEventListener("click", function (e) { if (e.target === modal) modal.style.display = "none"; });
+      })();
+    </script>
+  </div>
+<%- include("../partials/footer") %>

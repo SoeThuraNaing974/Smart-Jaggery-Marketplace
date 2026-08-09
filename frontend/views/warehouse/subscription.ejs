@@ -61,47 +61,48 @@
   <% }) %>
 </div>
 
+<%
+  // ONE combined "purchase & payment" list: each payment row carries the plan
+  // period it bought. Purchases with no payment record (legacy/granted) are
+  // appended as rows of their own so nothing disappears.
+  var covered = {};
+  (payments || []).forEach(function (p) { if (p.subscription_id) covered[p.subscription_id] = true; });
+  var combined = (payments || []).map(function (p) {
+    return { date: p.created_at ? p.created_at.substring(0,10) : "", plan: p.plan_name,
+             from: p.start_date, to: p.end_date, amount: p.amount,
+             method: p.method_label, reference: p.reference,
+             active: p.sub_active, slip: p.id };
+  });
+  (sub.history || []).forEach(function (h) {
+    if (!covered[h.id]) combined.push({ date: h.start_date, plan: h.plan_name,
+      from: h.start_date, to: h.end_date, amount: h.price_paid,
+      method: null, reference: null, active: h.active, slip: null });
+  });
+  combined.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+%>
 <div class="card">
-  <h3>Purchase history <span class="muted">(<%= sub.history.length %>)</span></h3>
-  <% if (!sub.history.length) { %><p class="muted">No purchases yet.</p><% } %>
-  <table class="tbl">
-    <thead><tr><th>Plan</th><th>From</th><th>To</th><th>Paid (Kyats)</th><th>Status</th></tr></thead>
-    <tbody>
-      <% sub.history.slice(0, 3).forEach(h => { %>
-        <tr>
-          <td><%= h.plan_name || "—" %></td><td><%= h.start_date %></td><td><%= h.end_date %></td>
-          <td><%= h.price_paid %></td>
-          <td><span class="status status-<%= h.active ? 'delivered' : 'cancelled' %>"><%= h.active ? "active" : "expired" %></span></td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
-  <% if (sub.history.length > 3) { %>
-    <a class="btn sm" href="/warehouse/purchase-history-all">🧾 Read more — view all <%= sub.history.length %> purchases →</a>
-  <% } else if (sub.history.length) { %>
-    <a class="btn sm" href="/warehouse/purchase-history-all">View all · search by date →</a>
-  <% } %>
-</div>
-
-<div class="card">
-  <h3>Payment history <span class="muted">(<%= payments ? payments.length : 0 %>)</span></h3>
-  <% if (!payments || !payments.length) { %><p class="muted">No payments yet.</p><% } else { %>
+  <h3>Purchase &amp; payment history <span class="muted">(<%= combined.length %>)</span></h3>
+  <% if (!combined.length) { %><p class="muted">No purchases yet — buy a plan above and it will be listed here.</p><% } else { %>
     <table class="tbl">
-      <thead><tr><th>Date</th><th>Plan</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
+      <thead><tr><th>📅 Paid on</th><th>Plan</th><th>Valid from</th><th>Valid to</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
       <tbody>
-        <% payments.slice(0, 3).forEach(p => { %>
+        <% combined.slice(0, 5).forEach(r => { %>
           <tr>
-            <td class="muted"><%= p.created_at ? p.created_at.substring(0,10) : "" %></td>
-            <td><%= p.plan_name || "—" %></td><td><%= p.amount %></td>
-            <td><%= p.method_label %></td><td class="muted"><%= p.reference %></td>
-            <td><span class="status status-delivered"><%= p.status %></span></td>
-            <td><a class="btn sm" href="/warehouse/payments/<%= p.id %>/slip" target="_blank">🧾 PDF</a></td>
+            <td class="muted"><%= r.date || "—" %></td>
+            <td><strong><%= r.plan || "—" %></strong></td>
+            <td class="muted"><%= r.from || "—" %></td>
+            <td class="muted"><%= r.to || "—" %></td>
+            <td><%= r.amount %></td>
+            <td><%= r.method || "—" %></td>
+            <td class="muted"><%= r.reference || "—" %></td>
+            <td><span class="status status-<%= r.active ? 'delivered' : 'cancelled' %>"><%= r.active ? "active" : "expired" %></span></td>
+            <td><% if (r.slip) { %><a class="btn sm" href="/warehouse/payments/<%= r.slip %>/slip" target="_blank">🧾 PDF</a><% } else { %><span class="muted">—</span><% } %></td>
           </tr>
         <% }) %>
       </tbody>
     </table>
-    <% if (payments.length > 3) { %>
-      <a class="btn sm" href="/warehouse/payment-history-all">💳 Read more — view all <%= payments.length %> payments →</a>
+    <% if (combined.length > 5) { %>
+      <a class="btn sm" href="/warehouse/payment-history-all">🧾 Read more — view all <%= combined.length %> →</a>
     <% } else { %>
       <a class="btn sm" href="/warehouse/payment-history-all">View all · search by date →</a>
     <% } %>

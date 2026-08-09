@@ -69,7 +69,7 @@
 <% } %>
 
 <div class="card">
-  <h3>Pending product requests from Warehouses</h3>
+  <h3>Pending category requests from Warehouses</h3>
   <% if (!requests || !requests.length) { %>
     <div class="empty-mini">
       <div class="empty-mini-icon">📭</div>
@@ -98,6 +98,31 @@
         <% }) %>
       </tbody>
     </table>
+  <% } %>
+
+  <!-- decision history: requests the admin has already accepted -->
+  <h3 style="margin-top:1.2rem">✅ Accepted requests <span class="muted">(<%= (approvedRequests || []).length %>)</span></h3>
+  <% if (!approvedRequests || !approvedRequests.length) { %>
+    <p class="muted">No accepted requests yet — approve one above and it will be listed here.</p>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th>No.</th><th>📦 Product</th><th>Grade</th><th>Qty (kg)</th><th>Kyats/kg</th><th>🏬 Warehouse</th><th>📅 Requested</th><th>✅ Accepted</th></tr></thead>
+      <tbody>
+        <% approvedRequests.slice(0,5).forEach((p, idx) => { %>
+          <tr>
+            <td><%= idx + 1 %></td>
+            <td><strong><%= p.product_name %></strong></td>
+            <td><%= p.grade %></td>
+            <td><%= p.qty_kg %></td>
+            <td><%= p.price_per_kg %></td>
+            <td><%= p.warehouse_name %></td>
+            <td class="muted"><%= p.created_at ? p.created_at.substring(0,10) : "—" %></td>
+            <td class="muted"><%= p.reviewed_at ? p.reviewed_at.substring(0,10) : "—" %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (approvedRequests.length > 5) { %><p class="muted" style="margin-top:.4rem">Showing 5 of <%= approvedRequests.length %>.</p><% } %>
   <% } %>
 </div>
 

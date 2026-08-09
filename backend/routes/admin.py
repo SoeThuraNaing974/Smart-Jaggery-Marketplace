@@ -7,12 +7,12 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify, Response, send_from_directory
 from werkzeug.utils import secure_filename
-from sqlalchemy import func, text
+from sqlalchemy import func, or_, text
 
 from db import db
 from models import (
     User, Warehouse, Order, OrderItem, Promotion, JaggeryBatch,
-    Review, StockTransfer, DeliveryCharge, AbandonedCart, Announcement, AuditLog,
+    StockTransfer, DeliveryCharge, AbandonedCart, Announcement,
     SubscriptionPlan, WarehouseSubscription, ProductRequest, Payment, BatchImage,
 )
 from auth import role_required, hash_password, audit
@@ -643,6 +643,24 @@ def kpis():
     pending_assignments = Order.query.filter_by(status="pending").count()
     total_stock = float(db.session.query(func.coalesce(func.sum(JaggeryBatch.qty_kg), 0)).scalar())
     total_customers = User.query.filter_by(role="customer").count()
+    # admin-focused numbers: platform size, its own package income, and work waiting
+    total_warehouses = Warehouse.query.count()
+    package_revenue = round(float(db.session.query(
+        func.coalesce(func.sum(Payment.amount), 0)
+    ).filter(Payment.status == "paid").scalar()))
+    # promotions running right now: switched on and inside their date window
+    today = datetime.utcnow().date()
+    active_promotions = Promotion.query.filter(
+        Promotion.is_active.is_(True),
+        Promotion.start_date <= today,
+        Promotion.end_date >= today).count()
+    # ads live today — same rule as Advertisement.is_live (open-ended dates count)
+    from models import Advertisement
+    active_ads = Advertisement.query.filter(
+        Advertisement.is_active.is_(True),
+        or_(Advertisement.starts_on.is_(None), Advertisement.starts_on <= today),
+        or_(Advertisement.ends_on.is_(None), Advertisement.ends_on >= today)).count()
+    pending_requests = ProductRequest.query.filter_by(status="pending").count()
     return jsonify({
         "total_orders": total_orders,
         "total_revenue": total_revenue,
@@ -650,6 +668,11 @@ def kpis():
         "total_customers": total_customers,
         "pending_assignments": pending_assignments,
         "total_stock_kg": total_stock,
+        "total_warehouses": total_warehouses,
+        "package_revenue": package_revenue,
+        "active_promotions": active_promotions,
+        "active_ads": active_ads,
+        "pending_requests": pending_requests,
     })
 
 
@@ -678,38 +701,6 @@ def admin_charts():
     })
 
 
-# ----------------------------------------------------- customer segmentation
-@bp.get("/segments")
-@role_required("admin")
-def segments():
-    # order count + spend + last order date per customer
-    rows = (db.session.query(
-                User.id, User.name, User.email,
-                func.count(Order.id),
-                func.coalesce(func.sum(Order.total_price + Order.delivery_charge), 0),
-                func.max(Order.created_at))
-            .outerjoin(Order, (Order.customer_id == User.id) & (Order.status != "cancelled"))
-            .filter(User.role == "customer")
-            .group_by(User.id).all())
-
-    # orders.created_at is TIMESTAMPTZ (tz-aware) -> compare with an aware cutoff
-    cutoff = datetime.now(timezone.utc) - timedelta(days=60)
-    seg = {"regular": [], "one_time": [], "high_value": [], "dormant": []}
-    for uid, name, email, cnt, spend, last in rows:
-        rec = {"id": uid, "name": name, "email": email,
-               "orders": int(cnt), "spend": float(spend),
-               "last_order": last.isoformat() if last else None}
-        if cnt >= 5:
-            seg["regular"].append(rec)
-        if cnt == 1:
-            seg["one_time"].append(rec)
-        if float(spend) > 5000:
-            seg["high_value"].append(rec)
-        if last is None or last < cutoff:
-            seg["dormant"].append(rec)
-    return jsonify({"counts": {k: len(v) for k, v in seg.items()}, "segments": seg})
-
-
 # ------------------------------------------------------- promotion analytics
 @bp.get("/promotions/analytics")
 @role_required("admin")
@@ -724,39 +715,6 @@ def promotion_analytics():
         {"promotion_id": pid, "title": title, "orders": int(cnt), "revenue": round(float(rev))}
         for pid, title, cnt, rev in rows
     ])
-
-
-# -------------------------------------------------- warehouse performance
-@bp.get("/warehouses/performance")
-@role_required("admin")
-def warehouse_performance():
-    out = []
-    for w in Warehouse.query.all():
-        # "fulfilled" = shipped orders (the flow now ends at shipped)
-        fulfilled = Order.query.filter_by(assigned_warehouse_id=w.id, status="shipped").all()
-        times = [(o.updated_at - o.created_at).total_seconds() / 86400.0
-                 for o in fulfilled if o.updated_at and o.created_at]
-        avg_days = round(sum(times) / len(times), 2) if times else None
-        avg_rating = db.session.query(func.avg(Review.rating)).filter_by(warehouse_id=w.id).scalar()
-        customers_served = (db.session.query(func.count(func.distinct(Order.customer_id)))
-                            .filter_by(assigned_warehouse_id=w.id, status="shipped").scalar()) or 0
-        # average distinct customers per ship day
-        day_custs = {}
-        for o in fulfilled:
-            if o.updated_at:
-                d = o.updated_at.date()
-                day_custs.setdefault(d, set()).add(o.customer_id)
-        avg_cust_day = (round(sum(len(s) for s in day_custs.values()) / len(day_custs), 2)
-                        if day_custs else None)
-        out.append({
-            "warehouse_id": w.id, "warehouse": w.name,
-            "orders_fulfilled": len(fulfilled),
-            "customers_served": int(customers_served),
-            "avg_customers_per_day": avg_cust_day,
-            "avg_delivery_days": avg_days,
-            "avg_rating": round(float(avg_rating), 2) if avg_rating else None,
-        })
-    return jsonify(out)
 
 
 # ------------------------------------------------------- export PDF / Excel
@@ -1124,27 +1082,6 @@ def delete_advertisement(aid):
         db.session.delete(ad)
         db.session.commit()
     return jsonify({"message": "deleted"})
-
-
-# ---------------------------------------------------------------- audit logs
-@bp.get("/audit-logs")
-@role_required("admin")
-def audit_logs():
-    limit = request.args.get("limit", 100, type=int)
-    rows = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(min(limit, 500)).all()
-    return jsonify([r.to_dict() for r in rows])
-
-
-@bp.post("/audit-logs/delete")
-@role_required("admin")
-def delete_audit_logs():
-    data = request.get_json(silent=True) or {}
-    ids = [int(x) for x in (data.get("ids") or []) if str(x).isdigit()]
-    if not ids:
-        return jsonify({"error": "no logs selected"}), 400
-    n = AuditLog.query.filter(AuditLog.id.in_(ids)).delete(synchronize_session=False)
-    db.session.commit()
-    return jsonify({"message": "deleted", "count": n})
 
 
 # --------------------------------------------------- stock transfer approval

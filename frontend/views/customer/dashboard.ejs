@@ -209,16 +209,22 @@
 
 <script>
   window.CHART_DATA = <%- JSON.stringify(chart) %>;
-  window.addEventListener("load", function () {
-    if (CHART_DATA.labels && CHART_DATA.labels.length) {
-      // show "2026-06" as a clear month label like "Jun 2026" (it's a monthly total, no single day)
-      var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      var prettyLabels = CHART_DATA.labels.map(function (s) {
-        var p = String(s).split("-");
-        return p.length === 2 ? ((MON[parseInt(p[1], 10) - 1] || p[1]) + " " + p[0]) : s;
-      });
-      JaggeryCharts.spendBar("orderHistory", prettyLabels, CHART_DATA.values);
+  // Draw immediately when the page arrives via the no-reload engine (libs are
+  // already present); fall back to the load event on a normal first visit.
+  (function () {
+    function initCharts() {
+      if (CHART_DATA.labels && CHART_DATA.labels.length) {
+        // show "2026-06" as a clear month label like "Jun 2026" (it's a monthly total, no single day)
+        var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        var prettyLabels = CHART_DATA.labels.map(function (s) {
+          var p = String(s).split("-");
+          return p.length === 2 ? ((MON[parseInt(p[1], 10) - 1] || p[1]) + " " + p[0]) : s;
+        });
+        JaggeryCharts.spendBar("orderHistory", prettyLabels, CHART_DATA.values);
+      }
     }
-  });
+    if (document.readyState === "complete" && window.JaggeryCharts) initCharts();
+    else window.addEventListener("load", initCharts);
+  })();
 </script>
 <%- include("../partials/footer") %>

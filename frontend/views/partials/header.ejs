@@ -57,23 +57,23 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/css/style.css?v=170" />
+  <link rel="stylesheet" href="/css/style.css?v=181" />
   <%
-    // Chart.js is heavy (~200KB). Only load it on the 4 pages that actually draw
+    // Chart.js is heavy (~200KB). Only load it on the 3 pages that actually draw
     // charts — every other page loads much lighter & faster (especially on mobile).
     var _cur = (typeof currentPath !== "undefined" && currentPath) ? currentPath : "";
-    var _needsCharts = ["/dashboard", "/admin", "/admin/insights", "/warehouse"].indexOf(_cur) !== -1;
+    var _needsCharts = ["/dashboard", "/admin", "/warehouse"].indexOf(_cur) !== -1;
   %>
   <% if (_needsCharts) { %>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="/js/charts.js?v=6" defer></script>
+  <script src="/js/charts.js?v=7" defer></script>
   <% } %>
   <script src="/js/phone.js?v=1" defer></script>
   <script src="/js/scroll-keep.js?v=1"></script>
 </head>
 <body class="<%= (typeof user !== 'undefined' && user) ? 'role-' + user.role : '' %>">
   <nav class="nav">
-    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"></span>Smart Jaggery Marketplace</a>
+    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"><span class="lm3"><span class="lm3-orbit"><span class="lm3-arm lm3-arm-1"><i class="lm3-ball lm3-b1"></i></span><span class="lm3-arm lm3-arm-2"><i class="lm3-ball lm3-b2"></i></span></span><span class="lm3-topwrap"><i class="lm3-ball lm3-b3"></i></span></span></span>Smart Jaggery Marketplace</a>
     <input type="checkbox" id="navToggle" class="nav-toggle" hidden>
     <label for="navToggle" class="nav-burger" aria-label="Toggle menu">&#9776;</label>
     <div class="nav-links">
@@ -94,21 +94,22 @@
           <a href="/cart" class="<%= navCls('/cart') %> cart-link">🛒 Cart<% if (cartCount) { %><span class="cart-count"><%= cartCount %></span><% } %></a>
           <a href="/orders" class="<%= navCls('/orders') %> notif-link">My Order<% if (typeof orderUpdateCount !== "undefined" && orderUpdateCount > 0) { %><span class="fb-badge" title="<%= orderUpdateCount %> order update(s)"><%= orderUpdateCount > 9 ? '9+' : orderUpdateCount %></span><% } %></a>
         <% } else if (user.role === "warehouse") { %>
-          <a href="/warehouse" class="<%= navCls('/warehouse') %> notif-link">Home<% if (typeof whOrderCount !== "undefined" && whOrderCount > 0) { %><span class="fb-badge" title="<%= whOrderCount %> new customer order(s)"><%= whOrderCount > 9 ? '9+' : whOrderCount %></span><% } %></a>
+          <a href="/warehouse" class="<%= navCls('/warehouse') %>">Home</a>
           <a href="/warehouse/stock-all" class="<%= navCls('/warehouse/stock-all') %> notif-link">Category<% if (typeof whCategoryCount !== "undefined" && whCategoryCount > 0) { %><span class="fb-badge" title="<%= whCategoryCount %> new categor<%= whCategoryCount === 1 ? 'y' : 'ies' %> in your stock"><%= whCategoryCount > 9 ? '9+' : whCategoryCount %></span><% } %></a>
-          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>">Request</a>
-          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link">Package<% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= whPlanCount %> new package plan(s)"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
+          <a href="/warehouse/orders-all" class="<%= navCls('/warehouse/orders-all') %> notif-link">Orders<% if (typeof whOrderCount !== "undefined" && whOrderCount > 0) { %><span class="fb-badge" title="<%= whOrderCount %> new customer order(s)"><%= whOrderCount > 9 ? '9+' : whOrderCount %></span><% } %></a>
+          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>">Request Category</a>
+          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link">Package Plan<% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= whPlanCount %> new package plan(s)"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
         <% } else if (user.role === "admin") { %>
           <a href="/admin" class="<%= navCls('/admin') %>">Home</a>
           <% var catAttn = (typeof pendingRequestCount !== "undefined" ? pendingRequestCount : 0) + (typeof deletedStockCount !== "undefined" ? deletedStockCount : 0); %>
           <a href="/admin/batches" class="<%= navCls('/admin/batches') %> notif-link">Category<% if (catAttn > 0) { %><span class="fb-badge" title="<%= catAttn %> item(s) need attention"><%= catAttn > 9 ? '9+' : catAttn %></span><% } %></a>
           <a href="/admin/promotions" class="<%= navCls('/admin/promotions') %>">Promotion</a>
-          <a href="/admin/advertisements" class="<%= navCls('/admin/advertisements') %>">Advertise</a>
-          <a href="/admin/subscriptions" class="<%= navCls('/admin/subscriptions') %> notif-link">Package<% if (typeof newPaymentCount !== "undefined" && newPaymentCount > 0) { %><span class="fb-badge" title="<%= newPaymentCount %> new package payment(s)"><%= newPaymentCount > 9 ? '9+' : newPaymentCount %></span><% } %></a>
-          <a href="/admin/insights" class="<%= navCls('/admin/insights') %>">Insight</a>
+          <a href="/admin/advertisements" class="<%= navCls('/admin/advertisements') %>">Advertisement</a>
+          <a href="/admin/delivery-charges" class="<%= navCls('/admin/delivery-charges') %>">Delivery Charges</a>
+          <a href="/admin/announcements" class="<%= navCls('/admin/announcements') %>">Announcement</a>
+          <a href="/admin/subscriptions" class="<%= navCls('/admin/subscriptions') %> notif-link">Package Plan<% if (typeof newPaymentCount !== "undefined" && newPaymentCount > 0) { %><span class="fb-badge" title="<%= newPaymentCount %> new package payment(s)"><%= newPaymentCount > 9 ? '9+' : newPaymentCount %></span><% } %></a>
           <% var accAttn = (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) + (typeof newUserCount !== "undefined" ? newUserCount : 0); %>
-          <a href="/admin/ops" class="<%= navCls('/admin/ops') %> notif-link">Maintain<% if (accAttn > 0) { %><span class="fb-badge" title="<%= accAttn %> new registration(s)"><%= accAttn > 9 ? '9+' : accAttn %></span><% } %></a>
-          <a href="/admin/directory" class="<%= navCls('/admin/directory') %>">Accounts</a>
+          <a href="/admin/directory" class="<%= navCls('/admin/directory') %> notif-link">Accounts<% if (accAttn > 0) { %><span class="fb-badge" title="<%= accAttn %> new registration(s)"><%= accAttn > 9 ? '9+' : accAttn %></span><% } %></a>
         <% } %>
         <a href="/profile" class="<%= navCls('/profile') %>">Profile</a>
         <span class="user-pill">
@@ -289,8 +290,8 @@
         "/warehouse/stock-all", "new category", "new categories", "New product categories are in your stock.", true, "🎉");
       var subCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/subscription"]'),
         "/warehouse/subscription", "new package plan", "new package plans", "A new package plan is available.", false, "💳");
-      var ordCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse"]'),
-        "/warehouse", "new customer order", "new customer orders", "A customer just placed an order — open Home to handle it.", true, "🛒");
+      var ordCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/orders-all"]'),
+        "/warehouse/orders-all", "new customer order", "new customer orders", "A customer just placed an order — open Orders to handle it.", true, "🛒");
 
       var polling = false;
       function poll() {
@@ -323,7 +324,7 @@
       }
       var catLink = document.querySelector('.nav-links a[href="/admin/batches"]');
       var subLink = document.querySelector('.nav-links a[href="/admin/subscriptions"]');
-      var opsLink = document.querySelector('.nav-links a[href="/admin/ops"]');
+      var dirLink = document.querySelector('.nav-links a[href="/admin/directory"]');
       function setBadge(link, count) {
         if (!link) return;
         var b = link.querySelector(".fb-badge");
@@ -368,12 +369,12 @@
       var payCh = popupChannel({ icon: "💳", viewUrl: "/admin/subscriptions", showOnLoad: true,
         baseline: <%= (typeof newPaymentCount !== "undefined" ? newPaymentCount : 0) %>,
         one: "new package payment", many: "new package payments", subText: "A warehouse bought / extended a package." });
-      var whAccCh = popupChannel({ icon: "🏬", viewUrl: "/admin/ops", showOnLoad: true,
+      var whAccCh = popupChannel({ icon: "🏬", viewUrl: "/admin/directory", showOnLoad: true,
         baseline: <%= (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) %>,
-        one: "new warehouse registered", many: "new warehouses registered", subText: "A new warehouse just registered — review it on the Maintain page." });
-      var userAccCh = popupChannel({ icon: "🧑", viewUrl: "/admin/ops", showOnLoad: true,
+        one: "new warehouse registered", many: "new warehouses registered", subText: "A new warehouse just registered — review it on the Accounts page." });
+      var userAccCh = popupChannel({ icon: "🧑", viewUrl: "/admin/directory", showOnLoad: true,
         baseline: <%= (typeof newUserCount !== "undefined" ? newUserCount : 0) %>,
-        one: "new user registered", many: "new users registered", subText: "A new user just registered — review it on the Maintain page." });
+        one: "new user registered", many: "new users registered", subText: "A new user just registered — review it on the Accounts page." });
 
       var polling = false;
       function poll() {
@@ -387,7 +388,7 @@
             var newWh = Number(d.newWarehouses) || 0, newU = Number(d.newUsers) || 0;
             setBadge(catLink, req + del);   // Category badge = requests + deleted stock
             setBadge(subLink, pay);
-            setBadge(opsLink, newWh + newU);   // Maintain badge = new warehouses + new users
+            setBadge(dirLink, newWh + newU);   // Accounts badge = new warehouses + new users
             reqCh.update(req); delCh.update(del); payCh.update(pay);
             whAccCh.update(newWh); userAccCh.update(newU);
           })

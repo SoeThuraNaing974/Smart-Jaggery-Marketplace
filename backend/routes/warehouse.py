@@ -15,6 +15,7 @@ from db import db
 from models import (
     JaggeryBatch, Order, OrderItem, StockTransfer, Warehouse,
     SubscriptionPlan, WarehouseSubscription, ProductRequest, Payment, BatchImage,
+    AbandonedCart,
 )
 from auth import role_required, audit, verify_password, hash_password
 from config import Config
@@ -54,6 +55,34 @@ def stock():
         "low_stock_alerts": low,
         "low_stock_threshold_kg": Config.LOW_STOCK_KG,
     })
+
+
+@bp.get("/abandoned-carts")
+@role_required("warehouse")
+def abandoned_carts():
+    """Carts abandoned in the last 7 days that contain at least one product from
+    THIS warehouse — only that warehouse's items are shown to the warehouse."""
+    wid = _staff_warehouse_id()
+    cutoff = datetime.utcnow() - timedelta(days=7)
+    rows = (AbandonedCart.query.filter(AbandonedCart.created_at >= cutoff)
+            .order_by(AbandonedCart.created_at.desc()).all())
+    # map the referenced batches once, then keep only this warehouse's items
+    pks = {int(i.get("batch_pk")) for c in rows for i in (c.items_json or [])
+           if str(i.get("batch_pk", "")).lstrip("-").isdigit()}
+    batches = {b.id: b for b in JaggeryBatch.query.filter(
+        JaggeryBatch.id.in_(pks), JaggeryBatch.warehouse_id == wid).all()} if pks else {}
+    out = []
+    for c in rows:
+        mine = []
+        for i in (c.items_json or []):
+            b = batches.get(int(i.get("batch_pk", 0) or 0))
+            if b:
+                mine.append({"batch_id": b.batch_id, "qty_kg": i.get("qty_kg")})
+        if mine:
+            d = c.to_dict()
+            d["items"] = mine
+            out.append(d)
+    return jsonify(out)
 
 
 @bp.get("/orders")

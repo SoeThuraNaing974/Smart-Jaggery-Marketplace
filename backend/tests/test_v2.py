@@ -52,8 +52,3 @@ def test_admin_kpis_shape(admin_client):
     k = admin_client.get("/api/admin/kpis").get_json()
     for key in ("total_orders", "total_revenue", "active_users", "pending_assignments", "total_stock_kg"):
         assert key in k
-
-
-def test_segments_endpoint(admin_client):
-    s = admin_client.get("/api/admin/segments").get_json()
-    assert "counts" in s and "segments" in s

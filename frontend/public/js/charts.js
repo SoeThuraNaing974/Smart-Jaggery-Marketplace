@@ -29,6 +29,7 @@
         }] },
         options: {
           responsive: true,
+          maintainAspectRatio: false,   // respect the CSS height cap on dashboard cards
           interaction: { mode: "index", intersect: false },
           plugins: {
             legend: { display: false },
@@ -127,6 +128,7 @@
         }] },
         options: {
           responsive: true,
+          maintainAspectRatio: false,   // respect the CSS height cap on dashboard cards
           layout: { padding: { top: 20 } },
           plugins: {
             legend: { display: false },
@@ -155,7 +157,7 @@
         type: "doughnut",
         data: { labels, datasets: [{ label, data: values,
           backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]) }] },
-        options: { responsive: true },
+        options: { responsive: true, maintainAspectRatio: false },
       });
     },
   };

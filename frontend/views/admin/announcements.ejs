@@ -1,0 +1,190 @@
+<%- include("../partials/header") %>
+<div class="page-intro">
+  <span class="page-intro-ico">📢</span>
+  <div>
+    <strong>Announcement board</strong>
+    <span>Post notices for everyone, and email the same message to every customer.</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Announcement board <span class="muted">(<%= announcements.length %>)</span></h3>
+  <% if (!announcements.length) { %><p class="muted">No announcements yet — post one below.</p><% } else { %>
+    <form id="bulkAnn" action="/admin/announcements/bulk-delete" method="post" data-confirm="Delete the selected announcement(s)?"></form>
+    <table class="tbl">
+      <thead><tr><th><input type="checkbox" class="bulk-all" data-group="ann" title="Select all"></th><th>No.</th><th>📢 Title</th><th>Message</th><th>📅 Posted</th><th style="text-align:center">Action</th></tr></thead>
+      <tbody>
+        <% announcements.slice(0,3).forEach((a, idx) => { %>
+          <tr>
+            <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="ann" name="ann_ids" value="<%= a.id %>" form="bulkAnn"></td>
+            <td><%= idx + 1 %></td>
+            <td><strong><%= a.title %></strong></td>
+            <td class="msg-cell">
+              <div class="msg-row">
+                <span class="msg-clamp"><%= a.message %></span>
+                <% if (a.message && a.message.length > 38) { %>
+                  <button type="button" class="msg-more" data-title="<%= a.title %>" data-msg="<%= a.message %>" data-date="<%= a.created_at ? a.created_at.substring(0,10) : '' %>" data-expires="<%= a.expires_at ? a.expires_at.substring(0,10) : '' %>" data-message="<%= a.message %>">📄 Read</button>
+                <% } %>
+              </div>
+            </td>
+            <td class="muted"><%= a.created_at ? a.created_at.substring(0,10) : "—" %></td>
+            <td style="text-align:center">
+              <div class="inline" style="justify-content:center;gap:.4rem;flex-wrap:nowrap">
+                <button type="button" class="btn sm" data-title="<%= a.title %>" data-msg="<%= a.message %>" data-date="<%= a.created_at ? a.created_at.substring(0,10) : '' %>" data-expires="<%= a.expires_at ? a.expires_at.substring(0,10) : '' %>" data-message="<%= a.message %>">🔍 Details</button>
+                <form action="/admin/announcements/<%= a.id %>/delete" method="post" class="inline"
+                      data-confirm="Delete announcement: <%= a.title %>?"><button class="btn sm danger" type="submit">🗑 Delete</button></form>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkAnn">🗑 Delete selected</button></div>
+    <% if (announcements.length > 3) { %>
+      <button type="button" class="btn sm" id="annReadMore" style="margin:.3rem 0 .7rem">📢 Read more — view all <%= announcements.length %> announcements →</button>
+    <% } %>
+  <% } %>
+
+  <form action="/admin/announcements" method="post" class="row-form">
+    <input name="title" placeholder="Title" required>
+    <input name="message" placeholder="Message" required>
+    <input name="expires_at" type="date">
+    <button class="btn sm" type="submit">Post</button>
+  </form>
+
+  <!-- popup: all announcements + search by date / text -->
+  <div class="modal-overlay" id="annModal" style="display:none">
+    <div class="modal-box perf-modal-box">
+      <div class="perf-modal-head">📢 All announcements — <%= announcements.length %></div>
+      <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem;flex-wrap:wrap">
+        <label class="ot-field">🔎 <input type="text" id="annSearchInput" placeholder="Search…" style="width:140px"></label>
+        <label class="ot-field">From <input type="date" id="annFrom"></label>
+        <label class="ot-field">To <input type="date" id="annTo"></label>
+        <button type="button" class="btn sm gray" id="annClear">Clear</button>
+      </div>
+      <div class="perf-modal-scroll">
+        <form id="bulkAnnAll" action="/admin/announcements/bulk-delete" method="post" data-confirm="Delete the selected announcement(s)?"></form>
+        <table class="tbl" id="annTable">
+          <thead><tr><th><input type="checkbox" class="bulk-all" data-group="annAll" title="Select all"></th><th>No.</th><th>📢 Title</th><th>Message</th><th>📅 Posted</th><th>Action</th></tr></thead>
+          <tbody>
+            <% announcements.forEach((a, idx) => { var ad = a.created_at ? a.created_at.substring(0,10) : ""; %>
+              <tr data-date="<%= ad %>" data-text="<%= String(a.title + ' ' + a.message).toLowerCase() %>">
+                <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="annAll" name="ann_ids" value="<%= a.id %>" form="bulkAnnAll"></td>
+                <td><strong><%= idx + 1 %></strong></td>
+                <td><strong><%= a.title %></strong></td>
+                <td class="msg-cell">
+              <div class="msg-row">
+                <span class="msg-clamp"><%= a.message %></span>
+                <% if (a.message && a.message.length > 38) { %>
+                  <button type="button" class="msg-more" data-title="<%= a.title %>" data-msg="<%= a.message %>" data-date="<%= a.created_at ? a.created_at.substring(0,10) : '' %>" data-expires="<%= a.expires_at ? a.expires_at.substring(0,10) : '' %>" data-message="<%= a.message %>">📄 Read</button>
+                <% } %>
+              </div>
+            </td>
+                <td class="muted"><%= ad || "—" %></td>
+                <td>
+                  <div class="inline" style="gap:.4rem;flex-wrap:nowrap">
+                    <button type="button" class="btn sm" data-title="<%= a.title %>" data-msg="<%= a.message %>" data-date="<%= a.created_at ? a.created_at.substring(0,10) : '' %>" data-expires="<%= a.expires_at ? a.expires_at.substring(0,10) : '' %>" data-message="<%= a.message %>">🔍 Details</button>
+                    <form action="/admin/announcements/<%= a.id %>/delete" method="post" class="inline"
+                          data-confirm="Delete announcement: <%= a.title %>?"><button class="btn sm danger" type="submit">🗑</button></form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        <p class="muted" id="annNoRows" style="display:none;padding:.6rem">No matching announcements.</p>
+      </div>
+      <div class="acc-actions" style="margin-top:.7rem">
+        <button class="btn sm danger" type="submit" form="bulkAnnAll">🗑 Delete selected</button>
+        <button type="button" class="btn" id="annClose">Close</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var modal = document.getElementById("annModal");
+      if (!modal) return;
+      var openBtn = document.getElementById("annReadMore");
+      function open() { modal.style.display = "flex"; }
+      function close() { modal.style.display = "none"; }
+      if (openBtn) openBtn.addEventListener("click", open);
+      document.getElementById("annClose").addEventListener("click", close);
+      modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+      var input = document.getElementById("annSearchInput");
+      var from = document.getElementById("annFrom"), to = document.getElementById("annTo");
+      var rows = Array.prototype.slice.call(document.querySelectorAll("#annTable tbody tr"));
+      var noRows = document.getElementById("annNoRows");
+      function applyFilter() {
+        var q = (input.value || "").trim().toLowerCase(), f = from.value, t = to.value, shown = 0;
+        rows.forEach(function (tr) {
+          var txt = tr.getAttribute("data-text") || "", d = tr.getAttribute("data-date") || "";
+          var ok = (!q || txt.indexOf(q) !== -1) && (!f || (d && d >= f)) && (!t || (d && d <= t));
+          tr.style.display = ok ? "" : "none";
+          if (ok) shown++; else { var cb = tr.querySelector(".bulk-cb"); if (cb) cb.checked = false; }  // hidden rows can't be submitted
+        });
+        var annMaster = document.querySelector('.bulk-all[data-group="annAll"]');
+        if (annMaster) annMaster.checked = false;
+        noRows.style.display = shown ? "none" : "";
+      }
+      input.addEventListener("input", applyFilter);
+      from.addEventListener("change", applyFilter);
+      to.addEventListener("change", applyFilter);
+      document.getElementById("annClear").addEventListener("click", function () { input.value = ""; from.value = ""; to.value = ""; applyFilter(); });
+    })();
+  </script>
+
+  <!-- full announcement popup (for long messages) -->
+  <div class="modal-overlay" id="msgModal" style="display:none">
+    <div class="modal-box msg-modal-box">
+      <button type="button" class="otp-close" id="msgClose">✕</button>
+      <div class="msg-modal-ico">📢</div>
+      <h3 class="msg-modal-title" id="msgTitle"></h3>
+      <div class="msg-modal-label">📝 Message</div>
+      <div class="msg-modal-body" id="msgBody"></div>
+      <dl class="od-dl" id="msgMeta" style="text-align:left;margin:.2rem 0 1.1rem">
+        <div><dt>📅 Posted</dt><dd id="mdPosted">—</dd></div>
+        <div><dt>⏳ Expires</dt><dd id="mdExpires">—</dd></div>
+        <div><dt>Status</dt><dd id="mdStatus">—</dd></div>
+      </dl>
+      <button type="button" class="btn" id="msgOk">Got it</button>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var modal = document.getElementById("msgModal");
+      if (!modal) return;
+      var titleEl = document.getElementById("msgTitle"),
+          bodyEl = document.getElementById("msgBody");
+      function close() { modal.style.display = "none"; }
+      document.querySelectorAll("[data-msg]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          titleEl.textContent = b.dataset.title || "Announcement";
+          bodyEl.textContent = b.dataset.msg || b.dataset.message || "";
+          document.getElementById("mdPosted").textContent = b.dataset.date || "—";
+          document.getElementById("mdExpires").textContent = b.dataset.expires || "No expiry";
+          var status = "🟢 Active";
+          if (b.dataset.expires) {
+            var today = new Date().toISOString().substring(0, 10);
+            if (b.dataset.expires < today) status = "🔴 Expired";
+          }
+          document.getElementById("mdStatus").textContent = status;
+          modal.style.display = "flex";
+        });
+      });
+      document.getElementById("msgClose").addEventListener("click", close);
+      document.getElementById("msgOk").addEventListener("click", close);
+      modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
+    })();
+  </script>
+</div>
+
+<div class="card">
+  <h3>📧 Send Email to All Customers</h3>
+  <p class="muted" style="margin:.1rem 0 .6rem">Send one announcement or promotion email to every customer at once.</p>
+  <form action="/admin/email/bulk" method="post" class="row-form">
+    <input name="subject" placeholder="Subject" required style="flex:1">
+    <input name="body" placeholder="Message body" required style="flex:2">
+    <button class="btn sm" type="submit">Send</button>
+  </form>
+</div>
+<%- include("../partials/footer") %>

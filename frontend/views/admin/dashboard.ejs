@@ -7,7 +7,7 @@
     <span class="welcome-name"><%= adminName %></span>
     <span class="welcome-sub">🛠️ Here's everything happening across your store today.</span>
   </div>
-  <a class="welcome-cta" href="/admin/ops">Maintain →</a>
+  <a class="welcome-cta" href="/admin/batches">Category requests →</a>
 </div>
 <script>
   (function () {
@@ -19,12 +19,13 @@
 </script>
 
 <div class="kpis">
-  <div class="kpi"><span><%= kpis.total_orders || 0 %></span>Orders</div>
-  <div class="kpi"><span><%= kpis.total_revenue || 0 %> Kyats</span>Revenue</div>
-  <div class="kpi"><span><%= kpis.active_users || 0 %></span>Active buyers</div>
-  <div class="kpi"><span><%= kpis.total_customers || 0 %></span>Customers</div>
-  <div class="kpi"><span><%= kpis.pending_assignments || 0 %></span>Pending</div>
-  <div class="kpi"><span><%= kpis.total_stock_kg || 0 %>kg</span>Stock</div>
+  <div class="kpi"><span><%= kpis.package_revenue || 0 %> Kyats</span>💳 Package revenue</div>
+  <div class="kpi"><span><%= kpis.total_customers || 0 %></span>👤 Customers</div>
+  <div class="kpi"><span><%= kpis.total_warehouses || 0 %></span>🏬 Warehouses</div>
+  <div class="kpi"><span><%= kpis.active_promotions || 0 %></span>🎉 Active Promotion</div>
+  <div class="kpi"><span><%= kpis.active_ads || 0 %></span>📣 Active Advertisements</div>
+  <div class="kpi"><span><%= kpis.pending_requests || 0 %></span>🆕 Pending approvals</div>
+  <div class="kpi"><span><%= kpis.total_stock_kg || 0 %>kg</span>⚖️ Total stock</div>
 </div>
 
 <%
@@ -60,108 +61,17 @@
   </div>
 </div>
 
-<div class="card">
-  <h3>Sale Reports</h3>
-  <a class="btn sm" href="/admin/reports/export?period=monthly">CSV</a>
-  <a class="btn sm" href="/admin/reports/excel?period=monthly">Excel</a>
-  <a class="btn sm" href="/admin/reports/pdf?period=monthly">PDF</a>
-</div>
-
-<div class="card">
-  <h3>Customer Orders of Warehouses</h3>
-  <% if (!orders.length) { %><p class="muted">No orders yet.</p><% } else { %>
-    <div class="inline" style="gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.5rem">
-      <span class="muted">🏬 Filter by warehouse:</span>
-      <select id="coWh" class="btn sm" style="padding:.25rem .4rem"></select>
-    </div>
-    <form action="/admin/orders/delete" method="post" data-confirm="Delete the selected order(s)? This permanently removes them and their items.">
-    <table class="tbl" id="coTable">
-      <thead><tr><th><input type="checkbox" class="co-all" title="Select all"></th><th>No.</th><th>Customer</th><th>Items</th><th>Total (Kyats)</th><th>Warehouse</th><th>Status</th></tr></thead>
-      <tbody>
-      <% orders.forEach((o) => {
-           var whs = [...new Set(o.items.map(i => i.warehouse_name).filter(Boolean))];
-           var whStr = whs.join(", ") || (o.warehouse_name || "—");
-      %>
-        <tr data-wh="<%= (whs.join('|') || o.warehouse_name || '') %>">
-          <td class="dir-chk"><input type="checkbox" name="order_ids" value="<%= o.id %>" class="co-cb"></td>
-          <td class="co-no"></td>
-          <td><%= o.customer_name %></td>
-          <td><%= o.items.map(i => i.batch_id + " ×" + i.qty_kg + "kg").join(", ") %></td>
-          <td><%= o.grand_total %></td>
-          <td><%= whStr %></td>
-          <td><span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span></td>
-        </tr>
-      <% }) %>
-      </tbody>
-    </table>
-    <p class="muted" id="coNoRows" style="display:none;padding:.4rem">No orders for this warehouse.</p>
-    <div class="acc-actions"><button class="btn sm danger" type="submit">🗑 Delete selected</button></div>
-    </form>
-    <div class="inline" style="gap:.5rem;flex-wrap:wrap;margin-top:.4rem;align-items:center">
-      <span class="muted">PDF by date:</span>
-      <label class="ot-field">📅 From <input type="date" id="coFrom"></label>
-      <label class="ot-field">📅 To <input type="date" id="coTo"></label>
-      <a class="btn sm" id="coPdf" href="/admin/orders/pdf" target="_blank">⬇ Download PDF</a>
-      <a class="btn sm gray" href="/admin/orders">📋 View all orders →</a>
-    </div>
-    <script>
-      (function () {
-        var whSel = document.getElementById("coWh");
-        var f = document.getElementById("coFrom"), t = document.getElementById("coTo"), pdf = document.getElementById("coPdf");
-        var rows = Array.prototype.slice.call(document.querySelectorAll("#coTable tbody tr"));
-        var noRows = document.getElementById("coNoRows");
-        var CAP = 8;
-        // build the warehouse dropdown from the orders (exact warehouse names)
-        var whs = {};
-        rows.forEach(function (tr) { (tr.getAttribute("data-wh") || "").split("|").forEach(function (w) { if (w) whs[w] = true; }); });
-        whSel.innerHTML = '<option value="">All warehouses</option>' +
-          Object.keys(whs).sort().map(function (w) { return '<option value="' + w + '">' + w + '</option>'; }).join("");
-        function syncPdf() {
-          var q = [];
-          if (f.value) q.push("from=" + encodeURIComponent(f.value));
-          if (t.value) q.push("to=" + encodeURIComponent(t.value));
-          if (whSel.value) q.push("warehouse=" + encodeURIComponent(whSel.value));
-          pdf.href = "/admin/orders/pdf" + (q.length ? "?" + q.join("&") : "");
-        }
-        var master = document.querySelector(".co-all");
-        function coVisible() {
-          return rows.filter(function (tr) { return tr.style.display !== "none"; })
-            .map(function (tr) { return tr.querySelector(".co-cb"); }).filter(Boolean);
-        }
-        function render() {
-          var wh = whSel.value, shown = 0, matched = 0;
-          rows.forEach(function (tr) {
-            var ok = !wh || (tr.getAttribute("data-wh") || "").split("|").indexOf(wh) !== -1;
-            var cb = tr.querySelector(".co-cb");
-            if (ok && shown < CAP) { tr.style.display = ""; shown++; matched++; tr.querySelector(".co-no").textContent = shown; }
-            else { tr.style.display = "none"; if (ok) matched++; if (cb) cb.checked = false; }  // hidden rows can't be submitted
-          });
-          noRows.style.display = matched ? "none" : "";
-          if (master) master.checked = false;
-          syncPdf();
-        }
-        whSel.addEventListener("change", render);
-        f.addEventListener("change", syncPdf);
-        t.addEventListener("change", syncPdf);
-        if (master) {
-          master.addEventListener("change", function () { coVisible().forEach(function (cb) { cb.checked = master.checked; }); });
-          document.getElementById("coTable").addEventListener("change", function (e) {
-            if (e.target && e.target.classList.contains("co-cb")) {
-              var v = coVisible(); master.checked = v.length > 0 && v.every(function (cb) { return cb.checked; });
-            }
-          });
-        }
-        render();
-      })();
-    </script>
-  <% } %>
-</div>
-
 <script>
   window.CHART_DATA = <%- JSON.stringify(charts) %>;
-  window.addEventListener("load", function () {
-    if (document.getElementById("rev30")) JaggeryCharts.line("rev30", CHART_DATA.revenue_30d.labels, CHART_DATA.revenue_30d.values, "Revenue (Kyats)");
-    if (document.getElementById("topWh")) JaggeryCharts.bar("topWh", CHART_DATA.top_warehouses.labels, CHART_DATA.top_warehouses.values, "orders");
-  });
+  // Draw immediately when the page arrives via the no-reload engine (libs are
+  // already present); fall back to the load event on a normal first visit.
+  (function () {
+    function initCharts() {
+      if (document.getElementById("rev30")) JaggeryCharts.line("rev30", CHART_DATA.revenue_30d.labels, CHART_DATA.revenue_30d.values, "Revenue (Kyats)");
+      if (document.getElementById("topWh")) JaggeryCharts.bar("topWh", CHART_DATA.top_warehouses.labels, CHART_DATA.top_warehouses.values, "orders");
+    }
+    if (document.readyState === "complete" && window.JaggeryCharts) initCharts();
+    else window.addEventListener("load", initCharts);
+  })();
 </script>
 <%- include("../partials/footer") %>

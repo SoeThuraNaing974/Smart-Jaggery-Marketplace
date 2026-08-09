@@ -1,24 +1,16 @@
-<%- include("../partials/header") %>
-
-<div class="page-intro">
-  <span class="page-intro-ico">📦</span>
-  <div>
-    <strong>Orders history</strong>
-    <span>Your shipped, delivered &amp; cancelled orders — filter by date to check your own history &amp; revenue.
-      Still need to ship something? See <a href="/warehouse/orders-all">Assigned orders</a>.</span>
-  </div>
-</div>
-
+<%# Orders-history card — embedded on the Orders page (expects `orders` =
+    shipped/delivered/cancelled list). Date search recomputes revenue + PDF link. %>
 <div class="card">
-  <h3>Revenue <span class="badge" id="ohTotal" style="font-size:1.15rem;padding:.3rem .7rem">= 0 Kyats</span>
+  <h3>📦 Orders History <span class="muted">(<%= orders.length %>)</span> ·
+    Revenue <span class="badge" id="ohTotal" style="font-size:1.15rem;padding:.3rem .7rem">= 0 Kyats</span>
     <span class="muted" id="ohPeriodLabel" style="font-size:.85rem;font-weight:400"> · all time</span></h3>
+  <p class="muted" style="margin:.1rem 0 .6rem">Your shipped, delivered &amp; cancelled orders — filter by date to check your history &amp; revenue.</p>
 
   <div class="orders-toolbar" style="justify-content:flex-start;margin:.3rem 0 .7rem;flex-wrap:wrap">
     <label class="ot-field">📅 From <input type="date" id="ohFrom"></label>
     <label class="ot-field">📅 To <input type="date" id="ohTo"></label>
     <button type="button" class="btn sm" id="ohSearch">🔍 Search</button>
     <a class="btn sm" id="ohPdf" href="/warehouse/orders-history/pdf" target="_blank">📄 Download PDF</a>
-    <a class="btn sm gray" href="/warehouse">← Back to home</a>
   </div>
 
   <p class="muted" id="ohCountLine" style="margin:.6rem 0"></p>
@@ -104,5 +96,3 @@
     render();
   })();
 </script>
-
-<%- include("../partials/footer") %>

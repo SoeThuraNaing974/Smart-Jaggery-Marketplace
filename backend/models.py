@@ -624,6 +624,7 @@ class Payment(db.Model):
 
     warehouse = db.relationship("Warehouse")
     plan = db.relationship("SubscriptionPlan")
+    subscription = db.relationship("WarehouseSubscription")
 
     def to_dict(self):
         labels = {"kpay": "KPay", "wavepay": "Wave Pay", "ayapay": "AYA Pay",
@@ -640,6 +641,12 @@ class Payment(db.Model):
             "reference": self.reference,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            # the subscription period this payment bought (for the combined
+            # purchase & payment history view)
+            "subscription_id": self.subscription_id,
+            "start_date": self.subscription.start_date.isoformat() if self.subscription else None,
+            "end_date": self.subscription.end_date.isoformat() if self.subscription else None,
+            "sub_active": self.subscription.is_active if self.subscription else None,
         }
 
 

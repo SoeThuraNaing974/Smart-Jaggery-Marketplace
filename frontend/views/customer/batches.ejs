@@ -186,7 +186,9 @@
 <script>
   // The card shows a fixed 2-line teaser; "Read more" opens the full text in a
   // popup so the product card itself never grows, no matter how long the text is.
-  window.addEventListener("load", function () {
+  // Runs immediately after a no-reload page swap; waits for load on a first visit.
+  (function () {
+  function initDescModal() {
     var modal = document.getElementById("descModal"),
         title = document.getElementById("descModalTitle"),
         body  = document.getElementById("descModalBody");
@@ -219,7 +221,10 @@
     function close() { modal.style.display = "none"; }
     document.getElementById("descModalClose").addEventListener("click", close);
     modal.addEventListener("click", function (e) { if (e.target === modal) close(); });
-  });
+  }
+  if (document.readyState === "complete") initDescModal();
+  else window.addEventListener("load", initDescModal);
+  })();
 
   // Add/remove WITHOUT leaving the page: keep a live "Your selection" mini-cart,
   // a toast, and the header badge in sync, so customers pick freely then visit the cart.

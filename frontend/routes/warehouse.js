@@ -9,34 +9,21 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/", requireRole("warehouse"), async (req, res) => {
   const api = client(req.token);
-  const [stockRes, ordersRes, chartsRes, expiryRes, subRes, reqRes] = await Promise.all([
+  const [stockRes, chartsRes, expiryRes, subRes, reqRes, cartsRes] = await Promise.all([
     api.get("/api/warehouse/stock"),
-    api.get("/api/warehouse/orders"),
     api.get("/api/warehouse/charts"),
     api.get("/api/warehouse/expiry-alerts"),
     api.get("/api/warehouse/subscription"),
     api.get("/api/warehouse/product-requests"),
+    api.get("/api/warehouse/abandoned-carts"),
   ]);
-  const orders = ordersRes.data || [];
-  // flag paid (waiting) orders not yet seen so we can highlight them, then mark all seen
-  const seen = new Set((req.cookies.wh_order_seen || "").split(",").filter(Boolean));
-  const hasSeen = req.cookies.wh_order_seen !== undefined;
-  let newOrderCount = 0;
-  orders.forEach((o) => {
-    o.isNew = hasSeen && o.status === "waiting" && !seen.has(String(o.id));
-    if (o.isNew) newOrderCount++;
-  });
-  const waitingKeys = orders.filter((o) => o.status === "waiting").map((o) => String(o.id));
-  res.cookie("wh_order_seen", waitingKeys.join(","), { httpOnly: true, sameSite: "lax" });
-  res.locals.whOrderCount = 0;  // viewing Home clears the badge
   res.render("warehouse/dashboard", {
     stock: stockRes.data || { batches: [], low_stock_alerts: [] },
-    orders,
-    newOrderCount,
     charts: chartsRes.data || { stock_by_grade: {}, revenue_7d: { labels: [], values: [] } },
     expiry: expiryRes.data || { alerts: [], count: 0 },
     subscription: subRes.data || { active: false, current: null },
     productRequests: reqRes.data || [],
+    carts: Array.isArray(cartsRes.data) ? cartsRes.data : [],
     flash: req.query.msg || null,
     error: req.query.err || null,
   });
@@ -107,13 +94,25 @@ router.get("/stock-all", requireRole("warehouse"), async (req, res) => {
     flash: req.query.msg || null, error: req.query.err || null });
 });
 
-// Full assigned-orders list (Read more) — only orders still waiting, searchable by date
+// Assigned-orders page — every order not yet shipped/cancelled, searchable by date.
+// Viewing this page marks new orders as seen, clearing the header badge.
 router.get("/orders-all", requireRole("warehouse"), async (req, res) => {
   const from = req.query.from || "", to = req.query.to || "";
   const r = await client(req.token).get("/api/warehouse/orders");
-  let orders = (r.data || []).filter(o => o.status === "assigned" || o.status === "packed");
+  const all = r.data || [];
+  const seen = new Set((req.cookies.wh_order_seen || "").split(",").filter(Boolean));
+  const hasSeen = req.cookies.wh_order_seen !== undefined;
+  all.forEach((o) => { o.isNew = hasSeen && o.status === "waiting" && !seen.has(String(o.id)); });
+  const waitingKeys = all.filter((o) => o.status === "waiting").map((o) => String(o.id));
+  res.cookie("wh_order_seen", waitingKeys.join(","), { httpOnly: true, sameSite: "lax" });
+  res.locals.whOrderCount = 0;  // viewing this page clears the badge
+  let orders = all.filter(o => ["waiting", "assigned", "packed"].indexOf(o.status) !== -1);
   if (from || to) orders = orders.filter(o => inDateRange(o.created_at, from, to));
-  res.render("warehouse/orders_all", { orders, from, to });
+  // brand-new orders first so they're obvious
+  orders.sort((a, b) => (b.isNew === true) - (a.isNew === true));
+  // orders history lives on this page too, as a card under the assigned orders
+  const historyOrders = all.filter(o => ["shipped", "delivered", "cancelled"].includes(o.status));
+  res.render("warehouse/orders_all", { orders, historyOrders, from, to });
 });
 
 // Full transfer-history list (Read more) — searchable by request date
@@ -140,19 +139,14 @@ router.get("/orders-history/pdf", requireRole("warehouse"), async (req, res) => 
   if (req.query.from) qs.push("from=" + encodeURIComponent(req.query.from));
   if (req.query.to) qs.push("to=" + encodeURIComponent(req.query.to));
   const r = await client(req.token).get("/api/warehouse/orders/history/pdf" + (qs.length ? "?" + qs.join("&") : ""), { responseType: "arraybuffer" });
-  if (r.status !== 200) return res.redirect("/warehouse/orders-history?err=PDF+unavailable");
+  if (r.status !== 200) return res.redirect("/warehouse/orders-all?err=PDF+unavailable");
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", "attachment; filename=order_history.pdf");
   res.send(Buffer.from(r.data));
 });
 
-// Full orders-history list (Read more) — shipped/delivered/cancelled.
-// Filtering (date) happens client-side, with a live revenue total.
-router.get("/orders-history", requireRole("warehouse"), async (req, res) => {
-  const r = await client(req.token).get("/api/warehouse/orders");
-  const orders = (r.data || []).filter(o => ["shipped", "delivered", "cancelled"].includes(o.status));
-  res.render("warehouse/orders_history", { orders });
-});
+// Old standalone history page → now a card on the Orders page
+router.get("/orders-history", requireRole("warehouse"), (req, res) => res.redirect("/warehouse/orders-all"));
 
 // Add a new batch
 router.post("/batches", requireRole("warehouse"), async (req, res) => {
@@ -201,9 +195,9 @@ router.post("/batches/bulk-delete", requireRole("warehouse"), async (req, res) =
 router.post("/orders/delete", requireRole("warehouse"), async (req, res) => {
   let ids = req.body.order_ids || []; if (!Array.isArray(ids)) ids = [ids];
   ids = ids.map(Number).filter(Boolean);
-  if (!ids.length) return res.redirect("/warehouse/orders-history?err=" + encodeURIComponent("Select at least one order"));
+  if (!ids.length) return res.redirect("/warehouse/orders-all?err=" + encodeURIComponent("Select at least one order"));
   const r = await client(req.token).post("/api/warehouse/orders/delete", { ids });
-  res.redirect("/warehouse/orders-history" + (r.status === 200 ? "?msg=Orders+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
+  res.redirect("/warehouse/orders-all" + (r.status === 200 ? "?msg=Orders+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
 });
 
 // Bulk-delete this warehouse's own product requests
@@ -379,22 +373,35 @@ router.get("/subscription", requireRole("warehouse"), async (req, res) => {
     flash: req.query.msg || null, error: req.query.err || null,
   });
 });
-// Full purchase-history list (Read more) — searchable by start date
-router.get("/purchase-history-all", requireRole("warehouse"), async (req, res) => {
-  const from = req.query.from || "", to = req.query.to || "";
-  const r = await client(req.token).get("/api/warehouse/subscription");
-  let history = (r.data && r.data.history) || [];
-  if (from || to) history = history.filter(h => inDateRange(h.start_date, from, to));
-  res.render("warehouse/purchase_history_all", { history, from, to });
-});
+// Old separate purchase-history page → merged into the payment-history page
+router.get("/purchase-history-all", requireRole("warehouse"), (req, res) => res.redirect("/warehouse/payment-history-all"));
 
-// Full payment-history list (Read more) — searchable by payment date
+// Combined purchase & payment history (Read more) — searchable by payment date.
+// Payments carry the plan period they bought; purchases with no payment record
+// (legacy/granted) are appended so nothing disappears.
 router.get("/payment-history-all", requireRole("warehouse"), async (req, res) => {
   const from = req.query.from || "", to = req.query.to || "";
-  const r = await client(req.token).get("/api/warehouse/payments");
-  let payments = r.data || [];
-  if (from || to) payments = payments.filter(p => inDateRange(p.created_at, from, to));
-  res.render("warehouse/payment_history_all", { payments, from, to });
+  const api = client(req.token);
+  const [payRes, subRes] = await Promise.all([
+    api.get("/api/warehouse/payments"),
+    api.get("/api/warehouse/subscription"),
+  ]);
+  const payments = payRes.data || [];
+  const history = (subRes.data && subRes.data.history) || [];
+  const covered = new Set(payments.map(p => p.subscription_id).filter(Boolean));
+  let rows = payments.map(p => ({
+    date: p.created_at ? p.created_at.substring(0, 10) : "", plan: p.plan_name,
+    from: p.start_date, to: p.end_date, amount: p.amount,
+    method: p.method_label, reference: p.reference, active: p.sub_active, slip: p.id,
+  }));
+  history.forEach(h => {
+    if (!covered.has(h.id)) rows.push({ date: h.start_date, plan: h.plan_name,
+      from: h.start_date, to: h.end_date, amount: h.price_paid,
+      method: null, reference: null, active: h.active, slip: null });
+  });
+  if (from || to) rows = rows.filter(r => inDateRange(r.date, from, to));
+  rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  res.render("warehouse/payment_history_all", { rows, from, to });
 });
 
 // Checkout / payment page for a selected plan

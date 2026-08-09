@@ -13,8 +13,9 @@
   }
   function bust(name) { return "/uploads/" + encodeURIComponent(name) + "?t=" + Date.now(); }
 
-  // Update the cover picture inside a host, for either layout.
-  function applyCover(host, filename) {
+  // Update the cover picture inside a host, for either layout. `pk` (batch id) is
+  // only needed the first time a cover is created, to wire up its "✕" remove form.
+  function applyCover(host, filename, pk) {
     if (!host) return;
     var thumb = host.querySelector(".cat-thumb");
     if (thumb) {                                   // ---- card layout (admin) ----
@@ -35,6 +36,15 @@
           cover = document.createElement("span");
           cover.className = "wh-img cover"; cover.title = "Cover photo";
           var im = document.createElement("img"); im.alt = "cover"; cover.appendChild(im);
+          var xForm = document.createElement("form");
+          xForm.method = "post";
+          xForm.action = "/warehouse/batches/" + pk + "/image/remove";
+          xForm.setAttribute("data-confirm", "Remove the cover photo?");
+          var xBtn = document.createElement("button");
+          xBtn.type = "submit"; xBtn.className = "cat-img-x"; xBtn.title = "Remove cover photo";
+          xBtn.textContent = "✕";
+          xForm.appendChild(xBtn);
+          cover.appendChild(xForm);
           wrap.insertBefore(cover, wrap.firstChild);
         }
         cover.querySelector("img").src = bust(filename);
@@ -78,6 +88,8 @@
     if (!input.files || !input.files.length) return;
 
     var host = hostOf(form);
+    var pkMatch = (form.action || "").match(/\/batches\/(\d+)\/image$/);
+    var pk = pkMatch && pkMatch[1];
     busy(host, true);
     var fd = new FormData();
     fd.append("file", input.files[0]);
@@ -91,7 +103,7 @@
         busy(host, false);
         input.value = "";
         if (res.ok && res.d && res.d.image_path) {
-          applyCover(host, res.d.image_path);
+          applyCover(host, res.d.image_path, pk);
           enableRemoveBtn(host, true);
           toast("✓ Image updated everywhere");
         } else {

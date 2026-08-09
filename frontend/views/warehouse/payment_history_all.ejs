@@ -1,10 +1,10 @@
 <%- include("../partials/header") %>
 
 <div class="page-intro">
-  <span class="page-intro-ico">💳</span>
+  <span class="page-intro-ico">🧾</span>
   <div>
-    <strong>Payment history</strong>
-    <span>Every package payment you've made. Search by the date it was paid.</span>
+    <strong>Purchase &amp; payment history</strong>
+    <span>Every package you've bought and the payment that covered it — search by the date it was paid.</span>
   </div>
 </div>
 
@@ -18,28 +18,32 @@
   </form>
 
   <p class="muted" style="margin:.6rem 0">
-    <strong><%= payments.length %></strong> payment<%= payments.length === 1 ? "" : "s" %><%
+    <strong><%= rows.length %></strong> purchase<%= rows.length === 1 ? "" : "s" %><%
       if (from || to) { %> · paid <%= from || "…" %> → <%= to || "…" %><% } %>
   </p>
 
-  <% if (!payments.length) { %>
+  <% if (!rows.length) { %>
     <div class="empty-state">
-      <div class="empty-icon">💳</div>
-      <div class="empty-title">No payments found</div>
+      <div class="empty-icon">🧾</div>
+      <div class="empty-title">No purchases found</div>
       <div class="empty-sub">Try a different date range.</div>
     </div>
   <% } else { %>
     <table class="tbl">
-      <thead><tr><th>No.</th><th>📅 Date</th><th>Plan</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
+      <thead><tr><th>No.</th><th>📅 Paid on</th><th>Plan</th><th>Valid from</th><th>Valid to</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
       <tbody>
-        <% payments.forEach((p, i) => { %>
+        <% rows.forEach((r, i) => { %>
           <tr>
             <td><%= i + 1 %></td>
-            <td class="muted"><%= p.created_at ? p.created_at.substring(0,10) : "" %></td>
-            <td><%= p.plan_name || "—" %></td><td><%= p.amount %></td>
-            <td><%= p.method_label %></td><td class="muted"><%= p.reference %></td>
-            <td><span class="status status-delivered"><%= p.status %></span></td>
-            <td><a class="btn sm" href="/warehouse/payments/<%= p.id %>/slip" target="_blank">🧾 PDF</a></td>
+            <td class="muted"><%= r.date || "—" %></td>
+            <td><strong><%= r.plan || "—" %></strong></td>
+            <td class="muted"><%= r.from || "—" %></td>
+            <td class="muted"><%= r.to || "—" %></td>
+            <td><%= r.amount %></td>
+            <td><%= r.method || "—" %></td>
+            <td class="muted"><%= r.reference || "—" %></td>
+            <td><span class="status status-<%= r.active ? 'delivered' : 'cancelled' %>"><%= r.active ? "active" : "expired" %></span></td>
+            <td><% if (r.slip) { %><a class="btn sm" href="/warehouse/payments/<%= r.slip %>/slip" target="_blank">🧾 PDF</a><% } else { %><span class="muted">—</span><% } %></td>
           </tr>
         <% }) %>
       </tbody>
