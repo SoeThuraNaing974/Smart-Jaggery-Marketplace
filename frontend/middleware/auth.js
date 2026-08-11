@@ -40,9 +40,40 @@ function attachUser(req, res, next) {
   next();
 }
 
+// Anyone may browse; `user` is simply null for a guest. Used by the shop pages
+// (home, category list) that must work before someone registers.
+function publicPage(req, res, next) {
+  next();
+}
+
+const LOGIN_PROMPT = "Please log in to continue.";
+
+/**
+ * Send a guest to the login page, remembering where they were headed so they land
+ * back on it afterwards. AJAX callers get JSON so the page can redirect itself
+ * instead of stuffing a login page into a fetch() response.
+ */
+function askToLogin(req, res, message = LOGIN_PROMPT) {
+  const wantsJson = req.headers["x-requested-with"] === "fetch"
+    || (req.headers.accept || "").includes("application/json");
+  // GET → come back here; POST (e.g. "Add to cart") → back to the page it came from
+  const target = req.method === "GET"
+    ? req.originalUrl
+    : (() => {
+        try { return new URL(req.get("Referer")).pathname; } catch (_) { return "/batches"; }
+      })();
+  const loginUrl = "/login?next=" + encodeURIComponent(target)
+    + "&err=" + encodeURIComponent(message);
+  if (wantsJson) {
+    return res.status(401).json({ ok: false, login_required: true, login_url: loginUrl,
+                                 error: message });
+  }
+  return res.redirect(loginUrl);
+}
+
 function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user) return res.redirect("/login");
+    if (!req.user) return askToLogin(req, res);
     if (!roles.includes(req.user.role)) return res.status(403).render("error", {
       message: "You don't have access to this page.",
     });
@@ -50,4 +81,4 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { attachUser, requireRole };
+module.exports = { attachUser, requireRole, publicPage, askToLogin };

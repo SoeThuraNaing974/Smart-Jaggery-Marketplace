@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<%= (typeof lang !== 'undefined' && lang) ? lang : 'en' %>">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Local Jaggery</title>
+  <title>Smart Jaggery Mart</title>
 
   <!-- No-reload engine: track page-level listeners/timers so they can be cleanly
        torn down & re-initialised when <main> is swapped in place (see ajax-forms.js). -->
@@ -34,7 +34,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Local Jaggery" />
+  <meta name="apple-mobile-web-app-title" content="Smart Jaggery Mart" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
@@ -57,7 +57,16 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/css/style.css?v=181" />
+  <script>
+    // Shared translated strings for the static JS files (confirm.js dialogs).
+    window.__i18n = <%- JSON.stringify({
+      delTitle: t("Delete this?"), confirmTitle: t("Please confirm"),
+      delMsg: t("This item will be permanently deleted. This can't be undone."),
+      confirmMsg: t("Are you sure you want to continue?"),
+      delOk: "🗑️ " + t("Yes, delete"), otherOk: "✓ " + t("Yes, continue")
+    }) %>;
+  </script>
+  <link rel="stylesheet" href="/css/style.css?v=191" />
   <%
     // Chart.js is heavy (~200KB). Only load it on the 3 pages that actually draw
     // charts — every other page loads much lighter & faster (especially on mobile).
@@ -66,14 +75,14 @@
   %>
   <% if (_needsCharts) { %>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="/js/charts.js?v=7" defer></script>
+  <script src="/js/charts.js?v=8" defer></script>
   <% } %>
   <script src="/js/phone.js?v=1" defer></script>
   <script src="/js/scroll-keep.js?v=1"></script>
 </head>
-<body class="<%= (typeof user !== 'undefined' && user) ? 'role-' + user.role : '' %>">
+<body class="<%= (typeof user !== 'undefined' && user) ? 'role-' + user.role : 'is-guest' %> lang-<%= (typeof lang !== 'undefined' && lang) ? lang : 'en' %>">
   <nav class="nav">
-    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"><span class="lm3"><span class="lm3-orbit"><span class="lm3-arm lm3-arm-1"><i class="lm3-ball lm3-b1"></i></span><span class="lm3-arm lm3-arm-2"><i class="lm3-ball lm3-b2"></i></span></span><span class="lm3-topwrap"><i class="lm3-ball lm3-b3"></i></span></span></span>Smart Jaggery Marketplace</a>
+    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"><span class="lm3"><span class="lm3-orbit"><span class="lm3-arm lm3-arm-1"><i class="lm3-ball lm3-b1"></i></span><span class="lm3-arm lm3-arm-2"><i class="lm3-ball lm3-b2"></i></span></span><span class="lm3-topwrap"><i class="lm3-ball lm3-b3"></i></span></span></span>Smart Jaggery Mart</a>
     <input type="checkbox" id="navToggle" class="nav-toggle" hidden>
     <label for="navToggle" class="nav-burger" aria-label="Toggle menu">&#9776;</label>
     <div class="nav-links">
@@ -89,29 +98,29 @@
       %>
       <% if (user) { %>
         <% if (user.role === "customer") { %>
-          <a href="/dashboard" class="<%= navCls('/dashboard') %>">Home</a>
-          <a href="/batches" class="<%= navCls('/batches') %> notif-link">Category<% if (typeof newCategoryCount !== "undefined" && newCategoryCount > 0) { %><span class="fb-badge" title="<%= newCategoryCount %> new categor<%= newCategoryCount === 1 ? 'y' : 'ies' %> added"><%= newCategoryCount > 9 ? '9+' : newCategoryCount %></span><% } %></a>
-          <a href="/cart" class="<%= navCls('/cart') %> cart-link">🛒 Cart<% if (cartCount) { %><span class="cart-count"><%= cartCount %></span><% } %></a>
-          <a href="/orders" class="<%= navCls('/orders') %> notif-link">My Order<% if (typeof orderUpdateCount !== "undefined" && orderUpdateCount > 0) { %><span class="fb-badge" title="<%= orderUpdateCount %> order update(s)"><%= orderUpdateCount > 9 ? '9+' : orderUpdateCount %></span><% } %></a>
+          <a href="/dashboard" class="<%= navCls('/dashboard') %>"><%= t("Home") %></a>
+          <a href="/batches" class="<%= navCls('/batches') %> notif-link"><%= t("Category") %><% if (typeof newCategoryCount !== "undefined" && newCategoryCount > 0) { %><span class="fb-badge" title="<%= t(newCategoryCount === 1 ? '{n} new category added' : '{n} new categories added', { n: newCategoryCount }) %>"><%= newCategoryCount > 9 ? '9+' : newCategoryCount %></span><% } %></a>
+          <a href="/cart" class="<%= navCls('/cart') %> cart-link">🛒 <%= t("Cart") %><% if (cartCount) { %><span class="cart-count"><%= cartCount %></span><% } %></a>
+          <a href="/orders" class="<%= navCls('/orders') %> notif-link"><%= t("My Order") %><% if (typeof orderUpdateCount !== "undefined" && orderUpdateCount > 0) { %><span class="fb-badge" title="<%= t('{n} order update(s)', { n: orderUpdateCount }) %>"><%= orderUpdateCount > 9 ? '9+' : orderUpdateCount %></span><% } %></a>
         <% } else if (user.role === "warehouse") { %>
-          <a href="/warehouse" class="<%= navCls('/warehouse') %>">Home</a>
-          <a href="/warehouse/stock-all" class="<%= navCls('/warehouse/stock-all') %> notif-link">Category<% if (typeof whCategoryCount !== "undefined" && whCategoryCount > 0) { %><span class="fb-badge" title="<%= whCategoryCount %> new categor<%= whCategoryCount === 1 ? 'y' : 'ies' %> in your stock"><%= whCategoryCount > 9 ? '9+' : whCategoryCount %></span><% } %></a>
-          <a href="/warehouse/orders-all" class="<%= navCls('/warehouse/orders-all') %> notif-link">Orders<% if (typeof whOrderCount !== "undefined" && whOrderCount > 0) { %><span class="fb-badge" title="<%= whOrderCount %> new customer order(s)"><%= whOrderCount > 9 ? '9+' : whOrderCount %></span><% } %></a>
-          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>">Request Category</a>
-          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link">Package Plan<% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= whPlanCount %> new package plan(s)"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
+          <a href="/warehouse" class="<%= navCls('/warehouse') %> notif-link"><%= t("Home") %><% if (typeof whDeletedCount !== "undefined" && whDeletedCount > 0) { %><span class="fb-badge" title="<%= t(whDeletedCount === 1 ? '{n} of your categories was removed by the admin' : '{n} of your categories were removed by the admin', { n: whDeletedCount }) %>"><%= whDeletedCount > 9 ? '9+' : whDeletedCount %></span><% } %></a>
+          <a href="/warehouse/stock-all" class="<%= navCls('/warehouse/stock-all') %> notif-link"><%= t("Category") %><% if (typeof whCategoryCount !== "undefined" && whCategoryCount > 0) { %><span class="fb-badge" title="<%= t(whCategoryCount === 1 ? '{n} new category in your stock' : '{n} new categories in your stock', { n: whCategoryCount }) %>"><%= whCategoryCount > 9 ? '9+' : whCategoryCount %></span><% } %></a>
+          <a href="/warehouse/orders-all" class="<%= navCls('/warehouse/orders-all') %> notif-link"><%= t("Orders") %><% if (typeof whOrderCount !== "undefined" && whOrderCount > 0) { %><span class="fb-badge" title="<%= t('{n} new customer order(s)', { n: whOrderCount }) %>"><%= whOrderCount > 9 ? '9+' : whOrderCount %></span><% } %></a>
+          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>"><%= t("Request Category") %></a>
+          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link"><%= t("Subscription Plan") %><% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= t('{n} new subscription plan(s)', { n: whPlanCount }) %>"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
         <% } else if (user.role === "admin") { %>
-          <a href="/admin" class="<%= navCls('/admin') %>">Home</a>
+          <a href="/admin" class="<%= navCls('/admin') %>"><%= t("Home") %></a>
           <% var catAttn = (typeof pendingRequestCount !== "undefined" ? pendingRequestCount : 0) + (typeof deletedStockCount !== "undefined" ? deletedStockCount : 0); %>
-          <a href="/admin/batches" class="<%= navCls('/admin/batches') %> notif-link">Category<% if (catAttn > 0) { %><span class="fb-badge" title="<%= catAttn %> item(s) need attention"><%= catAttn > 9 ? '9+' : catAttn %></span><% } %></a>
-          <a href="/admin/promotions" class="<%= navCls('/admin/promotions') %>">Promotion</a>
-          <a href="/admin/advertisements" class="<%= navCls('/admin/advertisements') %>">Advertisement</a>
-          <a href="/admin/delivery-charges" class="<%= navCls('/admin/delivery-charges') %>">Delivery Charges</a>
-          <a href="/admin/announcements" class="<%= navCls('/admin/announcements') %>">Announcement</a>
-          <a href="/admin/subscriptions" class="<%= navCls('/admin/subscriptions') %> notif-link">Package Plan<% if (typeof newPaymentCount !== "undefined" && newPaymentCount > 0) { %><span class="fb-badge" title="<%= newPaymentCount %> new package payment(s)"><%= newPaymentCount > 9 ? '9+' : newPaymentCount %></span><% } %></a>
+          <a href="/admin/batches" class="<%= navCls('/admin/batches') %> notif-link"><%= t("Category") %><% if (catAttn > 0) { %><span class="fb-badge" title="<%= t('{n} item(s) need attention', { n: catAttn }) %>"><%= catAttn > 9 ? '9+' : catAttn %></span><% } %></a>
+          <a href="/admin/subscriptions" class="<%= navCls('/admin/subscriptions') %> notif-link"><%= t("Subscription Plan") %><% if (typeof newPaymentCount !== "undefined" && newPaymentCount > 0) { %><span class="fb-badge" title="<%= t('{n} new subscription payment(s)', { n: newPaymentCount }) %>"><%= newPaymentCount > 9 ? '9+' : newPaymentCount %></span><% } %></a>
+          <a href="/admin/promotions" class="<%= navCls('/admin/promotions') %>"><%= t("Promotion") %></a>
+          <a href="/admin/advertisements" class="<%= navCls('/admin/advertisements') %>"><%= t("Advertisement") %></a>
+          <a href="/admin/delivery-charges" class="<%= navCls('/admin/delivery-charges') %>"><%= t("Delivery Charges") %></a>
+          <a href="/admin/announcements" class="<%= navCls('/admin/announcements') %>"><%= t("Announcement") %></a>
           <% var accAttn = (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) + (typeof newUserCount !== "undefined" ? newUserCount : 0); %>
-          <a href="/admin/directory" class="<%= navCls('/admin/directory') %> notif-link">Accounts<% if (accAttn > 0) { %><span class="fb-badge" title="<%= accAttn %> new registration(s)"><%= accAttn > 9 ? '9+' : accAttn %></span><% } %></a>
+          <a href="/admin/directory" class="<%= navCls('/admin/directory') %> notif-link"><%= t("Accounts") %><% if (accAttn > 0) { %><span class="fb-badge" title="<%= t('{n} new registration(s)', { n: accAttn }) %>"><%= accAttn > 9 ? '9+' : accAttn %></span><% } %></a>
         <% } %>
-        <a href="/profile" class="<%= navCls('/profile') %>">Profile</a>
+        <a href="/profile" class="<%= navCls('/profile') %>"><%= t("Profile") %></a>
         <span class="user-pill">
           <span class="user-ava" title="<%= user.name || user.role %>">
             <% if (user.avatar_path) { %>
@@ -124,12 +133,20 @@
           <%= user.name || user.role %>
         </span>
         <form action="/logout" method="post" style="display:inline">
-          <button class="logout-btn" type="submit"><svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.75v8.5"/><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0"/></svg> Logout</button>
+          <button class="logout-btn" type="submit"><svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.75v8.5"/><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0"/></svg> <%= t("Logout") %></button>
         </form>
       <% } else { %>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
+        <%# Guest: a clean browse-only bar. Signing in is offered by the landing
+            hero, the category-page notice and the sticky bar (see footer) —
+            not as plain links crowding the header. %>
+        <a href="/" class="<%= navCls('/') %>"><%= t("Home") %></a>
+        <a href="/batches" class="<%= navCls('/batches') %>"><%= t("Category") %></a>
+        <a href="/about" class="<%= navCls('/about') %>"><%= t("About Us") %></a>
       <% } %>
+      <%# Language switcher (all roles + guests). data-no-ajax forces a full page
+          load so the header nav itself re-renders in the chosen language. %>
+      <a href="/lang/<%= lang === 'my' ? 'en' : 'my' %>" class="nav-link lang-switch" data-no-ajax
+         title="<%= lang === 'my' ? 'Switch to English' : 'မြန်မာဘာသာသို့ ပြောင်းရန်' %>">🌐 <%= lang === 'my' ? 'English' : 'မြန်မာ' %></a>
     </div>
     <!-- dimmed backdrop behind the open mobile menu; tapping it closes the menu -->
     <label for="navToggle" class="nav-backdrop" aria-hidden="true"></label>
@@ -141,6 +158,17 @@
     //   • Category — a newly published jaggery category
     //   • My Order — when a warehouse ships / delivers the customer's order
     (function () {
+      // server-translated strings ({n} is filled in client-side by fmt)
+      var L = <%- JSON.stringify({
+        view: t("View"), dismiss: t("Dismiss"),
+        catSub: t("A new jaggery category is available."),
+        catOne: t("🎉 {n} new category added!"), catMany: t("🎉 {n} new categories added!"),
+        ordSub: t("Tap View to track your order."),
+        ordDelivered: t("📦 Your order (No-{n}) has been delivered!"),
+        ordShipped: t("🚚 Your order (No-{n}) has been shipped!"),
+        ordOne: t("🚚 {n} order update!"), ordMany: t("🚚 {n} order updates!")
+      }) %>;
+      function fmt(s, n) { return String(s).replace("{n}", n); }
       var stack;
       function ensureStack() {
         if (!stack) { stack = document.createElement("div"); stack.className = "cat-popup-stack"; document.body.appendChild(stack); }
@@ -168,17 +196,27 @@
             popupEl.innerHTML =
               '<span class="cp-ico">' + (opts.icon || "🔔") + '</span>' +
               '<div class="cp-body"><div class="cp-title"></div><div class="cp-sub">' + opts.subText + '</div></div>' +
-              '<button type="button" class="cp-view">View</button>' +
-              '<button type="button" class="cp-close" aria-label="Dismiss">✕</button>';
+              '<button type="button" class="cp-view">' + L.view + '</button>' +
+              '<button type="button" class="cp-close" aria-label="' + L.dismiss + '">✕</button>';
             ensureStack().appendChild(popupEl);
             popupEl.querySelector(".cp-view").addEventListener("click", function () {
               if (location.pathname === opts.viewUrl) location.reload(); else location.href = opts.viewUrl;
             });
-            popupEl.querySelector(".cp-close").addEventListener("click", function () { popupEl.classList.remove("show"); });
+            popupEl.querySelector(".cp-close").addEventListener("click", hidePopup);
           }
           popupEl.querySelector(".cp-title").textContent = title;
           popupEl.classList.remove("show"); void popupEl.offsetWidth; popupEl.classList.add("show");
           // no auto-hide — stays until checked (View / ✕) or the page is refreshed/left
+        }
+        function hidePopup() {
+          // fade out + collapse the slot so the pop-ups below slide up, then drop the node
+          var el = popupEl;
+          if (!el) return;
+          popupEl = null; // a later notification builds a fresh pop-up
+          el.style.height = el.offsetHeight + "px"; // freeze auto height so it can animate to 0
+          void el.offsetWidth;
+          el.classList.remove("show"); el.classList.add("hide");
+          setTimeout(function () { el.remove(); }, 480);
         }
         var firstRun = true;
         return { update: function (count, data) {
@@ -186,28 +224,27 @@
           // categories: pop only when the count rises. orders (showOnLoad): pop on EVERY page
           // while there's an unchecked update, so it follows the customer until they open My Order.
           if ((count > prev) || (opts.showOnLoad && firstRun && count > 0)) showPopup(opts.buildTitle(count, data));
+          else if (count === 0) hidePopup(); // checked elsewhere — clear the stale pop-up so the stack closes up
           prev = count; firstRun = false;
         } };
       }
 
       var catCh = makeChannel({
         link: document.querySelector('.nav-links a[href="/batches"]'),
-        viewUrl: "/batches", icon: "🎉", subText: "A new jaggery category is available.",
+        viewUrl: "/batches", icon: "🎉", subText: L.catSub,
         showOnLoad: true, // keep showing on every page until checked on the Category page
-        buildTitle: function (c) { return "🎉 " + c + " new categor" + (c === 1 ? "y" : "ies") + " added!"; }
+        buildTitle: function (c) { return fmt(c === 1 ? L.catOne : L.catMany, c); }
       });
       var ordCh = makeChannel({
         link: document.querySelector('.nav-links a[href="/orders"]'),
-        viewUrl: "/orders", icon: "🚚", subText: "Tap View to track your order.",
+        viewUrl: "/orders", icon: "🚚", subText: L.ordSub,
         showOnLoad: true, // keep showing on every page until checked on My Order
         buildTitle: function (c, data) {
           if (data && data.items && data.items.length === 1) {
             var it = data.items[0];
-            return it.status === "delivered"
-              ? ("📦 Your order (No-" + it.seq + ") has been delivered!")
-              : ("🚚 Your order (No-" + it.seq + ") has been shipped!");
+            return fmt(it.status === "delivered" ? L.ordDelivered : L.ordShipped, it.seq);
           }
-          return "🚚 " + c + " order update" + (c === 1 ? "" : "s") + "!";
+          return fmt(c === 1 ? L.ordOne : L.ordMany, c);
         }
       });
 
@@ -234,15 +271,18 @@
   <% if (user && user.role === "warehouse") { %>
   <script>
     // Warehouse header notifications: same badge + slide-in pop-up as the customer side,
-    // for (1) new product categories in this warehouse's stock and (2) new package plans.
+    // for (1) new product categories in this warehouse's stock and (2) new subscription plans.
     (function () {
+      var L = <%- JSON.stringify({ view: t("View"), dismiss: t("Dismiss") }) %>;
+      function fmt(s, n) { return String(s).replace("{n}", n); }
       var stack;
       function ensureStack() {
         if (!stack) { stack = document.createElement("div"); stack.className = "cat-popup-stack"; document.body.appendChild(stack); }
         return stack;
       }
       // one independent notification "channel" per nav link
-      function makeChannel(link, viewUrl, labelOne, labelMany, subText, showOnLoad, icon) {
+      // tplOne / tplMany: full pre-translated pop-up titles with a {n} placeholder
+      function makeChannel(link, viewUrl, tplOne, tplMany, subText, showOnLoad, icon) {
         if (!link) return { update: function () {} };
         var popupEl = null;
         function badgeCount() {
@@ -267,31 +307,45 @@
             popupEl.innerHTML =
               '<span class="cp-ico">🔔</span>' +
               '<div class="cp-body"><div class="cp-title"></div><div class="cp-sub">' + subText + '</div></div>' +
-              '<button type="button" class="cp-view">View</button>' +
-              '<button type="button" class="cp-close" aria-label="Dismiss">✕</button>';
+              '<button type="button" class="cp-view">' + L.view + '</button>' +
+              '<button type="button" class="cp-close" aria-label="' + L.dismiss + '">✕</button>';
             ensureStack().appendChild(popupEl);
             popupEl.querySelector(".cp-view").addEventListener("click", function () {
               if (location.pathname === viewUrl) location.reload(); else location.href = viewUrl;
             });
-            popupEl.querySelector(".cp-close").addEventListener("click", function () { popupEl.classList.remove("show"); });
+            popupEl.querySelector(".cp-close").addEventListener("click", hidePopup);
           }
-          popupEl.querySelector(".cp-title").textContent = (icon || "🎉") + " " + count + " " + (count === 1 ? labelOne : labelMany) + "!";
+          popupEl.querySelector(".cp-title").textContent = fmt(count === 1 ? tplOne : tplMany, count);
           popupEl.classList.remove("show"); void popupEl.offsetWidth; popupEl.classList.add("show");
           // no auto-hide — stays until checked (View / ✕) or the page is refreshed/left
+        }
+        function hidePopup() {
+          // fade out + collapse the slot so the pop-ups below slide up, then drop the node
+          var el = popupEl;
+          if (!el) return;
+          popupEl = null; // a later notification builds a fresh pop-up
+          el.style.height = el.offsetHeight + "px"; // freeze auto height so it can animate to 0
+          void el.offsetWidth;
+          el.classList.remove("show"); el.classList.add("hide");
+          setTimeout(function () { el.remove(); }, 480);
         }
         var firstRun = true;
         return { update: function (count) {
           setBadge(count);
           if ((count > prev) || (showOnLoad && firstRun && count > 0)) showPopup(count);
+          else if (count === 0) hidePopup(); // checked elsewhere — clear the stale pop-up so the stack closes up
           prev = count; firstRun = false;
         } };
       }
       var catCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/stock-all"]'),
-        "/warehouse/stock-all", "new category", "new categories", "New product categories are in your stock.", true, "🎉");
+        "/warehouse/stock-all", <%- JSON.stringify(t("🎉 {n} new category!")) %>, <%- JSON.stringify(t("🎉 {n} new categories!")) %>,
+        <%- JSON.stringify(t("New product categories are in your stock.")) %>, true, "🎉");
       var subCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/subscription"]'),
-        "/warehouse/subscription", "new package plan", "new package plans", "A new package plan is available.", false, "💳");
+        "/warehouse/subscription", <%- JSON.stringify(t("💳 {n} new subscription plan!")) %>, <%- JSON.stringify(t("💳 {n} new subscription plans!")) %>,
+        <%- JSON.stringify(t("A new subscription plan is available.")) %>, false, "💳");
       var ordCh = makeChannel(document.querySelector('.nav-links a[href="/warehouse/orders-all"]'),
-        "/warehouse/orders-all", "new customer order", "new customer orders", "A customer just placed an order — open Orders to handle it.", true, "🛒");
+        "/warehouse/orders-all", <%- JSON.stringify(t("🛒 {n} new customer order!")) %>, <%- JSON.stringify(t("🛒 {n} new customer orders!")) %>,
+        <%- JSON.stringify(t("A customer just placed an order — open Orders to handle it.")) %>, true, "🛒");
 
       var polling = false;
       function poll() {
@@ -315,8 +369,10 @@
   <script>
     // Admin header notifications: badge + slide-in pop-up for (1) new product requests,
     // (2) stocks DELETED by a warehouse (alarm — stays until acknowledged), and
-    // (3) new package payments. Requests + deleted stock share the Category badge.
+    // (3) new subscription payments. Requests + deleted stock share the Category badge.
     (function () {
+      var L = <%- JSON.stringify({ view: t("View"), dismiss: t("Dismiss") }) %>;
+      function fmt(s, n) { return String(s).replace("{n}", n); }
       var stack;
       function ensureStack() {
         if (!stack) { stack = document.createElement("div"); stack.className = "cat-popup-stack"; document.body.appendChild(stack); }
@@ -344,37 +400,54 @@
             popupEl.innerHTML =
               '<span class="cp-ico">' + opts.icon + '</span>' +
               '<div class="cp-body"><div class="cp-title"></div><div class="cp-sub">' + opts.subText + '</div></div>' +
-              '<button type="button" class="cp-view">View</button>' +
-              '<button type="button" class="cp-close" aria-label="Dismiss">✕</button>';
+              '<button type="button" class="cp-view">' + L.view + '</button>' +
+              '<button type="button" class="cp-close" aria-label="' + L.dismiss + '">✕</button>';
             ensureStack().appendChild(popupEl);
             popupEl.querySelector(".cp-view").addEventListener("click", function () {
               if (location.pathname === opts.viewUrl) location.reload(); else location.href = opts.viewUrl;
             });
-            popupEl.querySelector(".cp-close").addEventListener("click", function () { popupEl.classList.remove("show"); });
+            popupEl.querySelector(".cp-close").addEventListener("click", hidePopup);
           }
-          popupEl.querySelector(".cp-title").textContent = opts.icon + " " + count + " " + (count === 1 ? opts.one : opts.many) + "!";
+          popupEl.querySelector(".cp-title").textContent = fmt(count === 1 ? opts.one : opts.many, count);
           popupEl.classList.remove("show"); void popupEl.offsetWidth; popupEl.classList.add("show");
+        }
+        function hidePopup() {
+          // fade out + collapse the slot so the pop-ups below slide up, then drop the node
+          var el = popupEl;
+          if (!el) return;
+          popupEl = null; // a later notification builds a fresh pop-up
+          el.style.height = el.offsetHeight + "px"; // freeze auto height so it can animate to 0
+          void el.offsetWidth;
+          el.classList.remove("show"); el.classList.add("hide");
+          setTimeout(function () { el.remove(); }, 480);
         }
         return { update: function (count) {
           if ((count > prev) || (opts.showOnLoad && firstRun && count > 0)) showPopup(count);
+          else if (count === 0) hidePopup(); // checked elsewhere — clear the stale pop-up so the stack closes up
           prev = count; firstRun = false;
         } };
       }
+      <%# one/many are full pre-translated titles with {n}; icon is baked into them %>
       var reqCh = popupChannel({ icon: "🆕", viewUrl: "/admin/batches", showOnLoad: true,
         baseline: <%= (typeof pendingRequestCount !== "undefined" ? pendingRequestCount : 0) %>,
-        one: "new product request", many: "new product requests", subText: "A warehouse is requesting a new product." });
+        one: <%- JSON.stringify(t("🆕 {n} new product request!")) %>, many: <%- JSON.stringify(t("🆕 {n} new product requests!")) %>,
+        subText: <%- JSON.stringify(t("A warehouse is requesting a new product.")) %> });
       var delCh = popupChannel({ icon: "🗑️", viewUrl: "/admin/batches", showOnLoad: true, alarm: true,
         baseline: <%= (typeof deletedStockCount !== "undefined" ? deletedStockCount : 0) %>,
-        one: "stock deleted by a warehouse", many: "stocks deleted by warehouses", subText: "Review the deleted stock on the Category page." });
+        one: <%- JSON.stringify(t("🗑️ {n} stock deleted by a warehouse!")) %>, many: <%- JSON.stringify(t("🗑️ {n} stocks deleted by warehouses!")) %>,
+        subText: <%- JSON.stringify(t("Review the deleted stock on the Category page.")) %> });
       var payCh = popupChannel({ icon: "💳", viewUrl: "/admin/subscriptions", showOnLoad: true,
         baseline: <%= (typeof newPaymentCount !== "undefined" ? newPaymentCount : 0) %>,
-        one: "new package payment", many: "new package payments", subText: "A warehouse bought / extended a package." });
+        one: <%- JSON.stringify(t("💳 {n} new subscription payment!")) %>, many: <%- JSON.stringify(t("💳 {n} new subscription payments!")) %>,
+        subText: <%- JSON.stringify(t("A warehouse bought / extended a subscription.")) %> });
       var whAccCh = popupChannel({ icon: "🏬", viewUrl: "/admin/directory", showOnLoad: true,
         baseline: <%= (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) %>,
-        one: "new warehouse registered", many: "new warehouses registered", subText: "A new warehouse just registered — review it on the Accounts page." });
+        one: <%- JSON.stringify(t("🏬 {n} new warehouse registered!")) %>, many: <%- JSON.stringify(t("🏬 {n} new warehouses registered!")) %>,
+        subText: <%- JSON.stringify(t("A new warehouse just registered — review it on the Accounts page.")) %> });
       var userAccCh = popupChannel({ icon: "🧑", viewUrl: "/admin/directory", showOnLoad: true,
         baseline: <%= (typeof newUserCount !== "undefined" ? newUserCount : 0) %>,
-        one: "new user registered", many: "new users registered", subText: "A new user just registered — review it on the Accounts page." });
+        one: <%- JSON.stringify(t("🧑 {n} new user registered!")) %>, many: <%- JSON.stringify(t("🧑 {n} new users registered!")) %>,
+        subText: <%- JSON.stringify(t("A new user just registered — review it on the Accounts page.")) %> });
 
       var polling = false;
       function poll() {
@@ -405,5 +478,5 @@
 
   <script>window.__pageScriptsBegin && window.__pageScriptsBegin();</script>
   <main class="container">
-    <% if (typeof flash !== "undefined" && flash) { %><div class="alert ok"><%= flash %></div><% } %>
-    <% if (typeof error !== "undefined" && error) { %><div class="alert err"><%= error %></div><% } %>
+    <% if (typeof flash !== "undefined" && flash) { %><div class="alert ok"><%= t(flash) %></div><% } %>
+    <% if (typeof error !== "undefined" && error) { %><div class="alert err"><%= t(error) %></div><% } %>

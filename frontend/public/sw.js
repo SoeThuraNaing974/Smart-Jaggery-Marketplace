@@ -1,13 +1,13 @@
-/* Service worker for "Local Jaggery" PWA.
+/* Service worker for "Smart Jaggery Mart" PWA.
    - Pre-caches the static app shell (CSS, JS, icons) for fast loads + basic offline.
    - Pages (HTML) use network-first so logged-in users always get fresh, correct data;
      if offline, a simple fallback message is shown.
    - Static assets use cache-first. */
-const CACHE = "jaggery-pwa-v63";
+const CACHE = "jaggery-pwa-v72";
 const SHELL = [
-  "/css/style.css?v=166",
+  "/css/style.css?v=191",
   "/js/charts.js?v=6",
-  "/js/confirm.js?v=5",
+  "/js/confirm.js?v=6",
   "/js/responsive-tables.js?v=3",
   "/js/nav-progress.js?v=2",
   "/js/inplace-delete.js?v=2",
@@ -75,8 +75,8 @@ self.addEventListener("fetch", (event) => {
     fetch(req).catch(() =>
       caches.match(req).then((hit) =>
         hit || new Response(
-          "<h2 style='font-family:sans-serif;color:#7a4a1e;text-align:center;margin-top:3rem'>You are offline</h2>" +
-          "<p style='font-family:sans-serif;color:#888;text-align:center'>Reconnect to use Local Jaggery.</p>",
+          "<h2 style='font-family:sans-serif;color:#7a4a1e;text-align:center;margin-top:3rem'>You are offline &middot; အင်တာနက် ချိတ်ဆက်မှု မရှိပါ</h2>" +
+          "<p style='font-family:sans-serif;color:#888;text-align:center'>Reconnect to use Smart Jaggery Mart.<br>Smart Jaggery Mart ကို သုံးရန် ပြန်လည်ချိတ်ဆက်ပါ။</p>",
           { headers: { "Content-Type": "text/html" } }
         )
       )

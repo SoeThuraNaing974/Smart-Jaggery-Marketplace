@@ -3,21 +3,21 @@
 <% if (!items.length) { %>
   <div class="empty-state">
     <div class="empty-icon">🛒</div>
-    <div class="empty-title">Your cart is empty</div>
-    <div class="empty-sub">Looks like you haven't added anything yet.</div>
-    <a class="btn" href="/batches">Browse categories</a>
+    <div class="empty-title"><%= t("Your cart is empty") %></div>
+    <div class="empty-sub"><%= t("Looks like you haven't added anything yet.") %></div>
+    <a class="btn" href="/batches"><%= t("Browse categories") %></a>
   </div>
 <% } else { %>
-  <h2>Your Cart</h2>
+  <h2><%= t("Your Cart") %></h2>
   <div class="card">
     <table class="tbl">
-      <thead><tr><th>No.</th><th>Category</th><th>Warehouse</th><th>Grade</th><th>Kyats/kg</th><th>Qty (kg)</th><th>Total (Kyats)</th><th></th></tr></thead>
+      <thead><tr><th><%= t("No.") %></th><th><%= t("Category") %></th><th><%= t("Warehouse") %></th><th><%= t("Grade") %></th><th><%= t("Kyats/kg") %></th><th><%= t("Qty (kg)") %></th><th><%= t("Total (Kyats)") %></th><th></th></tr></thead>
       <tbody>
         <% items.forEach((it, idx) => { %>
           <tr class="<%= it.issue ? 'expiry-row' : '' %>">
             <td><%= idx + 1 %></td>
             <td><%= it.batch ? it.batch.batch_id : ("#" + it.batch_pk) %>
-              <% if (it.issue) { %><br><span class="alert err" style="display:inline-block;margin:.2rem 0;padding:.2rem .4rem">⚠ <%= it.issue %></span><% } %>
+              <% if (it.issue) { %><br><span class="alert err" style="display:inline-block;margin:.2rem 0;padding:.2rem .4rem">⚠ <%= t(it.issue) %></span><% } %>
             </td>
             <td><%= it.batch ? (it.batch.warehouse_name || "—") : "—" %></td>
             <td><%= it.batch ? it.batch.grade : "—" %></td>
@@ -27,7 +27,7 @@
             <td>
               <form action="/cart/remove" method="post" class="inline">
                 <input type="hidden" name="batch_pk" value="<%= it.batch_pk %>">
-                <button class="btn sm" type="submit">Remove</button>
+                <button class="btn sm" type="submit"><%= t("Remove") %></button>
               </form>
             </td>
           </tr>
@@ -36,79 +36,149 @@
     </table>
 
     <% if (promo) { %>
-      <p><strong>Promotion: −<%= promo.discount_percent %>%</strong> <span class="muted">("<%= promo.title %>")</span></p>
+      <p><strong><%= t("Promotion:") %> −<%= promo.discount_percent %>%</strong> <span class="muted">("<%= promo.title %>")</span></p>
     <% } else { %>
-      <p><strong>Promotion: 0%</strong></p>
+      <p><strong><%= t("Promotion:") %> 0%</strong></p>
     <% } %>
-    <p id="feeLine"><strong>Delivery fee: <span id="feeVal"><%= Math.round(deliveryFee) %></span> Kyats</strong>
-      <span class="muted">(for your region <%= pincode || "—" %>)</span></p>
+    <p id="feeLine"><strong><%= t("Delivery fee:") %> <span id="feeVal"><%= Math.round(deliveryFee) %></span> <%= t("Kyats") %></strong>
+      <span class="muted" id="feeFor"><%= t("(for {region})", { region: pincode || t("your area — choose it below") }) %></span></p>
     <% if (promo) { %>
-      <p class="after-promo">Promotion: −<%= promo.discount_percent %>% of <%= Math.round(subtotal) %> Kyats (original) = −<%= Math.round(discount) %> Kyats</p>
+      <p class="after-promo"><%= t("Promotion: −{p}% of {s} Kyats (original) = −{d} Kyats", { p: promo.discount_percent, s: Math.round(subtotal), d: Math.round(discount) }) %></p>
     <% } %>
-    <p><strong>Total after promotion: <span id="payVal"><%= Math.round(deliveryTotal) %></span> Kyats</strong></p>
+    <p><strong><%= t("Total after promotion:") %> <span id="payVal"><%= Math.round(deliveryTotal) %></span> <%= t("Kyats") %></strong></p>
 
     <form action="/cart/clear" method="post" class="inline">
-      <button class="btn sm" type="submit">Clear cart</button>
+      <button class="btn sm" type="submit"><%= t("Clear cart") %></button>
     </form>
   </div>
 
   <div class="card">
-    <h3>Checkout</h3>
+    <h3><%= t("Checkout") %></h3>
     <% if (!canCheckout) { %>
-      <div class="alert err">Resolve the flagged item(s) above before checking out.</div>
+      <div class="alert err"><%= t("Resolve the flagged item(s) above before checking out.") %></div>
     <% } %>
     <form action="/cart/checkout" method="post" id="checkoutForm">
-      <label>Delivery address <input type="text" name="delivery_address" value="<%= address %>" required></label>
-      <label>State : <span class="muted">(optional)</span>
-        <input type="text" name="pincode" list="mmStatesCart" value="<%= pincode %>"
-               autocomplete="off" placeholder="Start typing a state…">
+      <label><%= t("Address Details including Ward and Home No.:") %>
+        <input type="text" name="address_details" value="<%= address %>" autocomplete="off"
+               placeholder="<%= t("e.g. Ward 5, No. 23, Thiri Street") %>" required>
       </label>
-      <datalist id="mmStatesCart">
-        <% [
-          "Kachin","Kayah","Kayin","Chin","Mon","Rakhine","Shan",
-          "Sagaing","Tanintharyi","Bago","Magway","Mandalay","Yangon","Ayeyarwady",
-          "Naypyitaw"
-        ].forEach(function(s){ %>
-          <option value="<%= s %>"></option>
-        <% }) %>
-      </datalist>
-      <label>Preferred delivery date <input type="date" name="preferred_date"></label>
+
+      <fieldset class="opt-group" id="scopeGroup">
+        <legend><%= t("Where are we delivering?") %></legend>
+        <label class="opt-row"><input type="radio" name="delivery_scope" value="local"
+          <%= deliveryScope === "foreign" ? "" : "checked" %>>
+          <%= t("Local") %> <span class="muted"><%= t("(inside Myanmar)") %></span></label>
+        <label class="opt-row"><input type="radio" name="delivery_scope" value="foreign"
+          <%= deliveryScope === "foreign" ? "checked" : "" %>>
+          <%= t("Foreign") %> <span class="muted"><%= t("(outside Myanmar)") %></span></label>
+      </fieldset>
+
+      <label id="cityWrap"><%= t("City") %> <span class="muted"><%= t("(Myanmar)") %></span>
+        <select name="city" id="citySel">
+          <option value=""><%= t("— Choose your city —") %></option>
+          <% localOptions.forEach(function (o) { %>
+            <option value="<%= o.name %>" data-fee="<%= Math.round(o.fee) %>"
+              <%= (deliveryScope !== "foreign" && pincode === o.name) ? "selected" : "" %>>
+              <%= o.name %> — <%= t("{n} Kyats", { n: Math.round(o.fee) }) %><%= o.charge === null ? " " + t("(standard)") : "" %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label id="countryWrap"><%= t("Country") %>
+        <select name="country" id="countrySel">
+          <option value=""><%= t("— Choose your country —") %></option>
+          <% foreignOptions.forEach(function (o) { %>
+            <option value="<%= o.name %>" data-fee="<%= Math.round(o.fee) %>"
+              <%= (deliveryScope === "foreign" && pincode === o.name) ? "selected" : "" %>>
+              <%= o.name %> — <%= t("{n} Kyats", { n: Math.round(o.fee) }) %><%= o.charge === null ? " " + t("(standard)") : "" %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label><%= t("Preferred delivery date") %> <input type="date" name="preferred_date"></label>
 
       <fieldset class="opt-group">
-        <legend>How do you want it?</legend>
+        <legend><%= t("How do you want it?") %></legend>
         <label class="opt-row"><input type="radio" name="fulfillment" value="delivery" checked>
-          Home delivery <span class="muted">(+<%= Math.round(deliveryFee) %> Kyats fee)</span></label>
+          <%= t("Home delivery") %> <span class="muted" id="feeHint"><%= t("(+{n} Kyats fee)", { n: Math.round(deliveryFee) }) %></span></label>
         <label class="opt-row"><input type="radio" name="fulfillment" value="pickup">
-          Pickup at warehouse <span class="muted">(free)</span></label>
+          <%= t("Pickup at warehouse") %> <span class="muted"><%= t("(free)") %></span></label>
       </fieldset>
 
       <fieldset class="opt-group">
-        <legend>Payment</legend>
+        <legend><%= t("Payment") %></legend>
         <label class="opt-row"><input type="radio" name="pay_when" value="online" checked>
-          Pay online now <span class="muted">(KPay / Wave / AYA / CB / Yoma / Bank)</span></label>
+          <%= t("Pay online now") %> <span class="muted">(KPay / Wave / AYA / CB / Yoma / Bank)</span></label>
         <label class="opt-row"><input type="radio" name="pay_when" value="cod">
-          Pay on delivery</label>
+          <%= t("Pay on delivery") %></label>
       </fieldset>
 
-      <button class="btn" type="submit" <%= canCheckout ? "" : "disabled" %>>Place order</button>
+      <button class="btn" type="submit" <%= canCheckout ? "" : "disabled" %>><%= t("Place order") %></button>
     </form>
   </div>
 
   <script>
-    // live-update the delivery fee / total when the customer toggles delivery vs pickup
+    // Live-update the delivery fee / total from the chosen location (the amount the
+    // admin set for that city/country) and from delivery-vs-pickup.
     (function () {
-      var fee = <%= deliveryFee %>;
-      var sub = <%= subtotal %>;        // before promotion
-      var goods = <%= total %>;         // subtotal minus promotion discount
+      var L = <%- JSON.stringify({
+        feeFor: t("(for {region})"), feeHint: t("(+{n} Kyats fee)"),
+        yourCity: t("your city — choose it below"), yourCountry: t("your country — choose it below")
+      }) %>;
+      var goods = <%= total %>;              // subtotal minus promotion discount
+      var defaultFee = <%= Math.round(defaultFee) %>;   // when the admin priced no city
+      var foreignFee = <%= Math.round(foreignFee) %>;   // admin's catch-all "Foreign" amount
       var feeVal = document.getElementById("feeVal");
       var payVal = document.getElementById("payVal");
-      document.querySelectorAll('input[name="fulfillment"]').forEach(function (r) {
-        r.addEventListener("change", function () {
-          var f = (this.value === "pickup") ? 0 : fee;
-          feeVal.textContent = Math.round(f);
-          payVal.textContent = Math.round(goods + f);   // total after promotion
-        });
-      });
+      var feeHint = document.getElementById("feeHint");
+      var feeFor = document.getElementById("feeFor");
+      var cityWrap = document.getElementById("cityWrap");
+      var countryWrap = document.getElementById("countryWrap");
+      var citySel = document.getElementById("citySel");
+      var countrySel = document.getElementById("countrySel");
+      var scopes = document.querySelectorAll('input[name="delivery_scope"]');
+      var fulfils = document.querySelectorAll('input[name="fulfillment"]');
+
+      function scope() {
+        var picked = document.querySelector('input[name="delivery_scope"]:checked');
+        return picked ? picked.value : "local";
+      }
+      function isPickup() {
+        var picked = document.querySelector('input[name="fulfillment"]:checked');
+        return picked && picked.value === "pickup";
+      }
+
+      function render() {
+        var foreign = scope() === "foreign";
+        // only the active list is shown — and only it is submitted
+        cityWrap.style.display = foreign ? "none" : "";
+        countryWrap.style.display = foreign ? "" : "none";
+        citySel.disabled = foreign;
+        countrySel.disabled = !foreign;
+        citySel.required = !foreign && !isPickup();
+        countrySel.required = foreign && !isPickup();
+
+        var sel = foreign ? countrySel : citySel;
+        var opt = sel.options[sel.selectedIndex];
+        var picked = sel.value;
+        var fee = picked && opt ? Number(opt.getAttribute("data-fee")) : (foreign ? foreignFee : defaultFee);
+        if (isPickup()) fee = 0;
+
+        feeVal.textContent = Math.round(fee);
+        payVal.textContent = Math.round(goods + fee);
+        if (feeHint) feeHint.textContent = L.feeHint.replace("{n}", Math.round(picked && opt ? Number(opt.getAttribute("data-fee")) : (foreign ? foreignFee : defaultFee)));
+        feeFor.textContent = L.feeFor.replace("{region}", picked
+          ? picked
+          : (foreign ? L.yourCountry : L.yourCity));
+      }
+
+      scopes.forEach(function (r) { r.addEventListener("change", render); });
+      fulfils.forEach(function (r) { r.addEventListener("change", render); });
+      citySel.addEventListener("change", render);
+      countrySel.addEventListener("change", render);
+      render();
     })();
   </script>
 <% } %>

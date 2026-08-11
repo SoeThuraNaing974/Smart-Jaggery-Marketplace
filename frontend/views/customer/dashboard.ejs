@@ -1,31 +1,32 @@
 <%- include("../partials/header") %>
-<% var custName = (user && user.name) ? user.name : "Customer"; %>
+<% var custName = (user && user.name) ? user.name : t("Customer"); %>
 <div class="welcome-hero">
   <div class="welcome-avatar"><%= custName.charAt(0).toUpperCase() %></div>
   <div class="welcome-text">
-    <span class="welcome-greeting" id="welcomeGreeting">Welcome back,</span>
+    <span class="welcome-greeting" id="welcomeGreeting"><%= t("Welcome back,") %></span>
     <span class="welcome-name"><%= custName %></span>
-    <span class="welcome-sub">🍯 Fresh, pure jaggery — picked just for you.</span>
+    <span class="welcome-sub">🍯 <%= t("Fresh, pure jaggery — picked just for you.") %></span>
   </div>
-  <a class="welcome-cta" href="/batches">Shop now →</a>
+  <a class="welcome-cta" href="/batches"><%= t("Shop now") %> →</a>
 </div>
 <script>
   (function () {
+    var L = <%- JSON.stringify({ gm: t("Good morning"), ga: t("Good afternoon"), ge: t("Good evening") }) %>;
     var h = new Date().getHours();
-    var g = h < 12 ? "Good morning" : (h < 17 ? "Good afternoon" : "Good evening");
+    var g = h < 12 ? L.gm : (h < 17 ? L.ga : L.ge);
     var el = document.getElementById("welcomeGreeting");
     if (el) el.textContent = g + ",";
   })();
 </script>
 
 <% if (typeof ads !== "undefined" && ads && ads.length) { %>
-  <section class="ad-rail" id="adRail" aria-label="Advertisements">
+  <section class="ad-rail <%= ads.length === 1 ? 'ad-rail-single' : '' %>" id="adRail" aria-label="<%= t("Advertisements") %>">
     <div class="ad-rail-head">
-      <span class="ad-rail-tag">✨ Advertisements For You</span>
+      <span class="ad-rail-tag">✨ <%= t("Advertisements For You") %></span>
       <% if (ads.length > 1) { %>
         <div class="ad-nav">
-          <button type="button" class="ad-arrow" data-ad-prev aria-label="Previous">‹</button>
-          <button type="button" class="ad-arrow" data-ad-next aria-label="Next">›</button>
+          <button type="button" class="ad-arrow" data-ad-prev aria-label="<%= t("Previous") %>">‹</button>
+          <button type="button" class="ad-arrow" data-ad-next aria-label="<%= t("Next") %>">›</button>
         </div>
       <% } %>
     </div>
@@ -36,7 +37,7 @@
           <h3 class="ad-title"><%= ad.title %></h3>
           <% if (ad.body) { %><p class="ad-body"><%= ad.body %></p><% } %>
           <% if (ad.link_url) { %>
-            <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || 'Learn more' %> →</a>
+            <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || t("Learn more") %> →</a>
           <% } %>
         </article>
       <% }) %>
@@ -64,19 +65,18 @@
 
 <% if (priceDrops && priceDrops.length) { %>
   <div class="card promo">
-    <h3>🔔 Price drops on items you're watching</h3>
+    <h3>🔔 <%= t("Price drops on items you're watching") %></h3>
     <ul>
       <% priceDrops.forEach(a => { %>
-        <li><strong><%= a.batch_code %></strong> is now <%= a.current_price %> Kyats/kg
-          (you wanted ≤ <%= a.desired_price %> Kyats) — <a href="/batches">grab it</a></li>
+        <li><strong><%= a.batch_code %></strong> <%= t("is now {p} Kyats/kg (you wanted ≤ {d} Kyats) —", { p: a.current_price, d: a.desired_price }) %> <a href="/batches"><%= t("grab it") %></a></li>
       <% }) %>
     </ul>
   </div>
 <% } %>
 
 <% if (announcements.length) { %>
-  <section class="ann-ticker" aria-label="Announcements">
-    <div class="ann-ticker-tag"><span class="att-ico">📢</span> NEWS</div>
+  <section class="ann-ticker" aria-label="<%= t("Announcements") %>">
+    <div class="ann-ticker-tag"><span class="att-ico">📢</span> <%= t("NEWS") %></div>
     <div class="ann-ticker-track">
       <div class="ann-ticker-move">
         <% for (var k = 0; k < 2; k++) { %>
@@ -97,19 +97,19 @@
     <div class="spend-head">
       <div class="spend-ico">💰</div>
       <div>
-        <div class="spend-label">Your spending by month</div>
-        <div class="spend-total"><%= Math.round(spendTotal).toLocaleString() %> Kyats</div>
-        <div class="spend-sub muted">total across <%= chart.labels.length %> month<%= chart.labels.length === 1 ? "" : "s" %></div>
+        <div class="spend-label"><%= t("Your spending by month") %></div>
+        <div class="spend-total"><%= t("{n} Kyats", { n: Math.round(spendTotal).toLocaleString() }) %></div>
+        <div class="spend-sub muted"><%= t(chart.labels.length === 1 ? "total across {n} month" : "total across {n} months", { n: chart.labels.length }) %></div>
       </div>
     </div>
     <% if (!chart.labels.length) { %>
-      <p class="muted">No orders yet — your spending will appear here.</p>
+      <p class="muted"><%= t("No orders yet — your spending will appear here.") %></p>
     <% } else { %>
       <canvas id="orderHistory" height="170"></canvas>
     <% } %>
   </div>
   <div class="card">
-    <h3>Recent orders <span class="muted">(last 3 days)</span></h3>
+    <h3><%= t("Recent orders") %> <span class="muted"><%= t("(last 3 days)") %></span></h3>
     <%
       // only orders placed within 3 days, keeping each order's overall number
       var dayOrders = [];
@@ -120,7 +120,7 @@
       });
     %>
     <% if (!dayOrders.length) { %>
-      <p class="muted">No orders in the last 3 days. <a class="btn sm" href="/orders">See all orders →</a></p>
+      <p class="muted"><%= t("No orders in the last 3 days.") %> <a class="btn sm" href="/orders"><%= t("See all orders") %> →</a></p>
     <% } %>
     <div class="recent-list">
       <% dayOrders.slice(0,5).forEach(function(row, idx) { var o = row.o; %>
@@ -129,36 +129,36 @@
           <span class="muted recent-time">🕐 <%= o.created_at ? o.created_at.substring(11,16) : "—" %></span>
           <span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span>
           <% if (o.payment_status === "paid") { %>
-            <span class="pay-badge paid">Paid</span>
+            <span class="pay-badge paid"><%= t("Paid") %></span>
           <% } else if (o.payment_method === "cod") { %>
-            <span class="pay-badge cod">Pay on delivery</span>
+            <span class="pay-badge cod"><%= t("Pay on delivery") %></span>
           <% } else { %>
-            <span class="pay-badge unpaid">Unpaid</span>
+            <span class="pay-badge unpaid"><%= t("Unpaid") %></span>
           <% } %>
-          <span class="recent-total"><%= o.grand_total %> Kyats</span>
-          <a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= row.n %>">🔍 Details</a>
+          <span class="recent-total"><%= t("{n} Kyats", { n: o.grand_total }) %></span>
+          <a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= row.n %>">🔍 <%= t("Details") %></a>
         </div>
       <% }) %>
     </div>
     <% if (dayOrders.length > 5) { %>
-      <button type="button" class="btn sm" id="recentReadMore" style="margin-top:.7rem">📋 Read more — view all <%= dayOrders.length %> with dates →</button>
+      <button type="button" class="btn sm" id="recentReadMore" style="margin-top:.7rem">📋 <%= t("Read more — view all {n} with dates", { n: dayOrders.length }) %> →</button>
     <% } else if (orders.length) { %>
-      <a class="btn sm" href="/orders" style="margin-top:.7rem">All orders →</a>
+      <a class="btn sm" href="/orders" style="margin-top:.7rem"><%= t("All orders") %> →</a>
     <% } %>
 
     <!-- popup: today's orders with date + date search -->
     <div class="modal-overlay" id="recentModal" style="display:none">
       <div class="modal-box perf-modal-box">
-        <div class="perf-modal-head">🧾 Orders in the last 3 days — <%= dayOrders.length %></div>
+        <div class="perf-modal-head">🧾 <%= t("Orders in the last 3 days — {n}", { n: dayOrders.length }) %></div>
         <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem">
-          <label class="ot-field">From <input type="date" id="recFrom"></label>
-          <label class="ot-field">To <input type="date" id="recTo"></label>
-          <button type="button" class="btn sm" id="recSearch">🔍 Search</button>
-          <button type="button" class="btn sm gray" id="recClear">Clear</button>
+          <label class="ot-field"><%= t("From") %> <input type="date" id="recFrom"></label>
+          <label class="ot-field"><%= t("To") %> <input type="date" id="recTo"></label>
+          <button type="button" class="btn sm" id="recSearch">🔍 <%= t("Search") %></button>
+          <button type="button" class="btn sm gray" id="recClear"><%= t("Clear") %></button>
         </div>
         <div class="perf-modal-scroll">
           <table class="tbl" id="recTable">
-            <thead><tr><th>No.</th><th>📅 Date</th><th>🕐 Time</th><th>Status</th><th>Total (Kyats)</th><th>Action</th></tr></thead>
+            <thead><tr><th><%= t("No.") %></th><th>📅 <%= t("Date") %></th><th>🕐 <%= t("Time") %></th><th><%= t("Status") %></th><th><%= t("Total (Kyats)") %></th><th><%= t("Action") %></th></tr></thead>
             <tbody>
               <% dayOrders.forEach(function(row, idx) { var o = row.o; var d = o.created_at ? o.created_at.substring(0,10) : ""; %>
                 <tr data-date="<%= d %>">
@@ -166,15 +166,15 @@
                   <td class="muted"><%= d || "—" %></td>
                   <td class="muted"><%= o.created_at ? o.created_at.substring(11,16) : "—" %></td>
                   <td><span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span></td>
-                  <td><%= o.grand_total %> Kyats</td>
-                  <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= row.n %>">🔍 Details</a></td>
+                  <td><%= t("{n} Kyats", { n: o.grand_total }) %></td>
+                  <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= row.n %>">🔍 <%= t("Details") %></a></td>
                 </tr>
               <% }) %>
             </tbody>
           </table>
-          <p class="muted" id="recNoRows" style="display:none;padding:.6rem">No orders in this date range.</p>
+          <p class="muted" id="recNoRows" style="display:none;padding:.6rem"><%= t("No orders in this date range.") %></p>
         </div>
-        <button type="button" class="btn" id="recClose" style="margin-top:.7rem">Close</button>
+        <button type="button" class="btn" id="recClose" style="margin-top:.7rem"><%= t("Close") %></button>
       </div>
     </div>
     <script>

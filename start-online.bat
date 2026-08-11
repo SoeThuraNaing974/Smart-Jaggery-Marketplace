@@ -3,7 +3,7 @@ title Jaggery - Run website LOCALLY
 cd /d "%~dp0"
 
 echo ============================================================
-echo   Smart Jaggery Marketplace - running LOCALLY (this PC only)
+echo   Smart Jaggery Mart - running LOCALLY (this PC only)
 echo ============================================================
 echo.
 echo [1/2] Starting the backend (Flask)...

@@ -4,6 +4,12 @@
    shift sideways and make the sticky header look like it "shakes" on navigation */
 html { overflow-y: scroll; scrollbar-gutter: stable; }
 body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg); color:#222; }
+/* Burmese UI (lang switcher): fonts with full Myanmar-script coverage + roomier
+   line-height — Burmese glyphs stack taller than Latin and clip at 1.2–1.4. */
+body.lang-my, body.lang-my input, body.lang-my button, body.lang-my select, body.lang-my textarea {
+  font-family: "Myanmar Text", Pyidaungsu, Padauk, "Noto Sans Myanmar", system-ui, Arial, sans-serif;
+}
+body.lang-my { line-height: 1.75; }
 .nav { display:flex; justify-content:space-between; align-items:center; background:var(--brown);
   color:#fff; padding:.7rem 1.2rem; position:sticky; top:0; z-index:100;
   box-shadow:0 2px 6px #0002; }
@@ -74,7 +80,7 @@ body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg)
   .lm3-orbit, .lm3-b1, .lm3-b2, .lm3-topwrap { animation:none; }
 }
 .nav-links { display:flex; align-items:center; gap:.4rem; }
-/* multi-word labels (Orders History, Request Category, Package Plan) must never
+/* multi-word labels (Orders History, Request Category, Subscription Plan) must never
    break onto two lines — keep every nav item on a single line */
 .nav-links a, .nav-links .user-pill, .nav-links .logout-btn { white-space:nowrap; }
 /* medium screens: tighten the bar so the longer warehouse nav still fits one row */
@@ -82,6 +88,16 @@ body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg)
   .nav-links a { margin-right:.4rem; font-size:.86rem; }
   .nav-links .user-pill { font-size:.85rem; }
   .brand { font-size:1rem; }
+}
+/* translated labels (Burmese) run much longer than English — keep the brand on a
+   single line and let the link row WRAP onto a second row instead of pushing the
+   last items (user pill / logout / language) off-screen. Burmese also gets slightly
+   tighter type so everything usually still fits on one row. */
+@media (min-width:761px) {
+  body:not(.role-admin) .brand { white-space:nowrap; flex:0 0 auto; }
+  body:not(.role-admin) .nav-links { flex-wrap:wrap; justify-content:flex-end; }
+  body.lang-my:not(.role-admin) .nav-links a { margin-right:.3rem; font-size:.88rem; }
+  body.lang-my:not(.role-admin) .nav-links .user-pill { font-size:.85rem; }
 }
 .badge { background:#fff3; padding:.1rem .5rem; border-radius:1rem; font-size:.8rem; }
 .container { max-width:1000px; margin:1.2rem auto; padding:0 1rem; }
@@ -143,11 +159,12 @@ h2,h3 { color:var(--brown); }
 label { display:block; margin:.5rem 0; font-size:.9rem; }
 input, select { width:100%; padding:.45rem; border:1px solid #ccc; border-radius:6px; }
 .row-form, .order-form { display:flex; flex-wrap:wrap; gap:.5rem; align-items:end; }
-/* keep Qty field + Add-to-cart button on the same line */
-.order-form { flex-wrap:nowrap; align-items:flex-end; }
+/* Qty field + Add-to-cart share one line while they fit; a long translated button
+   label (e.g. Burmese) wraps onto its own line instead of overflowing the card */
+.order-form { flex-wrap:wrap; align-items:flex-end; }
 .order-form label { margin:0; font-size:.8rem; flex:0 0 auto; }
 .order-form input { width:80px; }
-.order-form .btn { white-space:nowrap; }
+.order-form .btn { white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
 .row-form input, .row-form select { width:auto; flex:1; min-width:120px; }
 .inline { display:inline-flex; gap:.3rem; align-items:center; }
 .inline input { width:auto; }
@@ -514,6 +531,17 @@ body.role-customer .pay-badge.unpaid { background:#c62828; }
   display:block; visibility:hidden; background:none; border:none; text-align:left;
   padding:0; line-height:1.15; color:var(--brown); cursor:pointer; font-size:.78rem; text-decoration:underline;
 }
+/* Burmese: Myanmar glyph ink spans ~1.5em (1em above the baseline + 0.5em below),
+   far taller than Latin — the card rows are fixed-height with overflow:hidden, so
+   anything under ~1.8 line-height shears the stacked vowels/descenders ("blurry"
+   half-cut text). 1.9 keeps every glyph fully inside the clipped line box, and
+   the small toggle links get room so they don't paint over the neighbouring row. */
+body.lang-my .grid .card.batch > p { line-height:1.9; min-height:1.9em; }
+body.lang-my .grid .card.batch > p.price { min-height:1.9em; }
+body.lang-my .grid .card.batch .batch-name-box .batch-name { line-height:1.8; height:3.6em; }
+body.lang-my .grid .card.batch .name-toggle { line-height:1.5; }
+body.lang-my .desc-toggle { line-height:1.5; }
+body.lang-my .batch-desc .desc-text { line-height:1.8; height:3.6em; }
 /* full-description popup */
 .desc-modal { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000;
   display:flex; align-items:center; justify-content:center; padding:1rem; }
@@ -523,6 +551,12 @@ body.role-customer .pay-badge.unpaid { background:#c62828; }
 .desc-modal-box p { white-space:pre-line; color:#3a2a16; line-height:1.5; }
 .desc-modal-close { position:absolute; top:.5rem; right:.7rem; border:none; background:none;
   font-size:1.1rem; cursor:pointer; color:#888; }
+/* warehouse alarm: categories the admin removed from this warehouse */
+.wh-del-alert { border:1px solid #f0b3aa; background:#fff2f0; }
+.wh-del-alert h3 { color:#a12d2d; margin:.1rem 0 .35rem; }
+.wh-del-alert .wh-del-text { margin:.2rem 0 .4rem; color:#6a3d33; }
+.wh-del-list { margin:.2rem 0 .7rem 1.2rem; padding:0; }
+.wh-del-list li { margin:.18rem 0; color:#4a3226; }
 .expiry-row { background:#fff4e0; }
 .expired-row { background:#fbdcd8; }
 .expired-row td { color:#a12d2d; }
@@ -711,6 +745,15 @@ body.role-customer .pay-badge.unpaid { background:#c62828; }
   transition:transform .4s cubic-bezier(.2,.9,.3,1.25), opacity .35s ease;
 }
 .cat-popup.show { transform:translateY(0) scale(1); opacity:1; pointer-events:auto; }
+/* dismissed / checked: fade out, then collapse the slot (height + one stack gap) so the
+   pop-ups below slide up smoothly. JS freezes the height inline first so it can animate to 0. */
+.cat-popup.hide {
+  opacity:0; transform:translateY(-18px) scale(.96); pointer-events:none;
+  height:0 !important; min-height:0; padding-top:0; padding-bottom:0; margin-top:-.6rem;
+  border-top-width:0; border-bottom-width:0; overflow:hidden;
+  transition:transform .3s ease, opacity .25s ease,
+    height .3s ease .08s, padding .3s ease .08s, margin .3s ease .08s;
+}
 .cat-popup .cp-ico {
   font-size:1.55rem; line-height:1; transform-origin:top center;
   animation:cpBell 1.3s ease-in-out infinite;
@@ -1166,11 +1209,12 @@ body.role-customer .pay-badge.unpaid { background:#c62828; }
     overflow-y:auto; -webkit-overflow-scrolling:touch;
     transform:translateY(0) scale(1); }
 
-  /* each entry = a full-width, comfortably tappable row */
+  /* each entry = a full-width, comfortably tappable row (long translated labels
+     wrap inside the row instead of overflowing the menu card) */
   .nav-links a, .nav-links .link-btn, .nav-link {
     display:flex; align-items:center; width:100%; margin:0;
     padding:.72rem .8rem; border-radius:11px; font-size:1rem; font-weight:500;
-    white-space:nowrap; opacity:.97; text-align:left; transition:background .15s; }
+    white-space:normal; opacity:.97; text-align:left; transition:background .15s; }
   .nav-links a:active, .nav-links .link-btn:active { background:rgba(255,255,255,.16); }
   .nav-link::after { display:none; }               /* drop the desktop underline indicator */
   .nav-link.active { background:rgba(255,210,122,.2); box-shadow:inset 3px 0 0 #ffd27a; opacity:1; }
@@ -1223,6 +1267,7 @@ body.role-customer .pay-badge.unpaid { background:#c62828; }
   body.role-admin .nav-link {
     display:flex; align-items:center; width:100%; margin:0;
     padding:.55rem .7rem; border-radius:9px; transition:background .15s;
+    white-space:normal; /* long translated labels wrap inside the 232px sidebar */
   }
   body.role-admin .nav-links a:hover { background:rgba(255,255,255,.12); }
   body.role-admin .nav-link::after { display:none; }   /* vertical menu: left bar instead of underline */
@@ -1442,6 +1487,21 @@ img, canvas, video, svg { max-width:100%; }
 .ad-cta { display:inline-block; margin-top:.5rem; color:#fff; font-weight:700; font-size:.82rem;
   text-decoration:underline; text-underline-offset:3px; }
 .ad-cta:hover { opacity:.85; }
+
+/* grade description panel on the customer category page */
+.grade-info { background:#fff8ec; border:1px solid #eeddba; border-left:5px solid #d4a017;
+  border-radius:0 12px 12px 0; padding:.8rem 1rem; margin:0 0 1rem; }
+.grade-info-title { margin:0 0 .35rem; font-size:1.02rem; color:#5a3514; }
+.grade-info-line { margin:.25rem 0; font-size:.9rem; color:#6a5a48; line-height:1.55; }
+.grade-info-list { margin:.25rem 0 .1rem 1.2rem; padding:0; }
+.grade-info-list li { font-size:.9rem; color:#6a5a48; line-height:1.55; margin:.2rem 0; }
+
+/* a lone advertisement stretches across the whole row (banner style) */
+.ad-rail-single .ad-track { overflow:visible; }
+.ad-rail-single .ad-card { flex:1 1 100%; width:100%; padding:1.4rem 1.6rem; }
+.ad-rail-single .ad-card .ad-title { font-size:1.3rem; }
+.ad-rail-single .ad-card .ad-body { font-size:.95rem; max-width:56ch; }
+.ad-rail-single .ad-card::after { width:180px; height:180px; right:-40px; top:-60px; }
 
 /* accent themes (gradients) */
 .ad-card.accent-amber  { background:linear-gradient(135deg,#e8932f,#c9701b); }
@@ -1717,3 +1777,303 @@ img, canvas, video, svg { max-width:100%; }
 .acc-actions { display:flex; gap:.5rem; align-items:center; margin-top:.7rem; flex-wrap:wrap; }
 .dir-chk { width:1%; white-space:nowrap; text-align:center; }
 .dir-chk input { cursor:pointer; width:auto; }
+
+/* =====================================================================
+   GUEST (not-logged-in) SHOP FRONT
+   The header stays clean for visitors — no Login/Register links up there.
+   Signing in lives where it belongs instead: a landing hero, a slim notice
+   on the category page, and a sticky bar that follows the visitor.
+   ===================================================================== */
+
+/* ---- landing hero ---- */
+.guest-hero {
+  position:relative; overflow:hidden; border-radius:18px; color:#fff;
+  padding:1.5rem 1.4rem 1.3rem; margin:.2rem 0 1rem;
+  background:
+    radial-gradient(120% 140% at 88% -10%, rgba(255,225,170,.42), transparent 60%),
+    linear-gradient(120deg,#5d340f 0%,#7a4a1e 38%,#b8802a 76%,#e0a94a 100%);
+  box-shadow:0 14px 34px rgba(122,74,30,.30);
+}
+.guest-hero::after {                     /* soft jaggery-coloured orb */
+  content:""; position:absolute; right:-70px; bottom:-90px; width:230px; height:230px;
+  background:radial-gradient(circle,rgba(255,255,255,.20),transparent 68%); border-radius:50%;
+}
+.guest-hero > * { position:relative; z-index:1; }
+.guest-badge {
+  display:inline-flex; align-items:center; gap:.35rem; font-size:.7rem; font-weight:700;
+  letter-spacing:.5px; text-transform:uppercase; padding:.28rem .6rem; border-radius:999px;
+  background:rgba(255,255,255,.18); box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);
+}
+.guest-title {
+  margin:.55rem 0 .3rem; font-size:1.9rem; line-height:1.15; font-weight:800;
+  letter-spacing:.2px; text-shadow:0 2px 6px rgba(0,0,0,.20);
+}
+.guest-title span { color:#ffe6b8; }
+.guest-actions { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:1rem; }
+.gbtn {
+  display:inline-flex; align-items:center; gap:.4rem; text-decoration:none;
+  font-weight:700; font-size:.88rem; padding:.55rem 1.05rem; border-radius:10px;
+  transition:transform .13s ease, box-shadow .13s ease, background .15s ease;
+}
+.gbtn.solid { background:#fff; color:#7a4a1e !important; box-shadow:0 4px 14px rgba(0,0,0,.20); }
+.gbtn.solid:hover { background:#fff4e2; transform:translateY(-2px); box-shadow:0 7px 18px rgba(0,0,0,.24); }
+.gbtn.ghost { color:#fff !important; box-shadow:inset 0 0 0 1.6px rgba(255,255,255,.55); }
+.gbtn.ghost:hover { background:rgba(255,255,255,.14); transform:translateY(-2px); }
+
+/* ---- stat strip under the hero ---- */
+.guest-stats {
+  /* auto-fit, not a fixed 3 columns: the strip stays balanced whether it shows
+     two stats or four */
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:.6rem; margin:0 0 1rem;
+}
+.guest-stat {
+  background:#fff; border-radius:13px; padding:.7rem .8rem; text-align:center;
+  box-shadow:0 3px 12px rgba(122,74,30,.10); border:1px solid #f0e6d8;
+}
+.guest-stat b { display:block; font-size:1.3rem; color:var(--brown); line-height:1.1; }
+.guest-stat span { font-size:.72rem; color:#8a7a60; font-weight:600; }
+
+/* ---- slim "you're browsing as a guest" notice (category page) ---- */
+.guest-note {
+  display:flex; align-items:center; gap:.7rem; flex-wrap:wrap;
+  background:linear-gradient(100deg,#fff8ec,#fff);
+  border:1px solid #f0dfc4; border-left:4px solid #d99a3f;
+  border-radius:12px; padding:.6rem .85rem; margin:.2rem 0 1rem;
+  box-shadow:0 2px 10px rgba(122,74,30,.07);
+}
+.guest-note-ico { font-size:1.25rem; }
+.guest-note-txt { font-size:.85rem; color:#6b5334; line-height:1.35; }
+.guest-note-txt strong { color:var(--brown); }
+.guest-note .btn { margin-left:auto; }
+
+/* ---- sticky sign-in bar (follows the visitor, keeps the header clean) ---- */
+.guest-bar {
+  position:fixed; left:0; right:0; bottom:0; z-index:60;
+  display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem calc(.6rem + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.92); backdrop-filter:blur(9px);
+  border-top:1px solid #efe2cf; box-shadow:0 -6px 20px rgba(122,74,30,.12);
+  /* Deliberately NOT animated in. This bar is the only way a visitor signs in, so
+     its position must never depend on an animation finishing — a frozen or skipped
+     slide-in (throttled/background rendering, reduced motion) would leave it
+     stranded a full bar-height below the viewport. */
+}
+.guest-bar-txt { font-size:.84rem; color:#6b5334; line-height:1.3; }
+.guest-bar-txt strong { color:var(--brown); }
+.guest-bar-actions { margin-left:auto; display:flex; gap:.45rem; flex:0 0 auto; }
+.guest-bar .gbtn { padding:.45rem .85rem; font-size:.83rem; }
+.guest-bar .gbtn.solid { background:var(--brown); color:#fff !important; box-shadow:0 3px 10px rgba(122,74,30,.28); }
+.guest-bar .gbtn.solid:hover { background:#8d5722; }
+.guest-bar .gbtn.ghost { color:var(--brown) !important; box-shadow:inset 0 0 0 1.6px #dcc7a6; }
+.guest-bar .gbtn.ghost:hover { background:#fdf4e6; }
+/* room so the bar never covers the last row of content */
+body.is-guest main.container { padding-bottom:4.6rem; }
+
+@media (max-width:620px) {
+  .guest-hero { padding:1.2rem 1rem 1.1rem; border-radius:15px; }
+  .guest-title { font-size:1.45rem; }
+  .guest-stats { grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:.4rem; }
+  .guest-stat { padding:.55rem .4rem; }
+  .guest-stat b { font-size:1.05rem; }
+  .guest-stat span { font-size:.65rem; }
+  .guest-note .btn { margin-left:0; width:100%; text-align:center; }
+  .guest-bar { gap:.5rem; padding:.5rem .7rem calc(.5rem + env(safe-area-inset-bottom)); }
+  .guest-bar-txt { font-size:.76rem; }
+  .guest-bar-hide-sm { display:none; }
+}
+
+/* ---- About Us page ---- */
+.about-steps { margin:.4rem 0 0; padding-left:1.2rem; }
+.about-steps li { margin-bottom:.45rem; font-size:.9rem; line-height:1.45; color:#5c4a33; }
+.about-steps strong { color:var(--brown); }
+.about-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:.7rem; margin:0 0 1rem;
+}
+.about-tile {
+  background:#fff; border:1px solid #f0e6d8; border-radius:14px; padding:.9rem;
+  box-shadow:0 3px 12px rgba(122,74,30,.09);
+  transition:transform .13s ease, box-shadow .13s ease;
+}
+.about-tile:hover { transform:translateY(-2px); box-shadow:0 7px 18px rgba(122,74,30,.14); }
+.about-ico {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:10px; font-size:1.15rem;
+  background:linear-gradient(135deg,#fff1dc,#ffe0b4);
+}
+.about-tile h4 { margin:.5rem 0 .25rem; font-size:.95rem; color:var(--brown); }
+.about-tile p { margin:0; font-size:.82rem; color:#6b5334; line-height:1.4; }
+
+/* =====================================================================
+   ABOUT US — real CSS 3D (perspective, preserve-3d, pointer tilt, depth
+   scroll-reveal). Brand palette only: brown → amber → honey.
+
+   RULE followed throughout: motion is an ENHANCEMENT. Every element resting
+   state is "visible, in place". Hidden/rotated start states apply only under
+   html.a3d-ready, which JS adds — so if JS, IntersectionObserver or the
+   animations never run, the page still reads perfectly.
+   ===================================================================== */
+
+.a3d-stage { perspective:1100px; perspective-origin:50% 20%; }
+
+/* ---------- hero ---------- */
+.a3d-hero {
+  position:relative; overflow:hidden; border-radius:20px; color:#fff;
+  padding:2.1rem 1.5rem 1.9rem; margin:.2rem 0 1.1rem;
+  transform-style:preserve-3d;
+  background:
+    radial-gradient(90% 120% at 12% 0%, rgba(255,236,196,.30), transparent 55%),
+    radial-gradient(70% 90% at 95% 105%, rgba(255,196,110,.34), transparent 60%),
+    linear-gradient(125deg,#3f2109 0%,#6b3d13 34%,#9c6620 64%,#d9a03f 100%);
+  box-shadow:0 22px 48px rgba(63,33,9,.42), inset 0 1px 0 rgba(255,255,255,.16);
+}
+/* faint 3D grid floor for depth */
+.a3d-hero::before {
+  content:""; position:absolute; inset:auto -20% -30% -20%; height:60%;
+  background:
+    repeating-linear-gradient(to right, rgba(255,255,255,.10) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(to bottom, rgba(255,255,255,.10) 0 1px, transparent 1px 42px);
+  transform:rotateX(70deg); transform-origin:bottom center; opacity:.5; pointer-events:none;
+}
+.a3d-hero-inner {
+  position:relative; z-index:2; display:flex; align-items:center; gap:1.4rem; flex-wrap:wrap;
+  transform-style:preserve-3d;
+}
+.a3d-copy { flex:1 1 320px; min-width:0; transform-style:preserve-3d; }
+.a3d-eyebrow {
+  display:inline-flex; align-items:center; gap:.4rem; font-size:.7rem; font-weight:800;
+  letter-spacing:1.2px; text-transform:uppercase; padding:.3rem .7rem; border-radius:999px;
+  background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);
+  transform:translateZ(28px);
+}
+/* extruded headline — stacked shadows read as real depth */
+.a3d-headline {
+  margin:.6rem 0 .5rem; font-size:2.15rem; line-height:1.12; font-weight:800; letter-spacing:.2px;
+  transform:translateZ(46px);
+  text-shadow:
+    0 1px 0 #b07a2c, 0 2px 0 #a06f28, 0 3px 0 #8f6323,
+    0 4px 0 #7d561e, 0 6px 12px rgba(0,0,0,.34);
+}
+.a3d-headline span { color:#ffe3ad; }
+.a3d-sub { margin:0; font-size:.9rem; opacity:.95; max-width:44ch; transform:translateZ(22px); }
+.a3d-hero-actions { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:1.15rem; transform:translateZ(34px); }
+
+/* ---------- the spinning jaggery block (a real 3D cube) ---------- */
+.a3d-cube-wrap { flex:0 0 auto; width:150px; height:150px; perspective:620px; }
+.a3d-cube {
+  position:relative; width:96px; height:96px; margin:27px auto; transform-style:preserve-3d;
+  animation:a3dSpin 18s linear infinite;
+}
+.a3d-cube i {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:2rem; font-style:normal; border-radius:10px;
+  background:linear-gradient(135deg,#e6a94b,#a9711f);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.34), 0 0 22px rgba(255,214,150,.28);
+}
+.a3d-cube i:nth-child(1) { transform:translateZ(48px); }
+.a3d-cube i:nth-child(2) { transform:rotateY(180deg) translateZ(48px); }
+.a3d-cube i:nth-child(3) { transform:rotateY(90deg)  translateZ(48px); }
+.a3d-cube i:nth-child(4) { transform:rotateY(-90deg) translateZ(48px); }
+.a3d-cube i:nth-child(5) { transform:rotateX(90deg)  translateZ(48px); }
+.a3d-cube i:nth-child(6) { transform:rotateX(-90deg) translateZ(48px); }
+@keyframes a3dSpin {
+  from { transform:rotateX(-18deg) rotateY(0deg); }
+  to   { transform:rotateX(-18deg) rotateY(360deg); }
+}
+/* soft shadow the cube floats above */
+.a3d-cube-shadow {
+  width:88px; height:14px; margin:-6px auto 0; border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.34),transparent 70%);
+  animation:a3dShadow 4.2s ease-in-out infinite;
+}
+@keyframes a3dShadow { 50% { transform:scale(.82); opacity:.72; } }
+
+/* ---------- 3D "how it works" timeline ---------- */
+.a3d-steps { list-style:none; margin:.2rem 0 0; padding:0; position:relative; }
+.a3d-steps::before {
+  content:""; position:absolute; left:19px; top:6px; bottom:6px; width:2px;
+  background:linear-gradient(#e8c88f,#f3e6d2); border-radius:2px;
+}
+.a3d-step { position:relative; padding:0 0 .95rem 3.1rem; }
+.a3d-step:last-child { padding-bottom:0; }
+.a3d-step-no {
+  position:absolute; left:0; top:-2px; width:40px; height:40px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff;
+  background:linear-gradient(145deg,#a9711f,#6b3d13);
+  box-shadow:0 6px 14px rgba(107,61,19,.34), inset 0 1px 0 rgba(255,255,255,.34);
+  transform:perspective(420px) rotateY(-16deg); transition:transform .22s ease;
+}
+.a3d-step:hover .a3d-step-no { transform:perspective(420px) rotateY(10deg) translateZ(10px); }
+.a3d-step h4 { margin:.15rem 0 .2rem; font-size:.98rem; color:var(--brown); }
+.a3d-step p { margin:0; font-size:.86rem; color:#6b5334; line-height:1.45; }
+
+/* ---------- tilting feature tiles ---------- */
+.a3d-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:.8rem; margin:0 0 1.1rem; }
+.a3d-tile {
+  position:relative; overflow:hidden; background:#fff; border:1px solid #f1e7d9;
+  border-radius:16px; padding:1rem; transform-style:preserve-3d;
+  box-shadow:0 4px 16px rgba(122,74,30,.10);
+  /* --rx/--ry are written by the pointer handler; 0deg until then */
+  transform:perspective(760px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.a3d-tile:hover { box-shadow:0 16px 34px rgba(122,74,30,.20); }
+/* specular sheen that follows the cursor */
+.a3d-tile::after {
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:0;
+  background:radial-gradient(220px circle at var(--mx,50%) var(--my,50%), rgba(255,224,170,.42), transparent 62%);
+  transition:opacity .2s ease;
+}
+.a3d-tile:hover::after { opacity:1; }
+.a3d-tile-ico {
+  display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px;
+  border-radius:13px; font-size:1.35rem; transform:translateZ(26px);
+  background:linear-gradient(140deg,#fff2de,#ffdcaa);
+  box-shadow:0 6px 14px rgba(169,113,31,.22), inset 0 1px 0 #fff;
+}
+.a3d-tile h4 { margin:.6rem 0 .25rem; font-size:.97rem; color:var(--brown); transform:translateZ(16px); }
+.a3d-tile p { margin:0; font-size:.83rem; color:#6b5334; line-height:1.45; transform:translateZ(10px); }
+
+/* ---------- panels with a lifted, layered look ---------- */
+.a3d-panel {
+  background:#fff; border:1px solid #f1e7d9; border-radius:18px; padding:1.1rem 1.15rem;
+  margin:0 0 1.1rem; box-shadow:0 6px 22px rgba(122,74,30,.10);
+  transform-style:preserve-3d;
+}
+.a3d-panel h3 { margin:0 0 .5rem; color:var(--brown); font-size:1.08rem; }
+.a3d-panel p { font-size:.89rem; line-height:1.5; color:#5c4a33; }
+.a3d-panel-cta { background:linear-gradient(120deg,#fff8ec,#fff); border-left:4px solid #d99a3f; }
+
+/* ---------- depth scroll-reveal (opt-in via html.a3d-ready) ---------- */
+html.a3d-ready .a3d-reveal {
+  opacity:0; transform:perspective(900px) rotateX(12deg) translate3d(0,30px,-40px);
+  transition:opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1);
+  will-change:opacity, transform;
+}
+html.a3d-ready .a3d-reveal.in { opacity:1; transform:none; }
+
+/* ---------- honest about motion preferences ---------- */
+@media (prefers-reduced-motion:reduce) {
+  .a3d-cube, .a3d-cube-shadow { animation:none; }
+  .a3d-hero::before { display:none; }
+  html.a3d-ready .a3d-reveal { opacity:1; transform:none; transition:none; }
+  .a3d-tile, .a3d-step-no { transition:none; }
+}
+
+@media (max-width:620px) {
+  .a3d-hero { padding:1.5rem 1.05rem 1.4rem; border-radius:16px; }
+  .a3d-hero-inner { gap:.9rem; }
+  .a3d-headline { font-size:1.55rem; text-shadow:0 1px 0 #b07a2c, 0 2px 0 #966824, 0 4px 10px rgba(0,0,0,.34); }
+  .a3d-sub { font-size:.84rem; }
+  .a3d-cube-wrap { width:112px; height:112px; margin-left:auto; margin-right:auto; }
+  .a3d-cube { width:72px; height:72px; margin:20px auto; }
+  .a3d-cube i { font-size:1.5rem; }
+  .a3d-cube i:nth-child(1) { transform:translateZ(36px); }
+  .a3d-cube i:nth-child(2) { transform:rotateY(180deg) translateZ(36px); }
+  .a3d-cube i:nth-child(3) { transform:rotateY(90deg)  translateZ(36px); }
+  .a3d-cube i:nth-child(4) { transform:rotateY(-90deg) translateZ(36px); }
+  .a3d-cube i:nth-child(5) { transform:rotateX(90deg)  translateZ(36px); }
+  .a3d-cube i:nth-child(6) { transform:rotateX(-90deg) translateZ(36px); }
+  .a3d-step { padding-left:2.8rem; }
+}

@@ -8,5 +8,5 @@
   var ccSel = (typeof selected !== "undefined" && selected) ? selected : "+95";
 %>
 <% ccList.forEach(function (c) { %>
-  <option value="<%= c[0] %>" <%= ccSel === c[0] ? "selected" : "" %>><%= c[0] %> <%= c[1] %></option>
+  <option value="<%= c[0] %>" <%= ccSel === c[0] ? "selected" : "" %>><%= c[0] %> <%= t(c[1]) %></option>
 <% }) %>

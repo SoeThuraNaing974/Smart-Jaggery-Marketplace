@@ -3,23 +3,23 @@
 <div class="page-intro">
   <span class="page-intro-ico">💰</span>
   <div>
-    <strong>Package payments received</strong>
-    <span>Every payment collected from warehouses — filter by warehouse and date.</span>
+    <strong><%= t("Subscription payments received") %></strong>
+    <span><%= t("Every payment collected from warehouses — filter by warehouse and date.") %></span>
   </div>
 </div>
 
 <div class="card">
-  <h3>Payments received <span class="badge" id="payTotal" style="font-size:1.15rem;padding:.3rem .7rem">= <%= totalCollected %> Kyats</span>
-    <span class="muted" id="payPeriodLabel" style="font-size:.85rem;font-weight:400"> · all time</span></h3>
+  <h3><%= t("Payments received") %> <span class="badge" id="payTotal" style="font-size:1.15rem;padding:.3rem .7rem">= <%= t("{n} Kyats", { n: totalCollected }) %></span>
+    <span class="muted" id="payPeriodLabel" style="font-size:.85rem;font-weight:400"> · <%= t("all time") %></span></h3>
 
   <div class="orders-toolbar" style="justify-content:flex-start;margin:.3rem 0 .7rem;flex-wrap:wrap">
-    <label class="ot-field">🏬 Warehouse <select id="payWhSel" style="padding:.25rem .4rem"></select></label>
-    <label class="ot-field">📅 From <input type="date" id="payFrom"></label>
-    <label class="ot-field">📅 To <input type="date" id="payTo"></label>
-    <button type="button" class="btn sm" id="paySearch">🔍 Search</button>
-    <button type="button" class="btn sm gray" id="payClear">Clear</button>
-    <a class="btn sm" id="payPdf" href="/admin/payments/pdf" target="_blank">⬇ Download PDF slip</a>
-    <a class="btn sm gray" href="/admin/subscriptions">← Back to packages</a>
+    <label class="ot-field">🏬 <%= t("Warehouse") %> <select id="payWhSel" style="padding:.25rem .4rem"></select></label>
+    <label class="ot-field">📅 <%= t("From") %> <input type="date" id="payFrom"></label>
+    <label class="ot-field">📅 <%= t("To") %> <input type="date" id="payTo"></label>
+    <button type="button" class="btn sm" id="paySearch">🔍 <%= t("Search") %></button>
+    <button type="button" class="btn sm gray" id="payClear"><%= t("Clear") %></button>
+    <a class="btn sm" id="payPdf" href="/admin/payments/pdf" target="_blank">⬇ <%= t("Download PDF slip") %></a>
+    <a class="btn sm gray" href="/admin/subscriptions">← <%= t("Back to subscriptions") %></a>
   </div>
 
   <p class="muted" id="payCountLine" style="margin:.6rem 0"></p>
@@ -27,15 +27,15 @@
   <% if (!payments.length) { %>
     <div class="empty-state">
       <div class="empty-icon">🧾</div>
-      <div class="empty-title">No payments yet</div>
-      <div class="empty-sub">Package payments will appear here.</div>
+      <div class="empty-title"><%= t("No payments yet") %></div>
+      <div class="empty-sub"><%= t("Subscription payments will appear here.") %></div>
     </div>
   <% } else { %>
-    <form id="bulkPay" action="/admin/payments/delete" method="post" data-confirm="Delete the selected payment record(s)? This only removes the receipts; packages stay active."></form>
+    <form id="bulkPay" action="/admin/payments/delete" method="post" data-confirm="<%= t("Delete the selected payment record(s)? This only removes the receipts; subscriptions stay active.") %>"></form>
     <table class="tbl" id="payTable">
       <thead>
-        <tr><th><input type="checkbox" class="bulk-all" data-group="pay" title="Select all"></th><th>No.</th><th>📅 Date</th><th>Warehouse</th><th>Plan</th>
-          <th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th></tr>
+        <tr><th><input type="checkbox" class="bulk-all" data-group="pay" title="<%= t("Select all") %>"></th><th><%= t("No.") %></th><th>📅 <%= t("Date") %></th><th><%= t("Warehouse") %></th><th><%= t("Plan") %></th>
+          <th><%= t("Amount (Kyats)") %></th><th><%= t("Method") %></th><th><%= t("Reference") %></th><th><%= t("Status") %></th></tr>
       </thead>
       <tbody>
         <% payments.forEach((p) => { var pd = p.created_at ? p.created_at.substring(0,10) : ""; %>
@@ -48,19 +48,20 @@
             <td><%= p.amount %></td>
             <td><%= p.method_label %></td>
             <td class="muted"><%= p.reference %></td>
-            <td><span class="status status-<%= p.status === 'paid' ? 'delivered' : 'pending' %>"><%= p.status %></span></td>
+            <td><span class="status status-<%= p.status === 'paid' ? 'delivered' : 'pending' %>"><%= t(p.status) %></span></td>
           </tr>
         <% }) %>
       </tbody>
     </table>
-    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkPay">🗑 Delete selected</button></div>
-    <p class="muted" id="payNoRows" style="display:none;padding:.6rem">No payments in this range.</p>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkPay">🗑 <%= t("Delete selected") %></button></div>
+    <p class="muted" id="payNoRows" style="display:none;padding:.6rem"><%= t("No payments in this range.") %></p>
   <% } %>
 </div>
 
 <script>
   (function () {
     var data = <%- JSON.stringify((payments || []).map(function (p) { return { a: Number(p.amount) || 0, d: p.created_at ? p.created_at.substring(0,10) : "", paid: (p.status === "paid"), w: p.warehouse_name || "" }; })) %>;
+    var L = <%- JSON.stringify({ allWh: t("All warehouses"), kyats: t("{n} Kyats"), allTime: t("all time"), start: t("start"), now: t("now"), payOne: t("{n} payment shown"), payMany: t("{n} payments shown") }) %>;
     var totalEl = document.getElementById("payTotal");
     var labelEl = document.getElementById("payPeriodLabel");
     var countEl = document.getElementById("payCountLine");
@@ -91,7 +92,7 @@
       var payMaster = document.querySelector('.bulk-all[data-group="pay"]');
       if (payMaster) payMaster.checked = false;
       if (noRows) noRows.style.display = shown ? "none" : "";
-      totalEl.textContent = "= " + total + " Kyats";
+      totalEl.textContent = "= " + L.kyats.replace("{n}", total);
       // keep the PDF-slip link in sync with the active filter
       var pdf = document.getElementById("payPdf");
       if (pdf) {
@@ -102,14 +103,14 @@
         pdf.href = "/admin/payments/pdf" + (pq.length ? "?" + pq.join("&") : "");
       }
       var f = fromEl.value, t = toEl.value, parts = [];
-      parts.push((f || t) ? ((f || "start") + " → " + (t || "now")) : "all time");
+      parts.push((f || t) ? ((f || L.start) + " → " + (t || L.now)) : L.allTime);
       if (whSel.value) parts.push(whSel.value);
       labelEl.textContent = " · " + parts.join(" · ");
-      countEl.innerHTML = "<strong>" + shown + "</strong> payment" + (shown === 1 ? "" : "s") + " shown";
+      countEl.innerHTML = (shown === 1 ? L.payOne : L.payMany).replace("{n}", "<strong>" + shown + "</strong>");
     }
     var whs = {};
     data.forEach(function (p) { if (p.w) whs[p.w] = true; });
-    whSel.innerHTML = '<option value="">All warehouses</option>' +
+    whSel.innerHTML = '<option value="">' + L.allWh + '</option>' +
       Object.keys(whs).sort().map(function (w) { return '<option value="' + w + '">' + w + '</option>'; }).join("");
     [whSel, fromEl, toEl].forEach(function (el) { el.addEventListener("change", render); });
     document.getElementById("paySearch").addEventListener("click", render);

@@ -7,6 +7,28 @@ from config import Config
 from db import db
 
 
+def _ensure_new_columns():
+    """Tiny in-place migration: db.create_all() creates missing TABLES but never
+    adds new columns to an existing table, so columns introduced after a database
+    was first created are added here."""
+    from sqlalchemy import inspect, text
+    insp = inspect(db.engine)
+    cols = {c["name"] for c in insp.get_columns("jaggery_batches")}
+    if "deleted_by" not in cols:
+        with db.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE jaggery_batches ADD COLUMN deleted_by VARCHAR(10)"))
+            # everything soft-deleted before this column existed was warehouse-deleted
+            conn.execute(text("UPDATE jaggery_batches SET deleted_by = 'warehouse' "
+                              "WHERE deleted_at IS NOT NULL AND deleted_by IS NULL"))
+    # category names are no longer globally unique — drop the old constraint
+    # (Postgres only; fresh databases are created without it from the model)
+    if db.engine.dialect.name == "postgresql":
+        for uc in insp.get_unique_constraints("jaggery_batches"):
+            if uc.get("column_names") == ["batch_id"] and uc.get("name"):
+                with db.engine.begin() as conn:
+                    conn.execute(text(f'ALTER TABLE jaggery_batches DROP CONSTRAINT "{uc["name"]}"'))
+
+
 def create_app(config_overrides=None):
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -28,12 +50,16 @@ def create_app(config_overrides=None):
     from routes.warehouse import bp as warehouse_bp
     from routes.admin import bp as admin_bp
     from routes.messages import bp as messages_bp
+    # Consolidated pickup & delivery (multi-warehouse splitting, escrow, wallets).
+    # Additive: new endpoints only — the single-warehouse /api/orders flow is untouched.
+    from consolidated import bp as consolidated_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(customer_bp)
     app.register_blueprint(warehouse_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(messages_bp)
+    app.register_blueprint(consolidated_bp)
 
     @app.get("/api/health")
     def health():
@@ -55,6 +81,7 @@ def create_app(config_overrides=None):
     with app.app_context():
         os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
         db.create_all()
+        _ensure_new_columns()
 
     return app
 

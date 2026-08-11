@@ -162,15 +162,28 @@ router.post("/batches", requireRole("warehouse"), async (req, res) => {
   res.redirect("/warehouse" + q);
 });
 
-// Update batch stock/price
+// Update category details (name, grade, qty, price, production date, description)
 router.post("/batches/:pk/update", requireRole("warehouse"), async (req, res) => {
   const api = client(req.token);
-  const r = await api.put(`/api/warehouse/batches/${req.params.pk}`, {
+  const body = {
     qty_kg: req.body.qty_kg,
     price_per_kg: req.body.price_per_kg,
-  });
+  };
+  if ((req.body.batch_id || "").trim()) body.batch_id = req.body.batch_id.trim();
+  if (req.body.grade) body.grade = req.body.grade;
+  if ((req.body.harvest_date || "").trim()) body.harvest_date = req.body.harvest_date.trim();
+  // Ingredients + Effectiveness are edited as two fields and recombined into the
+  // product description (same shape the admin side uses).
+  if (req.body.ingredients !== undefined || req.body.effectiveness !== undefined) {
+    const parts = [];
+    if ((req.body.ingredients || "").trim()) parts.push("Ingredients: " + req.body.ingredients.trim());
+    if ((req.body.effectiveness || "").trim()) parts.push("Effectiveness: " + req.body.effectiveness.trim());
+    body.description = parts.join("\n\n");
+  }
+  const back = req.body._back === "all" ? "/warehouse/stock-all" : "/warehouse";
+  const r = await api.put(`/api/warehouse/batches/${req.params.pk}`, body);
   const q = r.status === 200 ? "?msg=Batch+updated" : "?err=" + encodeURIComponent(r.data.error);
-  res.redirect("/warehouse" + q);
+  res.redirect(back + q);
 });
 
 // Remove a batch (e.g. an expired product) from this warehouse's stock
@@ -179,8 +192,20 @@ router.post("/batches/:pk/delete", requireRole("warehouse"), async (req, res) =>
   const q = r.status === 200
     ? "?msg=" + encodeURIComponent((r.data && r.data.message) || "Removed")
     : "?err=" + encodeURIComponent((r.data && r.data.error) || "Could not remove");
-  res.redirect("/warehouse" + q);
+  const back = req.body._back === "all" ? "/warehouse/stock-all" : "/warehouse";
+  res.redirect(back + q);
 });
+// Warehouse dismisses the "admin removed your category" alarm — remembers the
+// acknowledged batch ids in a cookie so the banner/badge stop showing them.
+router.post("/deleted-ack", requireRole("warehouse"), (req, res) => {
+  let ids = req.body.ids || []; if (!Array.isArray(ids)) ids = [ids];
+  const seen = new Set((req.cookies.wh_del_seen || "").split(",").filter(Boolean));
+  ids.map(String).filter(Boolean).forEach((i) => seen.add(i));
+  res.cookie("wh_del_seen", Array.from(seen).join(","),
+    { httpOnly: true, sameSite: "lax", maxAge: 31536000000 });
+  res.redirect(req.body._back === "all" ? "/warehouse/stock-all" : "/warehouse");
+});
+
 // Bulk soft-delete stock (table "Select all")
 router.post("/batches/bulk-delete", requireRole("warehouse"), async (req, res) => {
   let ids = req.body.stock_ids || []; if (!Array.isArray(ids)) ids = [ids];
@@ -368,7 +393,7 @@ router.get("/subscription", requireRole("warehouse"), async (req, res) => {
     plans: planList,
     payments: payments.data || [],
     paid: req.query.paid === "1",
-    payMsg: req.query.pm || "Your package payment has been confirmed. Thank you!",
+    payMsg: req.query.pm || "Your subscription payment has been confirmed. Thank you!",
     payAmount: req.query.pa || null,
     flash: req.query.msg || null, error: req.query.err || null,
   });
@@ -499,7 +524,7 @@ router.post("/subscription/pay", requireRole("warehouse"), async (req, res) => {
     return res.redirect(`/warehouse/subscription/checkout?plan_id=${Number(req.body.plan_id)}&err=` + encodeURIComponent(r.data.error || "Payment failed"));
   }
   const amt = (r.data.payment && r.data.payment.amount) || "";
-  res.redirect("/warehouse/subscription?paid=1&pm=" + encodeURIComponent(r.data.message || "Package activated.") +
+  res.redirect("/warehouse/subscription?paid=1&pm=" + encodeURIComponent(r.data.message || "Subscription activated.") +
     (amt ? "&pa=" + encodeURIComponent(amt) : ""));
 });
 

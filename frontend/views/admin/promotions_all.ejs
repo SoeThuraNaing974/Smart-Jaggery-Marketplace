@@ -1,28 +1,28 @@
 <%- include("../partials/header") %>
 
 <div class="page-intro">
-  <h2>🏷️ All Promotions</h2>
+  <h2>🏷️ <%= t("All Promotions") %></h2>
 </div>
 
 <div class="card">
   <form action="/admin/promotions-all" method="get" class="orders-toolbar">
-    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
-    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
-    <button class="btn sm" type="submit">🔍 Search</button>
-    <% if (from || to) { %><a class="btn sm gray" href="/admin/promotions-all">Clear</a><% } %>
-    <a class="btn sm gray" href="/admin/promotions">← Back</a>
+    <label class="ot-field"><%= t("From") %> <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field"><%= t("To") %> <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 <%= t("Search") %></button>
+    <% if (from || to) { %><a class="btn sm gray" href="/admin/promotions-all"><%= t("Clear") %></a><% } %>
+    <a class="btn sm gray" href="/admin/promotions">← <%= t("Back") %></a>
   </form>
 
   <p class="muted" style="margin:.6rem 0">
-    <strong><%= promotions.length %></strong> promotion<%= promotions.length === 1 ? "" : "s" %><%
-      if (from || to) { %> · running <%= from || "…" %> → <%= to || "…" %><% } %>
+    <strong><%= t(promotions.length === 1 ? "{n} promotion" : "{n} promotions", { n: promotions.length }) %></strong><%
+      if (from || to) { %> · <%= t("running {from} → {to}", { from: from || "…", to: to || "…" }) %><% } %>
   </p>
 
   <% if (!promotions.length) { %>
     <div class="empty-state">
       <div class="empty-icon">🏷️</div>
-      <div class="empty-title">No promotions found</div>
-      <div class="empty-sub">Try a different date range.</div>
+      <div class="empty-title"><%= t("No promotions found") %></div>
+      <div class="empty-sub"><%= t("Try a different date range.") %></div>
     </div>
   <% } else { %>
     <%
@@ -40,57 +40,57 @@
       var totRevenue = perf.reduce(function (t, r) { return t + r.revenue; }, 0);
     %>
 
-    <h3 class="promo-sec">📊 Promotion performance <span class="muted">(top <%= Math.min(3, perf.length) %> of <%= perf.length %>)</span></h3>
+    <h3 class="promo-sec">📊 <%= t("Promotion performance") %> <span class="muted">(<%= t("top {a} of {b}", { a: Math.min(3, perf.length), b: perf.length }) %>)</span></h3>
     <table class="tbl promo-perf">
-      <thead><tr><th>No.</th><th>Promotion</th><th>Orders</th><th>Revenue (Kyats)</th></tr></thead>
+      <thead><tr><th><%= t("No.") %></th><th><%= t("Promotion") %></th><th><%= t("Orders") %></th><th><%= t("Revenue (Kyats)") %></th></tr></thead>
       <tbody>
         <% perf.slice(0, 3).forEach(function (r, i) { %>
           <tr>
             <td><span class="perf-rank <%= i === 0 ? 'top' : '' %>"><%= i + 1 %></span></td>
-            <td><strong><%= r.title %></strong><% if (!r.active) { %> <span class="muted">· inactive</span><% } %></td>
+            <td><strong><%= r.title %></strong><% if (!r.active) { %> <span class="muted">· <%= t("inactive") %></span><% } %></td>
             <td><%= r.orders %></td>
-            <td><%= r.revenue %> Kyats</td>
+            <td><%= t("{n} Kyats", { n: r.revenue }) %></td>
           </tr>
         <% }) %>
       </tbody>
       <tfoot>
-        <tr><td></td><td><strong>Total (all <%= perf.length %>)</strong></td><td><strong><%= totOrders %></strong></td>
-            <td><strong><%= totRevenue %> Kyats</strong></td></tr>
+        <tr><td></td><td><strong><%= t("Total (all {n})", { n: perf.length }) %></strong></td><td><strong><%= totOrders %></strong></td>
+            <td><strong><%= t("{n} Kyats", { n: totRevenue }) %></strong></td></tr>
       </tfoot>
     </table>
     <% if (perf.length > 3) { %>
-      <button type="button" class="btn sm" id="perfReadMore">📊 Read more — view all <%= perf.length %> with dates →</button>
+      <button type="button" class="btn sm" id="perfReadMore">📊 <%= t("Read more — view all {n} with dates", { n: perf.length }) %> →</button>
     <% } %>
 
     <!-- popup: full performance list with assigned date + date search -->
     <div class="modal-overlay" id="perfModal" style="display:none">
       <div class="modal-box perf-modal-box">
-        <div class="perf-modal-head">📊 Promotion performance — all <%= perf.length %></div>
+        <div class="perf-modal-head">📊 <%= t("Promotion performance — all {n}", { n: perf.length }) %></div>
         <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem">
-          <label class="ot-field">From <input type="date" id="perfFrom"></label>
-          <label class="ot-field">To <input type="date" id="perfTo"></label>
-          <button type="button" class="btn sm" id="perfSearch">🔍 Search</button>
-          <button type="button" class="btn sm gray" id="perfClear">Clear</button>
+          <label class="ot-field"><%= t("From") %> <input type="date" id="perfFrom"></label>
+          <label class="ot-field"><%= t("To") %> <input type="date" id="perfTo"></label>
+          <button type="button" class="btn sm" id="perfSearch">🔍 <%= t("Search") %></button>
+          <button type="button" class="btn sm gray" id="perfClear"><%= t("Clear") %></button>
         </div>
         <div class="perf-modal-scroll">
           <table class="tbl" id="perfTable">
-            <thead><tr><th>No.</th><th>Promotion</th><th>Orders</th><th>Revenue (Kyats)</th><th>📅 Start date</th><th>🏁 End date</th></tr></thead>
+            <thead><tr><th><%= t("No.") %></th><th><%= t("Promotion") %></th><th><%= t("Orders") %></th><th><%= t("Revenue (Kyats)") %></th><th>📅 <%= t("Start date") %></th><th>🏁 <%= t("End date") %></th></tr></thead>
             <tbody>
               <% perf.forEach(function (r, i) { %>
                 <tr data-date="<%= r.date %>">
                   <td><span class="perf-rank <%= i === 0 ? 'top' : '' %>"><%= i + 1 %></span></td>
-                  <td><strong><%= r.title %></strong><% if (!r.active) { %> <span class="muted">· inactive</span><% } %></td>
+                  <td><strong><%= r.title %></strong><% if (!r.active) { %> <span class="muted">· <%= t("inactive") %></span><% } %></td>
                   <td><%= r.orders %></td>
-                  <td><%= r.revenue %> Kyats</td>
+                  <td><%= t("{n} Kyats", { n: r.revenue }) %></td>
                   <td class="muted"><%= r.date || "—" %></td>
                   <td class="muted"><%= r.endDate || "—" %></td>
                 </tr>
               <% }) %>
             </tbody>
           </table>
-          <p class="muted" id="perfNoRows" style="display:none;padding:.6rem">No promotions in this date range.</p>
+          <p class="muted" id="perfNoRows" style="display:none;padding:.6rem"><%= t("No promotions in this date range.") %></p>
         </div>
-        <button type="button" class="btn" id="perfClose" style="margin-top:.7rem">Close</button>
+        <button type="button" class="btn" id="perfClose" style="margin-top:.7rem"><%= t("Close") %></button>
       </div>
     </div>
     <script>
@@ -123,27 +123,27 @@
       })();
     </script>
 
-    <h3 class="promo-sec">✏️ Manage promotions</h3>
+    <h3 class="promo-sec">✏️ <%= t("Manage promotions") %></h3>
     <div class="promo-grid">
       <% promotions.forEach(p => { const fid = "paf" + p.id; const s = stats[p.id] || {}; %>
         <div class="promo-card <%= p.is_active ? '' : 'inactive' %>">
           <form id="<%= fid %>" action="/admin/promotions/<%= p.id %>/update" method="post" class="promo-fields">
-            <label class="full">Title<input name="title" value="<%= p.title %>"></label>
-            <label>Discount %<input name="discount_percent" type="text" inputmode="decimal" value="<%= p.discount_percent %>"
+            <label class="full"><%= t("Title") %><input name="title" value="<%= p.title %>"></label>
+            <label><%= t("Discount %") %><input name="discount_percent" type="text" inputmode="decimal" value="<%= p.discount_percent %>"
               oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
-            <label>Minimum Kg<input name="min_qty" type="text" inputmode="decimal" value="<%= p.min_qty %>"
+            <label><%= t("Minimum Kg") %><input name="min_qty" type="text" inputmode="decimal" value="<%= p.min_qty %>"
               oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
-            <label>Start date<input name="start_date" type="date" value="<%= p.start_date %>"></label>
-            <label>End date<input name="end_date" type="date" value="<%= p.end_date %>"></label>
-            <label class="promo-active full"><input type="checkbox" name="is_active" <%= p.is_active ? "checked" : "" %>> Active</label>
+            <label><%= t("Start date") %><input name="start_date" type="date" value="<%= p.start_date %>"></label>
+            <label><%= t("End date") %><input name="end_date" type="date" value="<%= p.end_date %>"></label>
+            <label class="promo-active full"><input type="checkbox" name="is_active" <%= p.is_active ? "checked" : "" %>> <%= t("Active") %></label>
           </form>
-          <p class="promo-stats">📊 Used <strong><%= s.orders || 0 %></strong> · Revenue <strong><%= s.revenue || 0 %> Kyats</strong></p>
+          <p class="promo-stats">📊 <%= t("Used {n} · Revenue {r} Kyats", { n: s.orders || 0, r: s.revenue || 0 }) %></p>
           <div class="cat-toolbar">
             <span class="spacer"></span>
-            <button class="btn sm" type="submit" form="<%= fid %>">Save</button>
+            <button class="btn sm" type="submit" form="<%= fid %>"><%= t("Save") %></button>
             <form action="/admin/promotions/<%= p.id %>/delete" method="post" class="ct-form"
-                  data-confirm="Delete promotion <%= p.title %>?">
-              <button class="btn sm danger" type="submit">Delete</button>
+                  data-confirm="<%= t("Delete promotion {title}?", { title: p.title }) %>">
+              <button class="btn sm danger" type="submit"><%= t("Delete") %></button>
             </form>
           </div>
         </div>

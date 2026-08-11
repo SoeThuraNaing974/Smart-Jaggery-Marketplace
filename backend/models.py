@@ -26,6 +26,8 @@ class Warehouse(db.Model):
     manager_name = db.Column(db.String(120))
     blocked = db.Column(db.Boolean, nullable=False, default=False)   # admin "Block" = staff locked out, data kept
     blocked_until = db.Column(db.DateTime(timezone=True))            # NULL = no limit; else auto-expires
+    # Platform commission for this warehouse (0.0500 = 5%). NULL = platform default.
+    commission_rate = db.Column(db.Numeric(5, 4))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     batches = db.relationship("JaggeryBatch", backref="warehouse", cascade="all, delete-orphan")
@@ -44,6 +46,8 @@ class Warehouse(db.Model):
             "manager_name": self.manager_name,
             "blocked": self._own_block_active(),
             "blocked_until": self.blocked_until.isoformat() if self.blocked_until else None,
+            "commission_rate": (float(self.commission_rate)
+                                if self.commission_rate is not None else None),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -64,7 +68,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="customer", index=True)
     phone = db.Column(db.String(30))
     address = db.Column(db.Text)
-    pincode = db.Column(db.String(12), index=True)
+    pincode = db.Column(db.String(60), index=True)  # delivery location: MM city or foreign country
     avatar_path = db.Column(db.String(255))  # profile picture filename in uploads/
     order_count = db.Column(db.Integer, nullable=False, default=0)  # monotonic per-customer order counter
     warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouses.id", ondelete="SET NULL"))
@@ -122,7 +126,9 @@ class JaggeryBatch(db.Model):
     warehouse_id = db.Column(
         db.Integer, db.ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False
     )
-    batch_id = db.Column(db.String(60), nullable=False, unique=True)
+    # the category NAME shown everywhere — the same name may be reused freely
+    # (products are identified by id); indexed for lookups only
+    batch_id = db.Column(db.String(60), nullable=False, index=True)
     grade = db.Column(db.String(1), nullable=False)  # 'A' | 'B' | 'C'
     qty_kg = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     harvest_date = db.Column(db.Date, nullable=False)
@@ -131,8 +137,9 @@ class JaggeryBatch(db.Model):
     image_path = db.Column(db.String(255))
     description = db.Column(db.Text)  # ingredients & effectiveness
     is_active = db.Column(db.Boolean, nullable=False, default=True)
-    deleted_at = db.Column(db.DateTime(timezone=True))   # set when a warehouse deletes the stock
+    deleted_at = db.Column(db.DateTime(timezone=True))   # set when the stock is soft-deleted
     delete_ack = db.Column(db.Boolean, nullable=False, default=False)  # admin acknowledged the deletion
+    deleted_by = db.Column(db.String(10))  # 'warehouse' | 'admin' — which side deleted it
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # extra photos (the cover stays in image_path); deleted with the batch
@@ -195,6 +202,7 @@ class JaggeryBatch(db.Model):
             "deleted": self.deleted_at is not None,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
             "delete_ack": self.delete_ack,
+            "deleted_by": self.deleted_by,
             "expiry_status": self.expiry_status,
             "near_expiry": self.is_near_expiry,
             "expired": self.is_expired,
@@ -260,7 +268,8 @@ class Order(db.Model):
     status = db.Column(db.String(20), nullable=False, default="pending", index=True)
     customer_seq = db.Column(db.Integer)  # this customer's Nth order (permanent, never reused)
     delivery_address = db.Column(db.Text, nullable=False)
-    pincode = db.Column(db.String(12))
+    pincode = db.Column(db.String(60))   # delivery location: MM city (local) or country (foreign)
+    delivery_scope = db.Column(db.String(10), nullable=False, default="local")  # local | foreign
     preferred_date = db.Column(db.Date)
     subtotal = db.Column(db.Numeric(12, 2), nullable=False, default=0)       # spec: total_amount
     discount_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # spec: discount_applied
@@ -271,6 +280,11 @@ class Order(db.Model):
     payment_status = db.Column(db.String(20), nullable=False, default="unpaid")  # unpaid | paid
     payment_reference = db.Column(db.String(120))
     payment_phone = db.Column(db.String(30))       # phone entered on the payment form
+    # --- consolidated multi-warehouse checkout (see backend/consolidated/) ---
+    client_token = db.Column(db.String(64))        # retry-safe checkout (unique index)
+    refunded_total = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    # none → held (in platform escrow) → released | refunded
+    escrow_status = db.Column(db.String(20), nullable=False, default="none")
     promotion_id = db.Column(db.Integer, db.ForeignKey("promotions.id", ondelete="SET NULL"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)             # spec: order_date
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -291,12 +305,14 @@ class Order(db.Model):
             "id": self.id,
             "customer_id": self.customer_id,
             "customer_name": self.customer.name if self.customer else None,
+            "customer_phone": self.customer.phone if self.customer else None,
             "customer_seq": self.customer_seq,
             "assigned_warehouse_id": self.assigned_warehouse_id,
             "warehouse_name": self.warehouse.name if self.warehouse else None,
             "status": self.status,
             "delivery_address": self.delivery_address,
             "pincode": self.pincode,
+            "delivery_scope": self.delivery_scope,
             "preferred_date": self.preferred_date.isoformat() if self.preferred_date else None,
             "subtotal": round(float(self.subtotal)),
             "discount_amount": round(float(self.discount_amount)),
@@ -326,6 +342,10 @@ class OrderItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    # Which warehouse's slice this line belongs to. NULL on legacy single-warehouse
+    # orders. Invariant: sub_orders.order_id == order_items.order_id.
+    sub_order_id = db.Column(db.Integer, db.ForeignKey("sub_orders.id", ondelete="CASCADE"),
+                             index=True)
     batch_pk = db.Column(
         db.Integer, db.ForeignKey("jaggery_batches.id", ondelete="RESTRICT"), nullable=False
     )
@@ -454,7 +474,7 @@ class DeliveryCharge(db.Model):
     __tablename__ = "delivery_charges"
 
     id = db.Column(db.Integer, primary_key=True)
-    pincode = db.Column(db.String(12), nullable=False, unique=True)
+    pincode = db.Column(db.String(60), nullable=False, unique=True)  # location name (city or country)
     charge_amount = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -2,36 +2,105 @@
 
 <% if (promotions.length) { %>
 <div class="card promo">
-  <h3>🎉 Active Promotions</h3>
+  <h3>🎉 <%= t("Active promotions") %></h3>
   <ul>
     <% promotions.forEach(p => { %>
-      <li><strong><%= p.title %></strong> (from <%= p.start_date %> to <%= p.end_date %>)</li>
+      <li><strong><%= p.title %></strong> (<%= t("from {s} to {e}", { s: p.start_date, e: p.end_date }) %>)</li>
     <% }) %>
   </ul>
 </div>
 <% } %>
 
-<h2>Jaggery Categories</h2>
+<% if (!user) { %>
+  <div class="guest-note">
+    <span class="guest-note-ico">🔒</span>
+    <span class="guest-note-txt"><strong><%= t("You're browsing as a guest.") %></strong>
+      <%= t("Prices and stock are live — sign in to add anything to your cart.") %></span>
+    <a class="btn sm" href="/login?next=%2Fbatches"><%= t("Sign in to order") %></a>
+  </div>
+<% } %>
+
+<h2><%= t("Jaggery Categories") %></h2>
 
 <div class="grade-filter">
-  <span class="muted">Filter by grade:</span>
-  <a class="grade-chip <%= !selectedGrade ? 'active' : '' %>" href="/batches">All</a>
+  <span class="muted"><%= t("Filter by grade:") %></span>
+  <a class="grade-chip <%= !selectedGrade ? 'active' : '' %>" href="/batches"><%= t("All") %></a>
   <% ["A","B","C"].forEach(g => { %>
-    <a class="grade-chip grade-<%= g %> <%= selectedGrade === g ? 'active' : '' %>" href="/batches?grade=<%= g %>">Grade <%= g %></a>
+    <a class="grade-chip grade-<%= g %> <%= selectedGrade === g ? 'active' : '' %>" href="/batches?grade=<%= g %>"><%= t("Grade {g}", { g: g }) %></a>
   <% }) %>
 </div>
+
+<%
+  var gradeInfo = {
+    A: {
+      icon: "🏆",
+      title: "Grade A (best quality, highest price)",
+      quality: "Carries the full natural aroma and taste of pure toddy palm sap, with a golden-yellow or glossy dark natural colour. The texture is firm, free of moisture, and of the highest purity.",
+      strengths: [
+        "Best for health — packed with natural minerals and nutrients.",
+        "Excellent aroma and taste — ideal for premium confectionery and for eating directly in its natural form.",
+      ],
+      weaknesses: [
+        "The price is very high, making it costly for ordinary daily use.",
+      ],
+    },
+    B: {
+      icon: "🥈",
+      title: "Grade B (medium quality, fair price)",
+      quality: "Ordinary-quality jaggery with a medium level of colour, aroma and taste. It may be blended with a small amount of sugar or other sweeteners.",
+      strengths: [
+        "Fairly priced with reasonably good quality — the best fit for most consumers.",
+        "Widely usable in home cooking and everyday confectionery.",
+      ],
+      weaknesses: [
+        "Lacks the natural, full aroma and taste of Grade A.",
+      ],
+    },
+    C: {
+      icon: "🥉",
+      title: "Grade C (lowest quality, cheapest price)",
+      quality: "The lowest quality, often with high moisture content and a larger amount of sugar or other ingredients mixed in. The colour may be pale, or irregular and overly dark.",
+      strengths: [
+        "Cheap and easy to buy — suitable for businesses that need to keep costs especially low.",
+        "The most economical choice for wholesale purchases.",
+      ],
+      weaknesses: [
+        "Very little natural jaggery taste and low nutritional value.",
+        "Hard to store for long — its moisture makes it sticky and easily spoiled.",
+      ],
+    },
+  };
+  var gi = selectedGrade && gradeInfo[selectedGrade];
+%>
+<% if (gi) { %>
+  <div class="grade-info grade-info-<%= selectedGrade %>">
+    <h3 class="grade-info-title"><%= gi.icon %> <%= t(gi.title) %></h3>
+    <p class="grade-info-line"><strong><%= t("Quality & appearance:") %></strong>
+      <%= t(gi.quality) %></p>
+    <p class="grade-info-line"><strong><%= t("Strengths:") %></strong></p>
+    <ul class="grade-info-list">
+      <% gi.strengths.forEach(function (s) { %><li><%= t(s) %></li><% }) %>
+    </ul>
+    <% if (gi.weaknesses) { %>
+      <p class="grade-info-line"><strong><%= t("Weaknesses:") %></strong></p>
+      <ul class="grade-info-list">
+        <% gi.weaknesses.forEach(function (s) { %><li><%= t(s) %></li><% }) %>
+      </ul>
+    <% } %>
+  </div>
+<% } %>
 
 <% var newCount = batches.filter(b => b.isNew).length; %>
 <% if (newCount) { %>
   <div class="new-cat-banner">
     <span class="ncb-ico">🎉</span>
-    <span class="ncb-text"><strong><%= newCount %> new categor<%= newCount === 1 ? "y" : "ies" %></strong>
-      just added — highlighted <%= newCount === 1 ? "below" : "at the top" %> with a <span class="ncb-tag">✨ NEW</span> tag.</span>
+    <span class="ncb-text"><strong><%= t(newCount === 1 ? "{n} new category" : "{n} new categories", { n: newCount }) %></strong>
+      <%= t(newCount === 1 ? "just added — highlighted below with a" : "just added — highlighted at the top with a") %> <span class="ncb-tag">✨ NEW</span> <%= t("tag.") %></span>
   </div>
 <% } %>
 
 <% if (!batches.length) { %>
-  <p class="muted">No products<%= selectedGrade ? " for grade " + selectedGrade : "" %>.</p>
+  <p class="muted"><%= selectedGrade ? t("No products for grade {g}.", { g: selectedGrade }) : t("No products.") %></p>
 <% } %>
 <div class="grid">
   <% batches.forEach(b => { %>
@@ -39,55 +108,59 @@
       <% if (b.isNew) { %><span class="new-ribbon">✨ NEW</span><% } %>
       <% var imgs = (b.image_paths && b.image_paths.length) ? b.image_paths : (b.image_path ? [b.image_path] : []); %>
       <div class="batch-img<%= imgs.length ? ' has-img' : '' %>"
-        <% if (imgs.length) { %>data-gallery='<%= JSON.stringify(imgs) %>' data-name="<%= b.batch_id %>" role="button" tabindex="0" title="Tap to view photos"<% } %>>
+        <% if (imgs.length) { %>data-gallery='<%= JSON.stringify(imgs) %>' data-name="<%= b.batch_id %>" role="button" tabindex="0" title="<%= t("Tap to view photos") %>"<% } %>>
         <% if (imgs.length) { %>
           <img src="/uploads/<%= imgs[0] %>" alt="<%= b.batch_id %>">
           <% if (imgs.length > 1) { %><span class="img-count">📷 <%= imgs.length %></span><% } %>
         <% } else { %>
-          <span class="batch-img-ph">🟤 No image</span>
+          <span class="batch-img-ph">🟤 <%= t("No image") %></span>
         <% } %>
       </div>
       <div class="batch-head">
-        <span class="grade grade-<%= b.grade %>">Grade <%= b.grade %></span>
+        <span class="grade grade-<%= b.grade %>"><%= t("Grade {g}", { g: b.grade }) %></span>
       </div>
       <div class="batch-name-box">
-        <p class="batch-name" title="<%= b.batch_id %>">Name: <strong><%= b.batch_id %></strong></p>
-        <button type="button" class="name-toggle" data-name="<%= b.batch_id %>">see more</button>
+        <p class="batch-name" title="<%= b.batch_id %>"><%= t("Name:") %> <strong><%= b.batch_id %></strong></p>
+        <button type="button" class="name-toggle" data-name="<%= b.batch_id %>"><%= t("see more") %></button>
       </div>
-      <p class="muted" title="<%= b.warehouse_name %>">Warehouse: <%= b.warehouse_name %></p>
-      <p class="price"><%= b.price_per_kg %> Kyats/kg</p>
+      <p class="muted" title="<%= b.warehouse_name %>"><%= t("Warehouse:") %> <%= b.warehouse_name %></p>
+      <p class="price"><%= t("{p} Kyats/kg", { p: b.price_per_kg }) %></p>
       <% const r = (typeof ratings !== "undefined") && ratings[b.warehouse_id]; %>
-      <% if (r) { %><p class="muted batch-rating">⭐ <%= r.avg %>/5 (<%= r.count %> review<%= r.count === 1 ? "" : "s" %>)</p>
-      <% } else { %><p class="muted batch-rating batch-rating-empty">☆ No reviews yet</p><% } %>
-      <p>Expire Date: <%= b.expiry_date %></p>
-      <p>Stock: <strong><%= b.qty_kg %> kg</strong></p>
+      <% if (r) { %><p class="muted batch-rating">⭐ <%= r.avg %>/5 (<%= t(r.count === 1 ? "{n} review" : "{n} reviews", { n: r.count }) %>)</p>
+      <% } else { %><p class="muted batch-rating batch-rating-empty"><%= t("☆ No reviews yet") %></p><% } %>
+      <p><%= t("Expire Date:") %> <%= b.expiry_date %></p>
+      <p><%= t("Stock:") %> <strong><%= t("{n} kg", { n: b.qty_kg }) %></strong></p>
       <div class="batch-desc">
-        <strong>Ingredients & effectiveness:</strong>
+        <strong><%= t("Ingredients & effectiveness:") %></strong>
         <% if (b.description) { %>
           <span class="desc-text"><%= b.description %></span>
           <button type="button" class="desc-toggle"
-                  data-name="<%= b.batch_id %>" data-desc="<%= b.description %>">Read more</button>
+                  data-name="<%= b.batch_id %>" data-desc="<%= b.description %>"><%= t("Read more") %></button>
         <% } else { %>
-          <span class="desc-text desc-empty">No description provided.</span>
-          <button type="button" class="desc-toggle" aria-hidden="true" tabindex="-1">Read more</button>
+          <span class="desc-text desc-empty"><%= t("No description provided.") %></span>
+          <button type="button" class="desc-toggle" aria-hidden="true" tabindex="-1"><%= t("Read more") %></button>
         <% } %>
       </div>
 
       <div class="batch-action">
       <% if (b.expired) { %>
-        <div class="alert err">⛔ EXPIRED — cannot order</div>
+        <div class="alert err">⛔ <%= t("EXPIRED — cannot order") %></div>
       <% } else { %>
-        <% if (b.near_expiry) { %><div class="alert err">⚠ Near expiry — order soon</div><% } %>
+        <% if (b.near_expiry) { %><div class="alert err">⚠ <%= t("Near expiry — order soon") %></div><% } %>
         <% if (b.qty_kg <= 0) { %>
-          <div class="alert err">Out of stock</div>
+          <div class="alert err"><%= t("Out of stock") %></div>
         <% } else if (user && user.role === "customer") { %>
           <form action="/cart/add" method="post" class="order-form">
             <input type="hidden" name="batch_pk" value="<%= b.id %>">
-            <label>Qty (kg)
+            <label><%= t("Qty (kg)") %>
               <input type="number" name="qty_kg" min="0.5" step="0.5" max="<%= b.qty_kg %>" required>
             </label>
-            <button class="btn" type="submit">Add to cart</button>
+            <button class="btn" type="submit"><%= t("Add to cart") %></button>
           </form>
+        <% } else if (!user) { %>
+          <%# Guests browse freely — buying starts at the login page, which sends
+              them straight back here afterwards. %>
+          <a class="btn" href="/login?next=%2Fbatches&amp;err=<%= encodeURIComponent('Please log in to add items to your cart.') %>"><%= t("🔒 Login to buy") %></a>
         <% } %>
       <% } %>
       </div>
@@ -98,12 +171,12 @@
 <!-- live "your selection" mini-cart (updates as you add/remove, no page jump) -->
 <% if (user && user.role === "customer") { %>
 <div id="miniCart" class="mini-cart">
-  <div class="mini-head">🛒 Your selection <span id="miniCount" class="mini-count">0</span></div>
+  <div class="mini-head">🛒 <%= t("Your selection") %> <span id="miniCount" class="mini-count">0</span></div>
   <div id="miniList" class="mini-list"></div>
-  <p id="miniEmpty" class="mini-empty muted">No items yet — add products above.</p>
+  <p id="miniEmpty" class="mini-empty muted"><%= t("No items yet — add products above.") %></p>
   <div class="mini-foot">
-    <span>Subtotal: <strong id="miniSubtotal">0 Kyats</strong></span>
-    <a class="btn sm" href="/cart">Go to Cart →</a>
+    <span><%= t("Subtotal:") %> <strong id="miniSubtotal"><%= t("{n} Kyats", { n: 0 }) %></strong></span>
+    <a class="btn sm" href="/cart"><%= t("Go to Cart") %> →</a>
   </div>
 </div>
 <% } %>
@@ -114,18 +187,19 @@
 <!-- product photo gallery popup -->
 <div id="galleryModal" class="gallery-modal" style="display:none">
   <div class="gallery-box">
-    <button type="button" class="gallery-close" id="galleryClose" aria-label="Close">✕</button>
+    <button type="button" class="gallery-close" id="galleryClose" aria-label="<%= t("Close") %>">✕</button>
     <div class="gallery-title" id="galleryTitle"></div>
     <div class="gallery-main">
-      <button type="button" class="gallery-nav prev" id="galleryPrev" aria-label="Previous">‹</button>
-      <img id="galleryImg" src="" alt="product photo">
-      <button type="button" class="gallery-nav next" id="galleryNext" aria-label="Next">›</button>
+      <button type="button" class="gallery-nav prev" id="galleryPrev" aria-label="<%= t("Previous") %>">‹</button>
+      <img id="galleryImg" src="" alt="<%= t("product photo") %>">
+      <button type="button" class="gallery-nav next" id="galleryNext" aria-label="<%= t("Next") %>">›</button>
     </div>
     <div class="gallery-thumbs" id="galleryThumbs"></div>
   </div>
 </div>
 <script>
   (function () {
+    var L = <%- JSON.stringify({ photos: t("{n} photos") }) %>;
     var modal = document.getElementById("galleryModal");
     if (!modal) return;
     var img = document.getElementById("galleryImg"),
@@ -141,7 +215,7 @@
     }
     function open(images, name) {
       list = images || []; if (!list.length) return;
-      title.textContent = name + (list.length > 1 ? "  ·  " + list.length + " photos" : "");
+      title.textContent = name + (list.length > 1 ? "  ·  " + L.photos.replace("{n}", list.length) : "");
       thumbs.innerHTML = "";
       list.forEach(function (p, k) {
         var t = document.createElement("img");
@@ -178,7 +252,7 @@
 <div id="descModal" class="desc-modal" style="display:none">
   <div class="desc-modal-box">
     <button type="button" class="desc-modal-close" id="descModalClose">✕</button>
-    <h3 id="descModalTitle">Ingredients &amp; effectiveness</h3>
+    <h3 id="descModalTitle"><%= t("Ingredients & effectiveness") %></h3>
     <p id="descModalBody"></p>
   </div>
 </div>
@@ -188,6 +262,7 @@
   // popup so the product card itself never grows, no matter how long the text is.
   // Runs immediately after a no-reload page swap; waits for load on a first visit.
   (function () {
+  var L = <%- JSON.stringify({ ing: t("Ingredients & effectiveness"), productName: t("Product name") }) %>;
   function initDescModal() {
     var modal = document.getElementById("descModal"),
         title = document.getElementById("descModalTitle"),
@@ -200,7 +275,7 @@
       // (the button always reserves its line via CSS, so all boxes match height)
       if (text.scrollHeight > text.clientHeight + 2) btn.style.visibility = "visible";
       btn.addEventListener("click", function () {
-        title.textContent = (btn.dataset.name ? btn.dataset.name + " — " : "") + "Ingredients & effectiveness";
+        title.textContent = (btn.dataset.name ? btn.dataset.name + " — " : "") + L.ing;
         body.textContent = btn.dataset.desc || text.textContent;
         modal.style.display = "flex";
       });
@@ -213,7 +288,7 @@
       if (!nm || !btn) return;
       if (nm.scrollHeight > nm.clientHeight + 2) btn.style.visibility = "visible";
       btn.addEventListener("click", function () {
-        title.textContent = "Product name";
+        title.textContent = L.productName;
         body.textContent = btn.dataset.name || nm.textContent;
         modal.style.display = "flex";
       });
@@ -229,6 +304,11 @@
   // Add/remove WITHOUT leaving the page: keep a live "Your selection" mini-cart,
   // a toast, and the header badge in sync, so customers pick freely then visit the cart.
   (function () {
+    var L = <%- JSON.stringify({
+      removed: t("Removed"), added: t("Added to cart"),
+      loginToContinue: t("Please log in to continue"), couldNotAdd: t("Could not add"),
+      kg: t("{n}kg"), kyats: t("{n} Kyats"), remove: t("Remove")
+    }) %>;
     var initial = <%- JSON.stringify({ items: cartItems || [], subtotal: cartSubtotal || 0 }) %>;
     var toast = document.getElementById("toast");
     var toastTimer;
@@ -258,13 +338,13 @@
       items.forEach(function (it) {
         var row = document.createElement("div"); row.className = "mini-row";
         row.innerHTML = '<span class="mini-name">' + esc(it.name) + '</span>'
-          + '<span class="mini-qty">' + it.qty_kg + 'kg</span>'
-          + '<span class="mini-line">' + it.line_total + ' Kyats</span>'
-          + '<button class="mini-x" type="button" data-pk="' + it.batch_pk + '" title="Remove">✕</button>';
+          + '<span class="mini-qty">' + L.kg.replace("{n}", it.qty_kg) + '</span>'
+          + '<span class="mini-line">' + L.kyats.replace("{n}", it.line_total) + '</span>'
+          + '<button class="mini-x" type="button" data-pk="' + it.batch_pk + '" title="' + L.remove + '">✕</button>';
         list.appendChild(row);
       });
       document.getElementById("miniCount").textContent = items.length;
-      document.getElementById("miniSubtotal").textContent = Math.round(subtotal) + " Kyats";
+      document.getElementById("miniSubtotal").textContent = L.kyats.replace("{n}", Math.round(subtotal));
       bumpBadge(items.length);
       list.querySelectorAll(".mini-x").forEach(function (b) {
         b.addEventListener("click", function () { removeItem(b.dataset.pk); });
@@ -276,7 +356,7 @@
         headers: { "X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded" },
         body: "batch_pk=" + encodeURIComponent(pk)
       }).then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.ok) { renderMini(d.items, d.subtotal); showToast("Removed"); } });
+        .then(function (d) { if (d && d.ok) { renderMini(d.items, d.subtotal); showToast(L.removed); } });
     }
     // initial render from the server
     renderMini(initial.items, initial.subtotal);
@@ -295,10 +375,15 @@
         }).then(function (r) { return r.json(); })
           .then(function (d) {
             btn.disabled = false;
-            if (d && d.ok) { renderMini(d.items, d.subtotal); showToast("✓ Added to cart"); form.reset(); }
-            else { showToast((d && d.error) || "Could not add", true); }
+            if (d && d.ok) { renderMini(d.items, d.subtotal); showToast("✓ " + L.added); form.reset(); }
+            else if (d && d.login_required) {
+              // session expired mid-shop → send them to login, then back here
+              showToast(d.error || L.loginToContinue, true);
+              setTimeout(function () { window.location.href = d.login_url || "/login"; }, 900);
+            }
+            else { showToast((d && d.error) || L.couldNotAdd, true); }
           })
-          .catch(function () { btn.disabled = false; showToast("Could not add", true); });
+          .catch(function () { btn.disabled = false; showToast(L.couldNotAdd, true); });
       });
     });
   })();

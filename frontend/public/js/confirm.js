@@ -29,11 +29,14 @@
   }
 
   function open(msg, form, del) {
+    // window.__i18n is injected by the header in the user's chosen language;
+    // the English literals stay as fallbacks if it's ever missing.
+    var T = window.__i18n || {};
     icoEl.textContent = del ? "🗑️" : "❓";
-    titleEl.textContent = del ? "Delete this?" : "Please confirm";
-    msgEl.textContent = msg || (del ? "This item will be permanently deleted. This can't be undone."
-                                    : "Are you sure you want to continue?");
-    okBtn.textContent = del ? "🗑️ Yes, delete" : "✓ Yes, continue";
+    titleEl.textContent = del ? (T.delTitle || "Delete this?") : (T.confirmTitle || "Please confirm");
+    msgEl.textContent = msg || (del ? (T.delMsg || "This item will be permanently deleted. This can't be undone.")
+                                    : (T.confirmMsg || "Are you sure you want to continue?"));
+    okBtn.textContent = del ? (T.delOk || "🗑️ Yes, delete") : (T.otherOk || "✓ Yes, continue");
     modal.classList.toggle("is-other", !del);
     pending = form;
     modal.style.display = "flex";

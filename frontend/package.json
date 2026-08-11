@@ -1,7 +1,7 @@
 {
   "name": "jaggery-frontend",
   "version": "1.0.0",
-  "description": "EJS frontend (BFF) for Smart Jaggery Marketplace",
+  "description": "EJS frontend (BFF) for Smart Jaggery Mart",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

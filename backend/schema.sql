@@ -1,5 +1,5 @@
 -- ============================================================================
--- Smart Jaggery Marketplace — PostgreSQL schema (PostgreSQL 14+)
+-- Smart Jaggery Mart — PostgreSQL schema (PostgreSQL 14+)
 -- Run once:  psql -U postgres -d jaggery_db -f schema.sql
 -- NOTE: The Flask app uses SQLAlchemy models (models.py) that map 1:1 to these
 --       tables. This file is the canonical reference + lets you bootstrap the DB
@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_users_warehouse_id ON users(warehouse_id);
 CREATE TABLE IF NOT EXISTS jaggery_batches (
     id               SERIAL PRIMARY KEY,
     warehouse_id     INTEGER NOT NULL REFERENCES warehouses(id) ON DELETE CASCADE,
-    batch_id         VARCHAR(60) NOT NULL UNIQUE,        -- human/business id, e.g. JAG-2026-001
+    batch_id         VARCHAR(60) NOT NULL,               -- category NAME (not unique — may repeat)
     grade            VARCHAR(1) NOT NULL CHECK (grade IN ('A', 'B', 'C')),
     qty_kg           NUMERIC(10,2) NOT NULL CHECK (qty_kg >= 0),
     harvest_date     DATE NOT NULL,
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS jaggery_batches (
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_batches_warehouse ON jaggery_batches(warehouse_id);
+CREATE INDEX IF NOT EXISTS ix_jaggery_batches_batch_id ON jaggery_batches(batch_id);
 CREATE INDEX IF NOT EXISTS idx_batches_harvest   ON jaggery_batches(harvest_date);
 CREATE INDEX IF NOT EXISTS idx_batches_grade     ON jaggery_batches(grade);
 

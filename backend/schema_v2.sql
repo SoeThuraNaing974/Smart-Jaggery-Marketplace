@@ -1,5 +1,5 @@
 -- ============================================================================
--- Smart Jaggery Marketplace — v2 migration (PostgreSQL 14+)
+-- Smart Jaggery Mart — v2 migration (PostgreSQL 14+)
 -- Adds expanded-feature columns to existing tables + 8 new tables.
 -- Apply:  psql -U postgres -p 5433 -d jaggery_db -f schema_v2.sql
 --

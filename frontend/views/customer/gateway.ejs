@@ -4,7 +4,7 @@
                  cbpay:"#7a1fa2", yomapay:"#00897b", bank:"#37474f" };
   var brand = colors[method.key] || "#7a4a1e";
 %>
-<a class="btn sm" href="/orders/<%= order.id %>/pay" style="display:inline-block;margin:.2rem 0 1rem">&larr; Back</a>
+<a class="btn sm" href="/orders/<%= order.id %>/pay" style="display:inline-block;margin:.2rem 0 1rem">&larr; <%= t("Back") %></a>
 
 <div class="pay-screen">
   <div class="pay-card">
@@ -12,19 +12,19 @@
       <span class="pay-lock">🔒</span>
       <div>
         <div class="pay-provider"><%= method.label %></div>
-        <div class="pay-secure">Secure payment</div>
+        <div class="pay-secure"><%= t("Secure payment") %></div>
       </div>
     </div>
 
     <div class="pay-body">
-      <p class="pay-to-label">Paying to</p>
-      <p class="pay-merchant">Smart Jaggery Marketplace</p>
-      <div class="pay-amount"><%= order.grand_total %> Kyats</div>
+      <p class="pay-to-label"><%= t("Paying to") %></p>
+      <p class="pay-merchant">Smart Jaggery Mart</p>
+      <div class="pay-amount"><%= t("{n} Kyats", { n: order.grand_total }) %></div>
 
       <div class="pay-details">
-        <div class="pay-row"><span><%= method.key === "bank" ? "Bank number" : "To phone" %></span><strong><%= phone %></strong></div>
-        <div class="pay-row"><span>Transaction ID</span><strong><%= reference %></strong></div>
-        <% if (payer) { %><div class="pay-row"><span>Note</span><strong><%= payer %></strong></div><% } %>
+        <div class="pay-row"><span><%= method.key === "bank" ? t("Bank number") : t("To phone") %></span><strong><%= phone %></strong></div>
+        <div class="pay-row"><span><%= t("Transaction ID") %></span><strong><%= reference %></strong></div>
+        <% if (payer) { %><div class="pay-row"><span><%= t("Note") %></span><strong><%= payer %></strong></div><% } %>
       </div>
 
       <!-- hidden details submitted with the OTP once verified -->
@@ -37,28 +37,35 @@
           <div class="otp-box">
             <button type="button" class="otp-close" id="otpClose">✕</button>
             <div class="otp-icon">📧</div>
-            <h3 class="otp-title">Verify your payment</h3>
-            <p id="otpInfo" class="muted">Sending a verification code to your email…</p>
+            <h3 class="otp-title"><%= t("Verify your payment") %></h3>
+            <p id="otpInfo" class="muted"><%= t("Sending a verification code to your email…") %></p>
             <input name="otp" id="otpInput" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
                    autocomplete="one-time-code" placeholder="––––––" class="otp-input"
                    oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
-            <button class="btn otp-verify" type="submit" style="background:<%= brand %>;border-color:<%= brand %>">Confirm payment — <%= order.grand_total %> Kyats</button>
+            <button class="btn otp-verify" type="submit" style="background:<%= brand %>;border-color:<%= brand %>"><%= t("Confirm payment — {n} Kyats", { n: order.grand_total }) %></button>
             <div class="otp-actions">
-              <button type="button" class="link-btn otp-autofill" id="otpAutofill" style="display:none">✨ Autofill code</button>
-              <button type="button" class="link-btn" id="otpResend" style="color:#1a3aa0">Resend code</button>
+              <button type="button" class="link-btn otp-autofill" id="otpAutofill" style="display:none">✨ <%= t("Autofill code") %></button>
+              <button type="button" class="link-btn" id="otpResend" style="color:#1a3aa0"><%= t("Resend code") %></button>
             </div>
           </div>
         </div>
       </form>
 
-      <button class="pay-btn" id="payBtn" style="background:<%= brand %>">Pay <%= order.grand_total %> Kyats</button>
-      <a class="pay-cancel" href="/orders?msg=Payment+cancelled">Cancel</a>
+      <button class="pay-btn" id="payBtn" style="background:<%= brand %>"><%= t("Pay {n} Kyats", { n: order.grand_total }) %></button>
+      <a class="pay-cancel" href="/orders?msg=Payment+cancelled"><%= t("Cancel") %></a>
     </div>
   </div>
 </div>
 
 <script>
   (function () {
+    var L = <%- JSON.stringify({
+      sending: t("Sending a verification code to your email…"),
+      sentDev: t("Sent to {email}. Your code is {code} — type it in, or tap Autofill."),
+      typeCode: t("Type the 6-digit code sent to {email}."),
+      yourEmail: t("your email"),
+      sendFail: t("Could not send the code. Tap Resend.")
+    }) %>;
     var payBtn = document.getElementById("payBtn");
     var otpPanel = document.getElementById("otpPanel");
     var otpInfo = document.getElementById("otpInfo");
@@ -67,18 +74,20 @@
     var devCode = null;
 
     async function requestCode() {
-      otpInfo.textContent = "Sending a verification code to your email…";
+      otpInfo.textContent = L.sending;
       otpAutofill.style.display = "none"; devCode = null;
       try {
         var r = await fetch("/orders/<%= order.id %>/pay/otp", { method: "POST" });
         var d = await r.json();
         if (d.dev_code) {
           devCode = d.dev_code; otpAutofill.style.display = "inline-block";
-          otpInfo.innerHTML = "Sent to <strong>" + (d.email || "your email") + "</strong>. Your code is <strong>" + d.dev_code + "</strong> — type it in, or tap Autofill.";
+          otpInfo.innerHTML = L.sentDev
+            .replace("{email}", "<strong>" + (d.email || L.yourEmail) + "</strong>")
+            .replace("{code}", "<strong>" + d.dev_code + "</strong>");
         } else {
-          otpInfo.textContent = "Type the 6-digit code sent to " + (d.email || "your email") + ".";
+          otpInfo.textContent = L.typeCode.replace("{email}", d.email || L.yourEmail);
         }
-      } catch (e) { otpInfo.textContent = "Could not send the code. Tap Resend."; }
+      } catch (e) { otpInfo.textContent = L.sendFail; }
     }
     otpAutofill.addEventListener("click", function () {
       if (!devCode) return;

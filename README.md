@@ -1,1 +1,1 @@
-"# Smart-Jaggery-Marketplace" 
+"# Smart Jaggery Mart" 

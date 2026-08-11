@@ -1,7 +1,7 @@
 <%- include("partials/header") %>
 <div class="card">
-  <h2>Something went wrong</h2>
-  <p><%= message %></p>
-  <a class="btn" href="/">Go home</a>
+  <h2><%= t("Something went wrong") %></h2>
+  <p><%= t(message) %></p>
+  <a class="btn" href="/"><%= t("Go home") %></a>
 </div>
 <%- include("partials/footer") %>

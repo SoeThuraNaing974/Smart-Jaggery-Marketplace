@@ -2,12 +2,12 @@
 <div class="modal-overlay" id="paySuccessModal">
   <div class="modal-box">
     <div class="pay-check">✓</div>
-    <h3 class="modal-title">Payment Successful!</h3>
+    <h3 class="modal-title"><%= t("Payment Successful!") %></h3>
     <% if (typeof payAmount !== "undefined" && payAmount) { %>
-      <div class="pay-amount"><%= payAmount %> Kyats</div>
+      <div class="pay-amount"><%= t("{amount} Kyats", { amount: payAmount }) %></div>
     <% } %>
-    <p class="modal-text"><%= (typeof payMsg !== "undefined" && payMsg) ? payMsg : "Your payment has been confirmed. Thank you!" %></p>
-    <button class="btn" id="paySuccessClose">Done</button>
+    <p class="modal-text"><%= t((typeof payMsg !== "undefined" && payMsg) ? payMsg : "Your payment has been confirmed. Thank you!") %></p>
+    <button class="btn" id="paySuccessClose"><%= t("Done") %></button>
   </div>
 </div>
 <script>

@@ -1,4 +1,6 @@
-require("dotenv").config();
+// Load .env from this file's own folder so the server works no matter which
+// directory it is started from (e.g. `node frontend/server.js` from the repo root).
+require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const path = require("path");
 const express = require("express");
 const cookieParser = require("cookie-parser");
@@ -6,6 +8,7 @@ const compression = require("compression");
 
 const { attachUser } = require("./middleware/auth");
 const { client } = require("./lib/api");
+const i18n = require("./lib/i18n");
 
 const app = express();
 
@@ -31,6 +34,9 @@ app.locals.whStatusLabel = (s) => WH_STATUS_LABELS[s] || s;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+// Language (English / Burmese): reads the "lang" cookie and gives every view
+// t(), lang and locale-aware status labels. Must run before any route renders.
+app.use(i18n.middleware);
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "30d", etag: true }));
 // Never cache rendered HTML pages — prevents the browser showing a stale page
 // after edits/redirects. (Static assets above still cache + use ?v= versioning.)
@@ -50,6 +56,8 @@ app.use(async (req, res, next) => {
   res.locals.whCategoryCount = 0;
   res.locals.whPlanCount = 0;
   res.locals.whOrderCount = 0;
+  res.locals.whDeletedCount = 0;
+  res.locals.whDeletedItems = [];
   res.locals.deletedStockCount = 0;
   res.locals.newWarehouseCount = 0;
   res.locals.newUserCount = 0;
@@ -198,6 +206,13 @@ app.use(async (req, res, next) => {
         const ps = parseInt(req.cookies.wh_plan_seen, 10) || 0;
         res.locals.whPlanCount = planList.filter((x) => Number(x.id) > ps).length;
       }
+      // categories the ADMIN removed from this warehouse — alarm until dismissed.
+      // No first-load baseline on purpose: a deletion must always be seen once.
+      const adminDeleted = (stock.data && stock.data.admin_deleted) || [];
+      const delSeen = new Set((req.cookies.wh_del_seen || "").split(",").filter(Boolean));
+      const unseenDeleted = adminDeleted.filter((b) => !delSeen.has(String(b.id)));
+      res.locals.whDeletedCount = unseenDeleted.length;
+      res.locals.whDeletedItems = unseenDeleted;
     } catch (_) { /* ignore — badges just won't show */ }
   }
   next();
@@ -244,6 +259,21 @@ app.use((req, res, next) => {
     }
   }
   next();
+});
+
+// Language switcher: set the cookie, then send the user straight back to the
+// page they were on (same-host Referer only). Works for guests and all roles.
+app.get("/lang/:code", (req, res) => {
+  const code = i18n.SUPPORTED.indexOf(req.params.code) !== -1 ? req.params.code : "en";
+  res.cookie("lang", code, { sameSite: "lax", maxAge: 31536000000 });
+  const ref = req.get("Referer");
+  if (ref) {
+    try {
+      const u = new URL(ref);
+      if (u.host === req.headers.host) return res.redirect(u.pathname + u.search);
+    } catch (_) { /* malformed referer — fall through */ }
+  }
+  return res.redirect("/");
 });
 
 // routes

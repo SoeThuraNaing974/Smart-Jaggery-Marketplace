@@ -8,9 +8,10 @@ from sqlalchemy import func
 from db import db
 from models import (
     JaggeryBatch, Order, OrderItem, Promotion, Warehouse,
-    Wishlist, Review, PriceAlert, DeliveryCharge, AbandonedCart,
+    Wishlist, Review, PriceAlert, DeliveryCharge, AbandonedCart, User,
 )
-from auth import role_required, customer_required, audit, hash_password, verify_password
+from auth import (role_required, customer_required, optional_auth, audit,
+                  hash_password, verify_password)
 from services import price_order
 from utils.helpers import invoice_pdf, payment_slip_pdf
 from utils.email_util import send_bulk, email_enabled
@@ -47,19 +48,61 @@ _METHOD_ORDER = ["kpay", "wavepay", "ayapay", "cbpay", "yomapay", "bank"]
 bp = Blueprint("customer", __name__, url_prefix="/api")
 
 
-def _delivery_charge_for(pincode):
-    # use a per-region charge if one is configured, otherwise the flat default fee
-    if pincode:
-        dc = DeliveryCharge.query.filter_by(pincode=pincode).first()
-        if dc:
-            return float(dc.charge_amount)
+def _charge_row(name):
+    """Admin-configured charge row for a location name (case/space insensitive)."""
+    if not name:
+        return None
+    return (DeliveryCharge.query
+            .filter(func.lower(DeliveryCharge.pincode) == name.strip().lower())
+            .first())
+
+
+def _foreign_band(fee):
+    """Foreign delivery always costs between FOREIGN_FEE_MIN and FOREIGN_FEE_MAX Kyats."""
+    return float(min(max(float(fee), Config.FOREIGN_FEE_MIN), Config.FOREIGN_FEE_MAX))
+
+
+def _delivery_charge_for(pincode, scope=None):
+    """
+    Charge for the customer's chosen delivery location.
+
+    pincode = the location picked at checkout (a Myanmar city for "local",
+    a country for "foreign"). Local fees come from the admin's delivery-charge
+    table, falling back to the flat default. Foreign fees depend on the country:
+    the admin's row for that exact country wins, then the built-in per-country
+    fee, then the admin's generic "Foreign" row — and whatever the source, a
+    foreign fee is always kept inside the 20,000–50,000 Kyats band.
+    """
+    key = (pincode or "").strip().lower()
+    foreign = (scope or "").strip().lower() == "foreign" or key in Config.FOREIGN_COUNTRY_FEES
+    dc = _charge_row(pincode)
+    if dc:
+        fee = float(dc.charge_amount)
+        return _foreign_band(fee) if foreign else fee
+    if foreign:
+        fee = Config.FOREIGN_COUNTRY_FEES.get(key)
+        if fee is None:
+            dc = _charge_row("Foreign")
+            fee = float(dc.charge_amount) if dc else Config.DEFAULT_DELIVERY_FEE
+        return _foreign_band(fee)
     return float(Config.DEFAULT_DELIVERY_FEE)
 
 
+def _viewer_role():
+    """Role of whoever is asking — 'guest' when nobody is logged in."""
+    user = getattr(g, "current_user", None)
+    return user.role if user else "guest"
+
+
 @bp.get("/batches")
-@role_required("customer", "admin", "warehouse")
+@optional_auth
 def list_batches():
-    """Public-ish catalogue. Optional filters: ?grade=A&warehouse_id=1"""
+    """
+    Public catalogue — browsable without logging in. Optional filters:
+    ?grade=A&warehouse_id=1
+
+    Guests and customers see only live products; admin/warehouse see everything.
+    """
     q = JaggeryBatch.query
     grade = request.args.get("grade")
     warehouse_id = request.args.get("warehouse_id", type=int)
@@ -69,17 +112,17 @@ def list_batches():
         q = q.filter_by(warehouse_id=warehouse_id)
     # deleted stock never shows in the catalogue (warehouse-deleted products)
     q = q.filter(JaggeryBatch.deleted_at.is_(None))
-    # customers only see active (live) products; admin/warehouse see everything
-    if g.current_user.role == "customer":
+    # guests + customers only see active (live) products
+    if _viewer_role() in ("guest", "customer"):
         q = q.filter_by(is_active=True)
     batches = q.order_by(JaggeryBatch.harvest_date.desc()).all()
     return jsonify([b.to_dict() for b in batches])
 
 
 @bp.get("/announcements/active")
-@role_required("customer", "admin", "warehouse")
+@optional_auth
 def active_announcements():
-    """Public announcement board, shown on all dashboards."""
+    """Public announcement board — shown on all dashboards and the guest home."""
     from models import Announcement
     now = datetime.utcnow()
     rows = (Announcement.query
@@ -89,7 +132,7 @@ def active_announcements():
 
 
 @bp.get("/advertisements/active")
-@role_required("customer", "admin", "warehouse")
+@optional_auth
 def active_advertisements():
     """Daily advertisements that are active and within their date window today."""
     from models import Advertisement
@@ -116,8 +159,15 @@ def order_history_chart():
     return jsonify({"labels": [r[0] for r in rows], "values": [round(float(r[1])) for r in rows]})
 
 
+@bp.get("/stats/guest")
+@optional_auth
+def guest_stats():
+    """Public shop-front counter shown to visitors: registered customer accounts."""
+    return jsonify({"users": User.query.filter_by(role="customer").count()})
+
+
 @bp.get("/promotions/active")
-@role_required("customer", "admin", "warehouse")
+@optional_auth
 def active_promotions():
     today = datetime.utcnow().date()
     promos = Promotion.query.filter(
@@ -145,7 +195,11 @@ def place_order():
     """
     data = request.get_json(silent=True) or {}
     address = (data.get("delivery_address") or "").strip()
-    pincode = (data.get("pincode") or "").strip() or None
+    pincode = (data.get("pincode") or "").strip()[:60] or None
+    # local (a Myanmar city) or foreign (a country) — only used to price delivery
+    scope = (data.get("delivery_scope") or "").strip().lower()
+    if scope not in ("local", "foreign"):
+        scope = "local"
     items = data.get("items") or []
     fulfillment = (data.get("fulfillment") or "delivery").strip().lower()
     if fulfillment not in ("delivery", "pickup"):
@@ -202,7 +256,7 @@ def place_order():
 
         subtotal, discount, total, promo = price_order(line_items, total_qty)
         # pickup is free; delivery uses the admin-configured per-region charge
-        delivery_charge = 0.0 if fulfillment == "pickup" else _delivery_charge_for(pincode)
+        delivery_charge = 0.0 if fulfillment == "pickup" else _delivery_charge_for(pincode, scope)
 
         # permanent per-customer order number (never decreases, even if orders are deleted/cancelled)
         g.current_user.order_count = (g.current_user.order_count or 0) + 1
@@ -219,6 +273,7 @@ def place_order():
             customer_seq=g.current_user.order_count,
             delivery_address=address,
             pincode=pincode,
+            delivery_scope=scope,
             preferred_date=preferred_date,
             subtotal=subtotal,
             discount_amount=discount,
@@ -279,9 +334,38 @@ def customer_payment_methods():
 @bp.get("/delivery-quote")
 @role_required("customer")
 def delivery_quote():
-    """Delivery fee for a region/postal code (0 if none configured = free delivery)."""
+    """Delivery fee for the chosen location (?pincode=Yangon&scope=local|foreign)."""
     pincode = (request.args.get("pincode") or "").strip() or None
-    return jsonify({"pincode": pincode, "charge": _delivery_charge_for(pincode)})
+    scope = (request.args.get("scope") or "").strip().lower() or None
+    return jsonify({"pincode": pincode, "scope": scope,
+                    "charge": _delivery_charge_for(pincode, scope)})
+
+
+@bp.get("/delivery-locations")
+@role_required("customer")
+def delivery_locations():
+    """
+    The admin's delivery-charge table, for the checkout location dropdown.
+    Checkout uses it to price each city/country the moment it is picked, so the
+    fee a customer sees always matches what the admin configured.
+    """
+    rows = DeliveryCharge.query.order_by(DeliveryCharge.pincode).all()
+    # Resolved per-country foreign fees (admin override + 20k–50k band applied),
+    # so the checkout dropdown always shows exactly what the order gets charged.
+    by_name = {str(r.pincode).strip().lower(): float(r.charge_amount) for r in rows}
+    foreign_fees = {
+        country: round(_foreign_band(by_name.get(country, fee)))
+        for country, fee in Config.FOREIGN_COUNTRY_FEES.items()
+    }
+    generic = by_name.get("foreign", Config.DEFAULT_DELIVERY_FEE)
+    return jsonify({
+        "default_charge": float(Config.DEFAULT_DELIVERY_FEE),
+        "locations": [{"location": r.pincode, "charge": round(float(r.charge_amount))}
+                      for r in rows],
+        "foreign_fees": foreign_fees,
+        # catch-all for a country not in the built-in list
+        "foreign_default_charge": round(_foreign_band(generic)),
+    })
 
 
 @bp.get("/orders/<int:order_id>")
@@ -509,9 +593,11 @@ def repeat_order():
             total_qty += float(it.qty_kg)
 
         subtotal, discount, total, promo = price_order(line_items, total_qty)
-        dc = _delivery_charge_for(last.pincode)
+        # re-price against today's charge for the same location the last order used
+        dc = _delivery_charge_for(last.pincode, last.delivery_scope)
         order = Order(customer_id=g.current_user.id, status="pending",
                       delivery_address=last.delivery_address, pincode=last.pincode,
+                      delivery_scope=last.delivery_scope or "local",
                       subtotal=subtotal, discount_amount=discount, delivery_charge=dc,
                       total_price=total, promotion_id=promo.id if promo else None)
         db.session.add(order)
@@ -609,7 +695,7 @@ def capture_abandoned_cart():
 
 # ------------------------------------------------------- warehouse ratings
 @bp.get("/warehouses/ratings")
-@role_required("customer", "admin", "warehouse")
+@optional_auth
 def warehouse_ratings():
     """Average star rating + review count per warehouse (for the catalogue)."""
     rows = (db.session.query(Review.warehouse_id, func.avg(Review.rating), func.count(Review.id))

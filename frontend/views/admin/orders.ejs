@@ -1,32 +1,32 @@
 <%- include("../partials/header") %>
-<h2>All Orders</h2>
-<a class="btn sm" href="/admin" style="display:inline-block;margin:.2rem 0 1rem">&larr; Back to home</a>
+<h2><%= t("All Orders") %></h2>
+<a class="btn sm" href="/admin" style="display:inline-block;margin:.2rem 0 1rem">&larr; <%= t("Back to home") %></a>
 
-<% if (error) { %><div class="alert err"><%= error %></div><% } %>
+<% if (error) { %><div class="alert err"><%= t(error) %></div><% } %>
 
 <div class="card">
   <form action="/admin/orders" method="get" class="orders-toolbar">
-    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
-    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
-    <button class="btn sm" type="submit">🔍 Search</button>
-    <% if (from || to) { %><a class="btn sm" href="/admin/orders">Clear</a><% } %>
+    <label class="ot-field"><%= t("From") %> <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field"><%= t("To") %> <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 <%= t("Search") %></button>
+    <% if (from || to) { %><a class="btn sm" href="/admin/orders"><%= t("Clear") %></a><% } %>
   </form>
 
   <div class="orders-toolbar" style="margin-top:.4rem;align-items:center">
-    <label class="ot-field">🏬 Warehouse <select id="ordWh" style="padding:.25rem .4rem"></select></label>
-    <a class="btn sm ot-pdf" id="ordPdf" href="/admin/orders/pdf" target="_blank">⬇ Download PDF</a>
+    <label class="ot-field">🏬 <%= t("Warehouse") %> <select id="ordWh" style="padding:.25rem .4rem"></select></label>
+    <a class="btn sm ot-pdf" id="ordPdf" href="/admin/orders/pdf" target="_blank">⬇ <%= t("Download PDF") %></a>
   </div>
 
   <p class="muted" id="ordCount" style="margin:.6rem 0">
-    <strong><%= orders.length %></strong> order(s)<% if (from || to) { %> · <%= from || 'start' %> &rarr; <%= to || 'now' %><% } %>
+    <strong><%= t("{n} order(s)", { n: orders.length }) %></strong><% if (from || to) { %> · <%= from || t('start') %> &rarr; <%= to || t('now') %><% } %>
   </p>
 
-  <form id="ordDelForm" action="/admin/orders/delete" method="post" data-confirm="Delete the selected order(s)? This permanently removes them and their items.">
+  <form id="ordDelForm" action="/admin/orders/delete" method="post" data-confirm="<%= t("Delete the selected order(s)? This permanently removes them and their items.") %>">
   <table class="tbl" id="ordTable">
-    <thead><tr><th><input type="checkbox" class="ord-all" title="Select all"></th><th>No.</th><th>Date</th><th>Customer</th><th>Items</th><th>Total (Kyats)</th><th>Warehouse</th><th>Status</th></tr></thead>
+    <thead><tr><th><input type="checkbox" class="ord-all" title="<%= t("Select all") %>"></th><th><%= t("No.") %></th><th><%= t("Date") %></th><th><%= t("Customer") %></th><th><%= t("Items") %></th><th><%= t("Total (Kyats)") %></th><th><%= t("Warehouse") %></th><th><%= t("Status") %></th></tr></thead>
     <tbody>
       <% if (!orders.length) { %>
-        <tr class="no-data"><td colspan="8" class="muted" style="text-align:center;padding:1rem">No orders found for this range.</td></tr>
+        <tr class="no-data"><td colspan="8" class="muted" style="text-align:center;padding:1rem"><%= t("No orders found for this range.") %></td></tr>
       <% } %>
       <% orders.forEach((o) => {
            var whs = [...new Set(o.items.map(i => i.warehouse_name).filter(Boolean))];
@@ -45,13 +45,14 @@
       <% }) %>
     </tbody>
   </table>
-  <div class="acc-actions"><button class="btn sm danger" type="submit">🗑 Delete selected</button></div>
+  <div class="acc-actions"><button class="btn sm danger" type="submit">🗑 <%= t("Delete selected") %></button></div>
   </form>
-  <p class="muted" id="ordNoRows" style="display:none;padding:.6rem">No orders for this warehouse.</p>
+  <p class="muted" id="ordNoRows" style="display:none;padding:.6rem"><%= t("No orders for this warehouse.") %></p>
 </div>
 
 <script>
   (function () {
+    var L = <%- JSON.stringify({ allWh: t("All warehouses"), orders: t("{n} order(s)"), start: t("start"), now: t("now") }) %>;
     var whSel = document.getElementById("ordWh");
     var pdf = document.getElementById("ordPdf");
     var countEl = document.getElementById("ordCount");
@@ -68,7 +69,7 @@
     rows.forEach(function (tr) {
       (tr.getAttribute("data-wh") || "").split("|").forEach(function (w) { if (w) whs[w] = true; });
     });
-    whSel.innerHTML = '<option value="">All warehouses</option>' +
+    whSel.innerHTML = '<option value="">' + L.allWh + '</option>' +
       Object.keys(whs).sort().map(function (w) { return '<option value="' + w + '">' + w + '</option>'; }).join("");
     function syncPdf() {
       var q = [];
@@ -86,9 +87,9 @@
       });
       if (master) master.checked = false;
       if (noRows) noRows.style.display = (rows.length && !shown) ? "" : "none";
-      var parts = "<strong>" + shown + "</strong> order(s)";
+      var parts = L.orders.replace("{n}", "<strong>" + shown + "</strong>");
       if (wh) parts += " · " + wh;
-      if (FROM || TO) parts += " · " + (FROM || "start") + " &rarr; " + (TO || "now");
+      if (FROM || TO) parts += " · " + (FROM || L.start) + " &rarr; " + (TO || L.now);
       countEl.innerHTML = parts;
       syncPdf();
     }

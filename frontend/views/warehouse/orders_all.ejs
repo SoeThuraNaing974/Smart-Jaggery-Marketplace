@@ -3,51 +3,51 @@
 <div class="page-intro">
   <span class="page-intro-ico">📋</span>
   <div>
-    <strong>Assigned orders — waiting</strong>
-    <span>Orders still waiting to be shipped. Search by order date, mark them Waiting/Shipped,
-      or message the customer. Once shipped they move to the <strong>Orders History</strong> below.</span>
+    <strong><%= t("Assigned orders — waiting") %></strong>
+    <span><%= t("Orders still waiting to be shipped. Search by order date, mark them Waiting/Shipped, or message the customer. Once shipped they move to the Orders History below.") %></span>
   </div>
 </div>
 
 <div class="card">
   <form action="/warehouse/orders-all" method="get" class="orders-toolbar">
-    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
-    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
-    <button class="btn sm" type="submit">🔍 Search</button>
-    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/orders-all">Clear</a><% } %>
-    <a class="btn sm gray" href="/warehouse">← Back to home</a>
+    <label class="ot-field"><%= t("From") %> <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field"><%= t("To") %> <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 <%= t("Search") %></button>
+    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/orders-all"><%= t("Clear") %></a><% } %>
+    <a class="btn sm gray" href="/warehouse">← <%= t("Back to home") %></a>
   </form>
 
   <p class="muted" style="margin:.6rem 0">
-    <strong><%= orders.length %></strong> order<%= orders.length === 1 ? "" : "s" %><%
+    <%= t(orders.length === 1 ? "{n} order" : "{n} orders", { n: orders.length }) %><%
       if (from || to) { %> · <%= from || "…" %> → <%= to || "…" %><% } %>
   </p>
 
   <% if (!orders.length) { %>
     <div class="empty-state">
       <div class="empty-icon">📋</div>
-      <div class="empty-title">No orders found</div>
-      <div class="empty-sub">Try a different date range.</div>
+      <div class="empty-title"><%= t("No orders found") %></div>
+      <div class="empty-sub"><%= t("Try a different date range.") %></div>
     </div>
   <% } else { %>
     <table class="tbl">
-      <thead><tr><th>No.</th><th>📅 Date</th><th>Customer</th><th>Product</th><th>Price</th><th>Address</th><th>Total (Kyats)</th><th>Details</th><th>Action</th><th>Message</th></tr></thead>
+      <thead><tr><th><%= t("No.") %></th><th>📅 <%= t("Date") %></th><th><%= t("Customer") %></th><th>📞 <%= t("Phone") %></th><th><%= t("Product") %></th><th><%= t("Price") %></th><th><%= t("Address") %></th><th><%= t("Total (Kyats)") %></th><th><%= t("Details") %></th><th><%= t("Action") %></th><th><%= t("Message") %></th></tr></thead>
       <tbody>
       <% orders.forEach((o, idx) => { %>
         <tr>
           <td><%= idx + 1 %></td>
           <td class="muted"><%= o.created_at ? o.created_at.substring(0,10) : "—" %></td>
           <td><%= o.customer_name %></td>
+          <td class="muted"><%= o.customer_phone || "—" %></td>
           <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %></td>
-          <td><% o.items.forEach(function (it) { %><div><%= it.unit_price %> Kyats</div><% }) %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= t("{n} Kyats", { n: it.unit_price }) %></div><% }) %></td>
           <td class="muted"><%= o.delivery_address %></td>
           <td><%= o.total_price %></td>
-          <td><a class="btn sm row-view" href="/warehouse/orders/<%= o.id %>/details">🔍 View</a></td>
+          <td><a class="btn sm row-view" href="/warehouse/orders/<%= o.id %>/details">🔍 <%= t("View") %></a></td>
           <td>
             <% if (o.status === "waiting") { %>
               <form action="/warehouse/orders/<%= o.id %>/status" method="post" class="inline">
                 <input type="hidden" name="status" value="shipped">
-                <button class="btn sm danger" type="submit">Shipped</button>
+                <button class="btn sm danger" type="submit"><%= t("Deliver") %></button>
               </form>
             <% } else { %><span class="muted">—</span><% } %>
           </td>

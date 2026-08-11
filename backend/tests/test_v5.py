@@ -30,14 +30,18 @@ def test_admin_create_validation(admin_client):
         "qty_kg": 1, "harvest_date": "2026-01-01", "price_per_kg": 1}).status_code == 400
 
 
-def test_admin_cannot_delete_referenced_batch(admin_client, customer_client):
+def test_admin_delete_works_even_when_ordered(admin_client, customer_client):
+    """Admin delete is a soft delete now, so it succeeds for ordered categories
+    and the order history stays intact."""
     bid = next(b["id"] for b in customer_client.get("/api/batches").get_json()
                if b["batch_id"] == "B-FRESH")
     customer_client.post("/api/orders", json={
         "delivery_address": "x", "items": [{"batch_pk": bid, "qty_kg": 2}]})
     r = admin_client.delete(f"/api/admin/batches/{bid}")
-    assert r.status_code == 409
-    assert "is_active=false" in r.get_json()["error"]
+    assert r.status_code == 200
+    # the customer's order survives the deletion
+    orders = customer_client.get("/api/orders").get_json()
+    assert any(any(i["batch_pk"] == bid for i in o.get("items", [])) for o in orders)
 
 
 def test_admin_price_drop_fires_alerts(admin_client, customer_client):

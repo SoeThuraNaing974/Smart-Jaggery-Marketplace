@@ -1,11 +1,53 @@
 const express = require("express");
 const { client } = require("../lib/api");
-const { requireRole } = require("../middleware/auth");
+const { requireRole, publicPage } = require("../middleware/auth");
+const { isLocal, buildOptions } = require("../lib/locations");
 
 const router = express.Router();
 
-// Browse catalogue + active promotions (optional ?grade=A|B|C filter)
-router.get("/batches", requireRole("customer", "admin", "warehouse"), async (req, res) => {
+// ---- Public shop front -----------------------------------------------------
+// A visitor can browse the shop before creating an account: the home page and the
+// category list are open, everything that spends money or touches an account
+// (cart, checkout, orders, wishlist, alerts, profile) still requires a login.
+router.get("/", publicPage, async (req, res, next) => {
+  if (req.user) return next();          // logged-in users get the role redirect in server.js
+  const api = client();                 // no token — the API serves these to guests
+  const [batchesRes, promoRes, ratingsRes, adsRes, annRes, statsRes] = await Promise.all([
+    api.get("/api/batches"),
+    api.get("/api/promotions/active"),
+    api.get("/api/warehouses/ratings"),
+    api.get("/api/advertisements/active"),
+    api.get("/api/announcements/active"),
+    api.get("/api/stats/guest").catch(() => ({ data: { users: 0 } })),
+  ]);
+  const all = Array.isArray(batchesRes.data) ? batchesRes.data : [];
+  // shop window: newest first, in stock, still sellable
+  const featured = all
+    .filter((b) => !b.expired && Number(b.qty_kg) > 0)
+    .sort((a, b) => Number(b.id) - Number(a.id))
+    .slice(0, 6);
+  res.render("home", {
+    featured,
+    totalProducts: all.length,
+    warehouseCount: new Set(all.map((b) => b.warehouse_id)).size,
+    userCount: Number(statsRes.data && statsRes.data.users) || 0,
+    promotions: Array.isArray(promoRes.data) ? promoRes.data : [],
+    ratings: ratingsRes.data || {},
+    ads: Array.isArray(adsRes.data) ? adsRes.data : [],
+    announcements: Array.isArray(annRes.data) ? annRes.data : [],
+    flash: req.query.msg || null,
+    error: req.query.err || null,
+  });
+});
+
+// About us — public, no login and no API calls needed.
+router.get("/about", publicPage, (req, res) => {
+  res.render("about", { flash: req.query.msg || null, error: req.query.err || null });
+});
+
+// Browse catalogue + active promotions (optional ?grade=A|B|C filter).
+// Open to guests — the "Add to cart" control becomes "Login to buy" for them.
+router.get("/batches", publicPage, async (req, res) => {
   const api = client(req.token);
   const grade = ["A", "B", "C"].includes(req.query.grade) ? req.query.grade : "";
   const [allRes, promoRes, ratingsRes] = await Promise.all([
@@ -141,9 +183,28 @@ router.get("/cart", requireRole("customer"), async (req, res) => {
   const byId = new Map((batchesRes.data || []).map((b) => [b.id, b]));
   const promotions = promoRes.data || [];
   const me = (meRes.data && meRes.data.user) || {};
-  // delivery fee (per-region charge if set, otherwise the flat default fee)
-  const dq = await api.get("/api/delivery-quote?pincode=" + encodeURIComponent(me.pincode || ""));
-  const deliveryFee = (dq.data && dq.data.charge) || 0;
+  // Admin-configured delivery charges → the pickable Local / Foreign locations.
+  // Checkout prices the fee from this list, so it always equals the admin's amount.
+  const locRes = await api.get("/api/delivery-locations");
+  const charges = (locRes.data && locRes.data.locations) || [];
+  const defaultFee = Number((locRes.data && locRes.data.default_charge) || 0);
+  // backend-resolved per-country foreign fees (admin override + 20k–50k band)
+  const foreignFees = (locRes.data && locRes.data.foreign_fees) || {};
+  const options = buildOptions(charges, defaultFee, foreignFees);
+  // catch-all foreign fee for a country not in the built-in list
+  const foreignRow = charges.find((c) => String(c.location).trim().toLowerCase() === "foreign");
+  const foreignFee = Number(
+    (locRes.data && locRes.data.foreign_default_charge)
+    ?? (foreignRow ? foreignRow.charge : defaultFee));
+
+  // pre-select the customer's saved location (profile) when we can price it
+  const saved = (me.pincode || "").trim();
+  const savedScope = saved && !isLocal(saved)
+    && options.foreign.some((o) => o.name.toLowerCase() === saved.toLowerCase())
+    ? "foreign" : "local";
+  const pool = savedScope === "foreign" ? options.foreign : options.local;
+  const savedOpt = pool.find((o) => o.name.toLowerCase() === saved.toLowerCase()) || null;
+  const deliveryFee = savedOpt ? savedOpt.fee : (savedScope === "foreign" ? foreignFee : defaultFee);
 
   let subtotal = 0;
   let totalQty = 0;
@@ -180,7 +241,12 @@ router.get("/cart", requireRole("customer"), async (req, res) => {
     deliveryFee: +(+deliveryFee).toFixed(2),
     deliveryTotal: +(goods + (+deliveryFee)).toFixed(2),
     address: me.address || "",
-    pincode: me.pincode || "",
+    pincode: savedOpt ? savedOpt.name : "",
+    deliveryScope: savedScope,
+    localOptions: options.local,
+    foreignOptions: options.foreign,
+    defaultFee,
+    foreignFee,
     canCheckout: items.length > 0 && items.every((i) => !i.issue),
     flash: req.query.msg || null,
     error: req.query.err || null,
@@ -193,10 +259,25 @@ router.post("/cart/checkout", requireRole("customer"), async (req, res) => {
   const api = client(req.token);
   const fulfillment = req.body.fulfillment === "pickup" ? "pickup" : "delivery";
   const payOnline = req.body.pay_when === "online";
+  // Local => a Myanmar city, Foreign => a country. The chosen location is what the
+  // admin's delivery-charge table is priced against.
+  const scope = req.body.delivery_scope === "foreign" ? "foreign" : "local";
+  const location = String((scope === "foreign" ? req.body.country : req.body.city) || "").trim();
+  if (fulfillment === "delivery" && !location) {
+    return res.redirect("/cart?err=" + encodeURIComponent(
+      scope === "foreign" ? "Please choose your country" : "Please choose your city"));
+  }
+  // the ward / home number IS the delivery address now (the city is sent separately)
+  const details = String(req.body.address_details || "").trim();
+  if (!details) {
+    return res.redirect("/cart?err=" + encodeURIComponent(
+      "Please enter your address details (ward and home no.)"));
+  }
   const r = await api.post("/api/orders", {
-    delivery_address: req.body.delivery_address,
+    delivery_address: details,
     preferred_date: req.body.preferred_date || null,
-    pincode: req.body.pincode || null,
+    pincode: location || null,
+    delivery_scope: scope,
     fulfillment,
     // 'cod' marks the order pay-on-delivery; online leaves it unpaid until the pay page
     payment_method: payOnline ? null : "cod",

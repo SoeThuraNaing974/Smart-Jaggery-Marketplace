@@ -1,16 +1,16 @@
 <%- include("../partials/header") %>
-<h2>📣 Advertisements</h2>
+<h2>📣 <%= t("Advertisements") %></h2>
 
 <div class="cols">
   <!-- create form -->
   <div class="card">
-    <h3>Create an advertisement</h3>
+    <h3><%= t("Create an advertisement") %></h3>
     <form action="/admin/advertisements" method="post" class="ad-form" id="adForm">
-      <label class="full">Title
-        <input name="title" id="adfTitle" placeholder="e.g. Fresh harvest just landed!" maxlength="160" required>
+      <label class="full"><%= t("Title") %>
+        <input name="title" id="adfTitle" placeholder="<%= t("e.g. Fresh harvest just landed!") %>" maxlength="160" required>
       </label>
-      <label class="full">Message <span class="muted">(optional)</span>
-        <textarea name="body" id="adfBody" rows="2" maxlength="400" placeholder="A short, catchy line for your customers."></textarea>
+      <label class="full"><%= t("Message") %> <span class="muted"><%= t("(optional)") %></span>
+        <textarea name="body" id="adfBody" rows="2" maxlength="400" placeholder="<%= t("A short, catchy line for your customers.") %>"></textarea>
       </label>
 
       <%
@@ -33,28 +33,28 @@
           "🧪 Health & quality": ["🧪","🌿","💧","🩺","⚕️","🧬","🥗","🛡️","💊","🌾","🫀","🦷"]
         };
       %>
-      <label class="full">Icon
+      <label class="full"><%= t("Icon") %>
         <input name="icon" id="adfIcon" value="📣" maxlength="16" class="ad-icon-input">
       </label>
       <div class="ad-emoji-pick" id="adEmojiPick">
         <% topIcons.forEach(function(e){ %>
           <button type="button" class="ad-emoji" data-emoji="<%= e %>"><%= e %></button>
         <% }) %>
-        <button type="button" class="ad-emoji-more" id="adEmojiMore">＋ See more</button>
+        <button type="button" class="ad-emoji-more" id="adEmojiMore">＋ <%= t("See more") %></button>
       </div>
 
       <!-- iconic pop box: full icon library -->
       <div class="ad-emoji-modal" id="adEmojiModal">
-        <div class="ad-emoji-box" role="dialog" aria-modal="true" aria-label="Choose an icon">
+        <div class="ad-emoji-box" role="dialog" aria-modal="true" aria-label="<%= t("Choose an icon") %>">
           <div class="ad-emoji-box-head">
-            <span>✨ Choose an icon
-              <span style="display:block;font-weight:500;font-size:.72rem;color:#9a866a;margin-top:1px">Hundreds of colourful 3D-style stickers — tap one</span>
+            <span>✨ <%= t("Choose an icon") %>
+              <span style="display:block;font-weight:500;font-size:.72rem;color:#9a866a;margin-top:1px"><%= t("Hundreds of colourful 3D-style stickers — tap one") %></span>
             </span>
-            <button type="button" class="ad-emoji-close" id="adEmojiClose" aria-label="Close">✕</button>
+            <button type="button" class="ad-emoji-close" id="adEmojiClose" aria-label="<%= t("Close") %>">✕</button>
           </div>
           <div class="ad-emoji-box-body">
-            <% Object.keys(iconGroups).forEach(function(g){ %>
-              <h4 class="ad-emoji-cat"><%= g %></h4>
+            <% Object.keys(iconGroups).forEach(function(g){ var sp = g.indexOf(" "); var gEmo = g.substring(0, sp); var gLbl = g.substring(sp + 1); %>
+              <h4 class="ad-emoji-cat"><%= gEmo %> <%= t(gLbl) %></h4>
               <div class="ad-emoji-grid">
                 <% iconGroups[g].forEach(function(e){ %>
                   <button type="button" class="ad-emoji" data-emoji="<%= e %>"><%= e %></button>
@@ -70,59 +70,59 @@
 
   <!-- live preview -->
   <div class="card">
-    <h3>Live preview</h3>
-    <p class="muted" style="margin-top:-.3rem">This is how it looks on the customer Home page.</p>
+    <h3><%= t("Live preview") %></h3>
+    <p class="muted" style="margin-top:-.3rem"><%= t("This is how it looks on the customer Home page.") %></p>
     <div class="ad-rail" style="margin:0">
       <article class="ad-card accent-amber" id="adPreview">
         <div class="ad-ico" id="pvIco">📣</div>
         <div class="ad-content">
-          <h3 class="ad-title" id="pvTitle">Your title here</h3>
-          <p class="ad-body" id="pvBody">Your message here</p>
+          <h3 class="ad-title" id="pvTitle"><%= t("Your title here") %></h3>
+          <p class="ad-body" id="pvBody"><%= t("Your message here") %></p>
           <a class="ad-cta" id="pvCta" href="#" style="display:none"></a>
         </div>
       </article>
     </div>
 
     <!-- style, link & schedule — these submit with the Create form via form="adForm" -->
-    <div class="ad-side-head">🎨 Style, link &amp; schedule</div>
+    <div class="ad-side-head">🎨 <%= t("Style, link & schedule") %></div>
     <div class="ad-form ad-form-side">
-      <label class="full">Colour theme
+      <label class="full"><%= t("Colour theme") %>
         <select name="accent" id="adfAccent" form="adForm">
-          <option value="amber">Amber</option>
-          <option value="green">Green</option>
-          <option value="red">Red</option>
-          <option value="blue">Blue</option>
-          <option value="purple">Purple</option>
-          <option value="teal">Teal</option>
-          <option value="pink">Pink</option>
+          <option value="amber"><%= t("Amber") %></option>
+          <option value="green"><%= t("Green") %></option>
+          <option value="red"><%= t("Red") %></option>
+          <option value="blue"><%= t("Blue") %></option>
+          <option value="purple"><%= t("Purple") %></option>
+          <option value="teal"><%= t("Teal") %></option>
+          <option value="pink"><%= t("Pink") %></option>
         </select>
       </label>
 
-      <label>Link URL <span class="muted">(optional)</span>
-        <input name="link_url" id="adfLink" form="adForm" placeholder="/batches or https://example.com">
+      <label><%= t("Link URL") %> <span class="muted"><%= t("(optional)") %></span>
+        <input name="link_url" id="adfLink" form="adForm" placeholder="<%= t("/batches or https://example.com") %>">
       </label>
-      <label>Button label <span class="muted">(optional)</span>
-        <input name="link_label" id="adfLinkLabel" form="adForm" placeholder="Go now">
+      <label><%= t("Button label") %> <span class="muted"><%= t("(optional)") %></span>
+        <input name="link_label" id="adfLinkLabel" form="adForm" placeholder="<%= t("Go now") %>">
       </label>
 
-      <label>Start date <span class="muted">(optional)</span><input name="starts_on" type="date" form="adForm"></label>
-      <label>End date <span class="muted">(optional)</span><input name="ends_on" type="date" form="adForm"></label>
+      <label><%= t("Start date") %> <span class="muted"><%= t("(optional)") %></span><input name="starts_on" type="date" form="adForm"></label>
+      <label><%= t("End date") %> <span class="muted"><%= t("(optional)") %></span><input name="ends_on" type="date" form="adForm"></label>
 
-      <label class="ad-active full"><input type="checkbox" name="is_active" form="adForm" checked> Active (show to customers)</label>
+      <label class="ad-active full"><input type="checkbox" name="is_active" form="adForm" checked> <%= t("Active (show to customers)") %></label>
 
-      <div class="ad-form-actions"><button class="btn" type="submit" form="adForm">Create advertisement</button></div>
+      <div class="ad-form-actions"><button class="btn" type="submit" form="adForm"><%= t("Create advertisement") %></button></div>
     </div>
   </div>
 </div>
 
 <!-- existing ads -->
 <div class="card">
-  <h3>All advertisements (<%= ads.length %>)</h3>
+  <h3><%= t("All advertisements") %> (<%= ads.length %>)</h3>
   <% if (!ads.length) { %>
     <div class="empty-mini">
       <div class="empty-mini-icon">📣</div>
-      <div class="empty-mini-title">No advertisements yet</div>
-      <div class="empty-mini-sub">Create one above and it'll appear on the customer Home page.</div>
+      <div class="empty-mini-title"><%= t("No advertisements yet") %></div>
+      <div class="empty-mini-sub"><%= t("Create one above and it'll appear on the customer Home page.") %></div>
     </div>
   <% } else { %>
     <div class="ad-admin-grid">
@@ -131,15 +131,16 @@
       <% }) %>
     </div>
     <% if (ads.length > 3) { %>
-      <a class="btn sm" href="/admin/advertisements-all">📋 See more — view all <%= ads.length %> advertisements →</a>
+      <a class="btn sm" href="/admin/advertisements-all">📋 <%= t("See more — view all {n} advertisements", { n: ads.length }) %> →</a>
     <% } else { %>
-      <a class="btn sm" href="/admin/advertisements-all">View all · search by name & date →</a>
+      <a class="btn sm" href="/admin/advertisements-all"><%= t("View all · search by name & date") %> →</a>
     <% } %>
   <% } %>
 </div>
 
 <script>
   (function () {
+    var L = <%- JSON.stringify({ yourTitle: t("Your title here"), learnMore: t("Learn more") }) %>;
     var pv = document.getElementById("adPreview");
     var f = {
       title: document.getElementById("adfTitle"), body: document.getElementById("adfBody"),
@@ -150,7 +151,7 @@
         pvBody = document.getElementById("pvBody"), pvCta = document.getElementById("pvCta");
     function render() {
       pvIco.textContent = f.icon.value || "📣";
-      pvTitle.textContent = f.title.value || "Your title here";
+      pvTitle.textContent = f.title.value || L.yourTitle;
       pvBody.textContent = f.body.value || "";
       pvBody.style.display = f.body.value ? "" : "none";
       pv.className = "ad-card accent-" + (f.accent.value || "amber");
@@ -158,7 +159,7 @@
         var u = f.link.value.trim();
         var ext = /^https?:\/\//i.test(u);
         if (!ext && u && u.charAt(0) !== "/") u = "https://" + u;  // mirror the server's normalisation
-        pvCta.style.display = ""; pvCta.textContent = (f.label.value || "Learn more") + " →"; pvCta.href = u;
+        pvCta.style.display = ""; pvCta.textContent = (f.label.value || L.learnMore) + " →"; pvCta.href = u;
         if (/^https?:\/\//i.test(u)) { pvCta.target = "_blank"; pvCta.rel = "noopener noreferrer"; }
         else { pvCta.removeAttribute("target"); pvCta.removeAttribute("rel"); }
       } else { pvCta.style.display = "none"; }

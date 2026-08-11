@@ -3,6 +3,7 @@ const multer = require("multer");
 const FormData = require("form-data");
 const { client } = require("../lib/api");
 const { requireRole } = require("../middleware/auth");
+const { MM_CITIES, COUNTRIES } = require("../lib/locations");
 
 const router = express.Router();
 const adminOnly = requireRole("admin");
@@ -165,6 +166,10 @@ router.post("/batches/:pk/update", adminOnly, async (req, res) => {
     qty_kg: Number(req.body.qty_kg), price_per_kg: Number(req.body.price_per_kg),
     grade: req.body.grade, is_active: req.body.is_active === "on",
   };
+  // name + production date are edited on the card; skip when left empty so the
+  // backend never receives a blank name or an unparseable date
+  if ((req.body.batch_id || "").trim()) body.batch_id = req.body.batch_id.trim();
+  if ((req.body.harvest_date || "").trim()) body.harvest_date = req.body.harvest_date.trim();
   // Ingredients + Effectiveness are edited as two fields and recombined into the
   // product description (same shape used when a category is created).
   if (req.body.ingredients !== undefined || req.body.effectiveness !== undefined) {
@@ -182,7 +187,9 @@ router.post("/batches/:pk/update", adminOnly, async (req, res) => {
 });
 router.post("/batches/:pk/delete", adminOnly, async (req, res) => {
   const r = await client(req.token).delete(`/api/admin/batches/${req.params.pk}`);
-  res.redirect("/admin/batches" + (r.status === 200 ? "?msg=Batch+deleted" : "?err=" + encodeURIComponent(r.data.error)));
+  res.redirect("/admin/batches" + (r.status === 200
+    ? "?msg=" + encodeURIComponent((r.data && r.data.message) || "Batch deleted")
+    : "?err=" + encodeURIComponent(r.data.error)));
 });
 // Upload a jaggery photo for a batch (Node receives via multer, forwards to API)
 router.post("/batches/:pk/image", adminOnly, upload.single("file"), async (req, res) => {
@@ -223,7 +230,7 @@ router.get("/subscriptions", adminOnly, async (req, res) => {
     client(req.token).get("/api/admin/payments"),
   ]);
   const payList = (payments.data && payments.data.payments) || [];
-  // Only show warehouses that have actually bought a package (active or expired).
+  // Only show warehouses that have actually bought a subscription (active or expired).
   // Warehouses that never bought one are left out of the status list.
   const subList = (subs.data || []).filter((s) => s.current);
   // warehouses with NEW payments (new subscription / extension) since last visit
@@ -246,7 +253,7 @@ router.get("/subscriptions", adminOnly, async (req, res) => {
 router.get("/subscription-statuses", adminOnly, async (req, res) => {
   const from = req.query.from || "", to = req.query.to || "";
   const r = await client(req.token).get("/api/admin/subscriptions");
-  // only warehouses that have actually bought a package
+  // only warehouses that have actually bought a subscription
   let subs = (r.data || []).filter((s) => s.current);
   // filter by the subscription's start (assigned) date, when a range is given
   if (from || to) {
@@ -288,7 +295,7 @@ router.get("/payments/pdf", adminOnly, async (req, res) => {
 
 router.post("/subscriptions/:id/delete", adminOnly, async (req, res) => {
   const r = await client(req.token).delete(`/api/admin/subscriptions/${req.params.id}`);
-  res.redirect("/admin/subscriptions" + (r.status === 200 ? "?msg=Package+deleted" : "?err=" + encodeURIComponent(r.data.error)));
+  res.redirect("/admin/subscriptions" + (r.status === 200 ? "?msg=Subscription+deleted" : "?err=" + encodeURIComponent(r.data.error)));
 });
 router.post("/subscription-plans", adminOnly, async (req, res) => {
   const r = await client(req.token).post("/api/admin/subscription-plans", {
@@ -437,9 +444,9 @@ router.post("/subscriptions/bulk-delete", adminOnly, async (req, res) => {
   let ids = req.body.sub_ids || []; if (!Array.isArray(ids)) ids = [ids];
   ids = ids.map(Number).filter(Boolean);
   const back = req.body._back === "statuses" ? "/admin/subscription-statuses" : "/admin/subscriptions";
-  if (!ids.length) return res.redirect(back + "?err=" + encodeURIComponent("Select at least one package"));
+  if (!ids.length) return res.redirect(back + "?err=" + encodeURIComponent("Select at least one subscription"));
   const r = await client(req.token).post("/api/admin/subscriptions/delete", { ids });
-  res.redirect(back + (r.status === 200 ? "?msg=Packages+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
+  res.redirect(back + (r.status === 200 ? "?msg=Subscriptions+deleted" : "?err=" + encodeURIComponent((r.data && r.data.error) || "Failed")));
 });
 
 // ------------------------------------------- delivery charges & announcements
@@ -448,6 +455,10 @@ router.get("/delivery-charges", adminOnly, async (req, res) => {
   const r = await client(req.token).get("/api/admin/delivery-charges");
   res.render("admin/delivery_charges", {
     charges: r.data || [],
+    // same lists the customer picks from at checkout, so every amount priced here
+    // matches a location a customer can actually choose ("Foreign" = catch-all)
+    localCities: MM_CITIES,
+    countries: COUNTRIES,
     flash: req.query.msg || null, error: req.query.err || null,
   });
 });
@@ -518,8 +529,23 @@ router.post("/promotions/:id/delete", adminOnly, async (req, res) => {
   res.redirect("/admin/promotions" + (r.status === 200 ? "?msg=Promotion+deleted" : "?err=" + encodeURIComponent(r.data.error)));
 });
 router.post("/delivery-charges", adminOnly, async (req, res) => {
+  // The add form declares the location type (local city / foreign country) —
+  // reject a name filed under the wrong type. Row-edit saves carry no scope
+  // and skip this check (their location already exists).
+  const scope = String(req.body.scope || "").toLowerCase();
+  const pincode = String(req.body.pincode || "").trim();
+  const isCountry = pincode.toLowerCase() === "foreign"
+    || COUNTRIES.some((c) => c.toLowerCase() === pincode.toLowerCase());
+  if (scope === "foreign" && !isCountry) {
+    return res.redirect("/admin/delivery-charges?err="
+      + encodeURIComponent("Please choose a country from the Foreign list"));
+  }
+  if (scope === "local" && isCountry) {
+    return res.redirect("/admin/delivery-charges?err="
+      + encodeURIComponent(pincode + " is a country — switch the type to Foreign (country)"));
+  }
   const r = await client(req.token).post("/api/admin/delivery-charges", {
-    pincode: req.body.pincode, charge_amount: Number(req.body.charge_amount),
+    pincode, charge_amount: Number(req.body.charge_amount),
   });
   res.redirect("/admin/delivery-charges" + (r.status === 200 ? "?msg=Charge+saved" : "?err=" + encodeURIComponent(r.data.error)));
 });

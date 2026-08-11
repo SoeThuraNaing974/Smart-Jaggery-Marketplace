@@ -1,0 +1,109 @@
+<%- include("partials/header") %>
+
+<%# Public shop front — what a visitor sees before creating an account. %>
+<section class="guest-hero">
+  <span class="guest-badge" id="guestBadge"><%= t("🍯 Welcome") %></span>
+  <h1 class="guest-title"><%= t("Pure local jaggery,") %> <span><%= t("delivered in one trip.") %></span></h1>
+  <div class="guest-actions">
+    <a class="gbtn solid" href="/batches">🛍️ <%= t("Browse categories") %></a>
+    <a class="gbtn ghost" href="/register?next=%2Fbatches"><%= t("Create an account") %></a>
+  </div>
+</section>
+
+<div class="guest-stats">
+  <div class="guest-stat"><b><%= totalProducts %></b><span><%= t("PRODUCTS") %></span></div>
+  <div class="guest-stat"><b><%= warehouseCount %></b><span><%= t("WAREHOUSES") %></span></div>
+  <div class="guest-stat"><b><%= userCount %></b><span><%= t("USERS") %></span></div>
+</div>
+
+<script>
+  (function () {
+    var G = <%- JSON.stringify({
+      morning: t("☀️ Good morning"), afternoon: t("🌤️ Good afternoon"), evening: t("🌙 Good evening")
+    }) %>;
+    var h = new Date().getHours();
+    var badge = document.getElementById("guestBadge");
+    if (badge) badge.textContent = (h < 12 ? G.morning : (h < 17 ? G.afternoon : G.evening));
+  })();
+</script>
+
+<% if (announcements && announcements.length) { %>
+  <div class="card">
+    <h3>📢 <%= t("Announcements") %></h3>
+    <ul>
+      <% announcements.slice(0, 3).forEach(function (a) { %>
+        <li><strong><%= a.title %></strong><% if (a.message) { %> — <%= a.message %><% } %></li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<% if (ads && ads.length) { %>
+  <section class="ad-rail <%= ads.length === 1 ? 'ad-rail-single' : '' %>" aria-label="Advertisements">
+    <div class="ad-rail-head"><span class="ad-rail-tag">✨ Advertisements</span></div>
+    <div class="ad-track">
+      <% ads.forEach(function (ad) { var ext = ad.link_url && /^https?:\/\//i.test(ad.link_url); %>
+        <article class="ad-card accent-<%= ad.accent || 'amber' %>">
+          <div class="ad-ico"><%= ad.icon || '📣' %></div>
+          <h3 class="ad-title"><%= ad.title %></h3>
+          <% if (ad.body) { %><p class="ad-body"><%= ad.body %></p><% } %>
+          <% if (ad.link_url) { %>
+            <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || 'Learn more' %> →</a>
+          <% } %>
+        </article>
+      <% }) %>
+    </div>
+  </section>
+<% } %>
+
+<% if (promotions && promotions.length) { %>
+  <div class="card promo">
+    <h3>🎉 <%= t("Active promotions") %></h3>
+    <ul>
+      <% promotions.forEach(function (p) { %>
+        <li><strong><%= p.title %></strong> — <%= t("{p}% off on {q}kg or more", { p: p.discount_percent, q: p.min_qty }) %>
+          <span class="muted">(<%= t("until {d}", { d: p.end_date }) %>)</span></li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<div class="card">
+  <h3>🛍️ <%= t("Fresh in the shop") %> <span class="muted">(<%= t(
+    (totalProducts === 1 ? "{n} product" : "{n} products") + (warehouseCount === 1 ? " from {w} warehouse" : " from {w} warehouses"),
+    { n: totalProducts, w: warehouseCount }) %>)</span></h3>
+  <% if (!featured.length) { %>
+    <p class="muted"><%= t("No products available right now — please check back soon.") %></p>
+  <% } else { %>
+    <div class="grid">
+      <% featured.forEach(function (b) { %>
+        <div class="card batch <%= b.near_expiry ? 'expiry' : '' %>">
+          <% var imgs = (b.image_paths && b.image_paths.length) ? b.image_paths : (b.image_path ? [b.image_path] : []); %>
+          <div class="batch-img<%= imgs.length ? ' has-img' : '' %>">
+            <% if (imgs.length) { %>
+              <img src="/uploads/<%= imgs[0] %>" alt="<%= b.batch_id %>">
+            <% } else { %>
+              <span class="batch-img-ph">🟤 <%= t("No image") %></span>
+            <% } %>
+          </div>
+          <div class="batch-head"><span class="grade grade-<%= b.grade %>"><%= t("Grade {g}", { g: b.grade }) %></span></div>
+          <div class="batch-name-box">
+            <p class="batch-name" title="<%= b.batch_id %>"><%= t("Name:") %> <strong><%= b.batch_id %></strong></p>
+          </div>
+          <p class="muted"><%= t("Warehouse:") %> <%= b.warehouse_name %></p>
+          <p class="price"><%= t("{p} Kyats/kg", { p: b.price_per_kg }) %></p>
+          <% var r = ratings && ratings[b.warehouse_id]; %>
+          <% if (r) { %><p class="muted batch-rating">⭐ <%= r.avg %>/5 (<%= t(r.count === 1 ? "{n} review" : "{n} reviews", { n: r.count }) %>)</p>
+          <% } else { %><p class="muted batch-rating batch-rating-empty"><%= t("☆ No reviews yet") %></p><% } %>
+          <p><%= t("Stock:") %> <strong><%= b.qty_kg %> kg</strong></p>
+          <div class="batch-action">
+            <a class="btn" href="/login?next=%2Fbatches&amp;err=Please+log+in+to+start+shopping."><%= t("🔒 Login to buy") %></a>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <div class="acc-actions"><a class="btn sm" href="/batches"><%= t("See all categories →") %></a></div>
+  <% } %>
+</div>
+
+<%- include("partials/footer") %>

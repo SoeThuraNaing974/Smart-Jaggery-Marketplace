@@ -1,31 +1,31 @@
 <%- include("../partials/header") %>
-<div class="page-intro"><h2>🏬 All Warehouses</h2></div>
+<div class="page-intro"><h2>🏬 <%= t("All Warehouses") %></h2></div>
 
 <div class="card">
   <div class="acc-head">
-    <h3>Warehouses (<%= warehouses.length %>)</h3>
+    <h3><%= t("Warehouses") %> (<%= warehouses.length %>)</h3>
     <div class="acc-toolbar">
-      <input type="search" class="acc-search" data-target="whTable" placeholder="🔍 Search name or email…">
+      <input type="search" class="acc-search" data-target="whTable" placeholder="🔍 <%= t("Search name or email…") %>">
       <div class="acc-filter" data-target="whTable">
-        <button type="button" class="acc-chip active" data-f="all">All</button>
-        <button type="button" class="acc-chip" data-f="active">● Active</button>
-        <button type="button" class="acc-chip" data-f="inactive">○ Inactive</button>
+        <button type="button" class="acc-chip active" data-f="all"><%= t("All") %></button>
+        <button type="button" class="acc-chip" data-f="active">● <%= t("Active") %></button>
+        <button type="button" class="acc-chip" data-f="inactive">○ <%= t("Inactive") %></button>
       </div>
       <div class="acc-dates" data-target="whTable">
-        <label class="acc-date">📅 From <input type="date" class="acc-from" data-target="whTable"></label>
-        <label class="acc-date">To <input type="date" class="acc-to" data-target="whTable"></label>
-        <button type="button" class="acc-date-clear" data-target="whTable" title="Clear dates">✕</button>
+        <label class="acc-date">📅 <%= t("From") %> <input type="date" class="acc-from" data-target="whTable"></label>
+        <label class="acc-date"><%= t("To") %> <input type="date" class="acc-to" data-target="whTable"></label>
+        <button type="button" class="acc-date-clear" data-target="whTable" title="<%= t("Clear dates") %>">✕</button>
       </div>
-      <a class="btn sm gray" href="/admin/directory">← Back</a>
+      <a class="btn sm gray" href="/admin/directory">← <%= t("Back") %></a>
     </div>
   </div>
-  <form action="/admin/directory/warehouses/delete" method="post" data-confirm="Delete the selected warehouse(s)? Their products & packages will be removed too.">
+  <form action="/admin/directory/warehouses/delete" method="post" data-confirm="<%= t("Delete the selected warehouse(s)? Their products & subscriptions will be removed too.") %>">
     <input type="hidden" name="_back" value="all">
     <table class="tbl" id="whTable">
-      <thead><tr><th><input type="checkbox" class="dir-all" title="Select all"></th><th>Warehouse</th><th>Email</th><th>Location</th><th>Staff</th><th>Package</th><th>Joined</th><th>Status</th></tr></thead>
+      <thead><tr><th><input type="checkbox" class="dir-all" title="<%= t("Select all") %>"></th><th><%= t("Warehouse") %></th><th><%= t("Email") %></th><th><%= t("Location") %></th><th><%= t("Staff") %></th><th><%= t("Subscription") %></th><th><%= t("Joined") %></th><th><%= t("Status") %></th></tr></thead>
       <tbody><%- include("../partials/dir_wh_rows", { rows: warehouses }) %></tbody>
     </table>
-    <div class="acc-actions"><button class="btn sm danger" type="submit">🗑 Delete selected</button></div>
+    <div class="acc-actions"><button class="btn sm danger" type="submit">🗑 <%= t("Delete selected") %></button></div>
   </form>
 </div>
 

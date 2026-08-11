@@ -49,11 +49,18 @@ def stock():
                .filter(JaggeryBatch.deleted_at.is_(None))
                .order_by(JaggeryBatch.batch_id).all())
     low = [b.to_dict() for b in batches if float(b.qty_kg) < Config.LOW_STOCK_KG]
+    # categories the ADMIN removed from this warehouse — newest first, so the
+    # warehouse can be notified about deletions on its side
+    admin_deleted = (JaggeryBatch.query
+                     .filter_by(warehouse_id=wid, deleted_by="admin")
+                     .filter(JaggeryBatch.deleted_at.isnot(None))
+                     .order_by(JaggeryBatch.deleted_at.desc()).limit(10).all())
     return jsonify({
         "warehouse_id": wid,
         "batches": [b.to_dict() for b in batches],
         "low_stock_alerts": low,
         "low_stock_threshold_kg": Config.LOW_STOCK_KG,
+        "admin_deleted": [b.to_dict() for b in admin_deleted],
     })
 
 
@@ -133,14 +140,15 @@ def order_history_pdf():
         except ValueError:
             pass
     orders = q.order_by(Order.created_at.desc()).all()
-    headers = ["No.", "Date", "Customer", "Product", "Total (Kyats)", "Status"]
+    headers = ["No.", "Date", "Customer", "Phone", "Product", "Total (Kyats)", "Status"]
     rows, revenue = [], 0.0
     for n, o in enumerate(orders, start=1):
         items = ", ".join(it.batch.batch_id for it in o.items if it.batch)
         if len(items) > 38:
             items = items[:35] + "..."
         d = o.created_at.strftime("%Y-%m-%d") if o.created_at else ""
-        rows.append([n, d, (o.customer.name if o.customer else ""), items,
+        rows.append([n, d, (o.customer.name if o.customer else ""),
+                     (o.customer.phone if o.customer and o.customer.phone else "-"), items,
                      f"{float(o.total_price):.0f}", o.status])
         if o.status != "cancelled":
             revenue += float(o.total_price)
@@ -165,14 +173,13 @@ def add_batch():
         return jsonify({"error": f"missing fields: {', '.join(missing)}"}), 400
     if data["grade"].upper() not in {"A", "B", "C"}:
         return jsonify({"error": "grade must be A, B or C"}), 400
-
-    if JaggeryBatch.query.filter_by(batch_id=data["batch_id"]).first():
-        return jsonify({"error": "category name already exists"}), 409
+    # category names are NOT unique — the same name may be used freely
+    name = data["batch_id"].strip()
 
     try:
         batch = JaggeryBatch(
             warehouse_id=_staff_warehouse_id(),
-            batch_id=data["batch_id"].strip(),
+            batch_id=name,
             grade=data["grade"].upper(),
             qty_kg=float(data["qty_kg"]),
             harvest_date=datetime.strptime(data["harvest_date"], "%Y-%m-%d").date(),
@@ -197,6 +204,12 @@ def update_batch(pk):
 
     data = request.get_json(silent=True) or {}
     try:
+        if "batch_id" in data:
+            name = (data.get("batch_id") or "").strip()
+            if not name:
+                return jsonify({"error": "name cannot be empty"}), 400
+            # category names are NOT unique — the same name may be used freely
+            batch.batch_id = name
         if "qty_kg" in data:
             batch.qty_kg = float(data["qty_kg"])
         fired = 0
@@ -211,6 +224,8 @@ def update_batch(pk):
             batch.grade = data["grade"].upper()
         if "harvest_date" in data:
             batch.harvest_date = datetime.strptime(data["harvest_date"], "%Y-%m-%d").date()
+        if "description" in data:
+            batch.description = (data.get("description") or "").strip() or None
         db.session.commit()
         return jsonify({"message": "category updated", "batch": batch.to_dict(),
                         "price_alerts_fired": fired})
@@ -231,6 +246,7 @@ def warehouse_delete_batch(pk):
         return jsonify({"error": "category not found in your warehouse"}), 404
     name = batch.batch_id
     batch.deleted_at = datetime.now(timezone.utc)
+    batch.deleted_by = "warehouse"
     batch.delete_ack = False
     batch.is_active = False
     audit("batch_deleted", f"{name} (WH#{_staff_warehouse_id()})")
@@ -254,6 +270,7 @@ def warehouse_bulk_delete_batches():
               .filter(JaggeryBatch.id.in_(ids), JaggeryBatch.warehouse_id == wid,
                       JaggeryBatch.deleted_at.is_(None)).all()):
         b.deleted_at = now
+        b.deleted_by = "warehouse"
         b.delete_ack = False
         b.is_active = False
         n += 1
@@ -448,9 +465,6 @@ def bulk_upload():
     created, errors = 0, []
     for i, row in enumerate(reader, start=2):  # line 1 = header
         try:
-            if JaggeryBatch.query.filter_by(batch_id=row["batch_id"].strip()).first():
-                errors.append(f"line {i}: batch_id {row['batch_id']} exists")
-                continue
             db.session.add(JaggeryBatch(
                 warehouse_id=wid, batch_id=row["batch_id"].strip(),
                 grade=row["grade"].strip().upper(), qty_kg=float(row["qty_kg"]),
@@ -513,7 +527,7 @@ def request_transfer():
     data = request.get_json(silent=True) or {}
     wid = _staff_warehouse_id()
     if not _has_active_subscription(wid):
-        return jsonify({"error": "an active package is required to request stock transfers"}), 403
+        return jsonify({"error": "an active subscription is required to request stock transfers"}), 403
     batch = JaggeryBatch.query.filter_by(id=data.get("batch_id"), warehouse_id=wid).first()
     if not batch:
         return jsonify({"error": "category not found in your warehouse"}), 404
@@ -610,8 +624,8 @@ def subscription_request_otp():
     user.pay_otp_hash = hash_password(code)
     user.pay_otp_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.session.commit()
-    result = send_bulk([user.email], "Your package payment code",
-                       f"Your code to confirm your package payment is {code}. "
+    result = send_bulk([user.email], "Your subscription payment code",
+                       f"Your code to confirm your subscription payment is {code}. "
                        f"It expires in 10 minutes.")
     audit("subscription_otp_requested", _mask_email(user.email))
     db.session.commit()
@@ -643,7 +657,7 @@ def buy_subscription():
 
     wid = _staff_warehouse_id()
     # Guard against an orphaned account (its warehouse was deleted) — fail with a clear
-    # message instead of a database crash when there's no warehouse to attach the package to.
+    # message instead of a database crash when there's no warehouse to attach the subscription to.
     if not wid or not db.session.get(Warehouse, wid):
         return jsonify({"error": "Your account isn't linked to a warehouse (it may have been removed). Please contact the admin to reconnect your account."}), 400
     today = date.today()
@@ -711,7 +725,7 @@ def payment_slip(pid):
         ("Payer", d.get("payer") or ""),
         ("Payment status", (d.get("status") or "").upper()),
     ]
-    pdf = payment_slip_pdf("Package Payment Receipt", pairs, f"{d['amount']} Kyats",
+    pdf = payment_slip_pdf("Subscription Payment Receipt", pairs, f"{d['amount']} Kyats",
                            "Thank you for subscribing.")
     return Response(pdf, mimetype="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=subscription_payment_{p.id}.pdf"})
@@ -847,7 +861,7 @@ def submit_product_request():
     harvest_date, and optional image file 'file'."""
     wid = _staff_warehouse_id()
     if not _has_active_subscription(wid):
-        return jsonify({"error": "an active package is required to request product uploads"}), 403
+        return jsonify({"error": "an active subscription is required to request product uploads"}), 403
 
     # accept both multipart form (with image) and plain JSON
     src = request.form if request.form else (request.get_json(silent=True) or {})

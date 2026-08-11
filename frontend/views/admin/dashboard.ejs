@@ -3,29 +3,30 @@
 <div class="welcome-hero">
   <div class="welcome-avatar"><%= adminName.charAt(0).toUpperCase() %></div>
   <div class="welcome-text">
-    <span class="welcome-greeting" id="welcomeGreeting">Welcome back,</span>
+    <span class="welcome-greeting" id="welcomeGreeting"><%= t("Welcome back,") %></span>
     <span class="welcome-name"><%= adminName %></span>
-    <span class="welcome-sub">🛠️ Here's everything happening across your store today.</span>
+    <span class="welcome-sub">🛠️ <%= t("Here's everything happening across your store today.") %></span>
   </div>
-  <a class="welcome-cta" href="/admin/batches">Category requests →</a>
+  <a class="welcome-cta" href="/admin/batches"><%= t("Category requests") %> →</a>
 </div>
 <script>
   (function () {
+    var L = <%- JSON.stringify({ morning: t("Good morning,"), afternoon: t("Good afternoon,"), evening: t("Good evening,") }) %>;
     var h = new Date().getHours();
-    var g = h < 12 ? "Good morning" : (h < 17 ? "Good afternoon" : "Good evening");
+    var g = h < 12 ? L.morning : (h < 17 ? L.afternoon : L.evening);
     var el = document.getElementById("welcomeGreeting");
-    if (el) el.textContent = g + ",";
+    if (el) el.textContent = g;
   })();
 </script>
 
 <div class="kpis">
-  <div class="kpi"><span><%= kpis.package_revenue || 0 %> Kyats</span>💳 Package revenue</div>
-  <div class="kpi"><span><%= kpis.total_customers || 0 %></span>👤 Customers</div>
-  <div class="kpi"><span><%= kpis.total_warehouses || 0 %></span>🏬 Warehouses</div>
-  <div class="kpi"><span><%= kpis.active_promotions || 0 %></span>🎉 Active Promotion</div>
-  <div class="kpi"><span><%= kpis.active_ads || 0 %></span>📣 Active Advertisements</div>
-  <div class="kpi"><span><%= kpis.pending_requests || 0 %></span>🆕 Pending approvals</div>
-  <div class="kpi"><span><%= kpis.total_stock_kg || 0 %>kg</span>⚖️ Total stock</div>
+  <div class="kpi"><span><%= t("{n} Kyats", { n: kpis.subscription_revenue || 0 }) %></span>💳 <%= t("Subscription revenue") %></div>
+  <div class="kpi"><span><%= kpis.total_customers || 0 %></span>👤 <%= t("Customers") %></div>
+  <div class="kpi"><span><%= kpis.total_warehouses || 0 %></span>🏬 <%= t("Warehouses") %></div>
+  <div class="kpi"><span><%= kpis.active_promotions || 0 %></span>🎉 <%= t("Active Promotion") %></div>
+  <div class="kpi"><span><%= kpis.active_ads || 0 %></span>📣 <%= t("Active Advertisements") %></div>
+  <div class="kpi"><span><%= kpis.pending_requests || 0 %></span>🆕 <%= t("Pending approvals") %></div>
+  <div class="kpi"><span><%= t("{n}kg", { n: kpis.total_stock_kg || 0 }) %></span>⚖️ <%= t("Total stock") %></div>
 </div>
 
 <%
@@ -36,26 +37,26 @@
 %>
 <div class="cols">
   <div class="card">
-    <h3>Revenue — last 30 days</h3>
+    <h3><%= t("Revenue — last 30 days") %></h3>
     <% if (hasRev30) { %>
       <canvas id="rev30" height="180"></canvas>
     <% } else { %>
       <div class="card-empty">
         <span class="ce-icon">💰</span>
-        <div class="ce-title">No revenue yet</div>
-        <div class="ce-sub">Revenue from the last 30 days will appear here once customers start placing orders.</div>
+        <div class="ce-title"><%= t("No revenue yet") %></div>
+        <div class="ce-sub"><%= t("Revenue from the last 30 days will appear here once customers start placing orders.") %></div>
       </div>
     <% } %>
   </div>
   <div class="card">
-    <h3>Top warehouses (orders)</h3>
+    <h3><%= t("Top warehouses (orders)") %></h3>
     <% if (hasTopWh) { %>
       <canvas id="topWh" height="180"></canvas>
     <% } else { %>
       <div class="card-empty">
         <span class="ce-icon">🏬</span>
-        <div class="ce-title">No orders yet</div>
-        <div class="ce-sub">When customers place orders, your busiest warehouses will be ranked here by order count.</div>
+        <div class="ce-title"><%= t("No orders yet") %></div>
+        <div class="ce-sub"><%= t("When customers place orders, your busiest warehouses will be ranked here by order count.") %></div>
       </div>
     <% } %>
   </div>
@@ -63,12 +64,13 @@
 
 <script>
   window.CHART_DATA = <%- JSON.stringify(charts) %>;
+  window.CHART_L = <%- JSON.stringify({ revenue: t("Revenue (Kyats)"), orders: t("orders") }) %>;
   // Draw immediately when the page arrives via the no-reload engine (libs are
   // already present); fall back to the load event on a normal first visit.
   (function () {
     function initCharts() {
-      if (document.getElementById("rev30")) JaggeryCharts.line("rev30", CHART_DATA.revenue_30d.labels, CHART_DATA.revenue_30d.values, "Revenue (Kyats)");
-      if (document.getElementById("topWh")) JaggeryCharts.bar("topWh", CHART_DATA.top_warehouses.labels, CHART_DATA.top_warehouses.values, "orders");
+      if (document.getElementById("rev30")) JaggeryCharts.line("rev30", CHART_DATA.revenue_30d.labels, CHART_DATA.revenue_30d.values, CHART_L.revenue);
+      if (document.getElementById("topWh")) JaggeryCharts.bar("topWh", CHART_DATA.top_warehouses.labels, CHART_DATA.top_warehouses.values, CHART_L.orders);
     }
     if (document.readyState === "complete" && window.JaggeryCharts) initCharts();
     else window.addEventListener("load", initCharts);

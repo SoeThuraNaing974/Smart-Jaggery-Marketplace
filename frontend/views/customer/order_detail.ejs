@@ -6,18 +6,18 @@
 <!-- summary banner -->
 <div class="card od-banner">
   <div class="od-banner-main">
-    <div class="od-num">🧾 Order<% if (displayNo) { %> #<%= displayNo %><% } %></div>
-    <div class="od-meta">Placed on <strong><%= order.created_at ? order.created_at.substring(0,10) : "—" %></strong>
-      · <%= order.items.length %> item<%= order.items.length === 1 ? "" : "s" %></div>
+    <div class="od-num">🧾 <%= t("Order") %><% if (displayNo) { %> #<%= displayNo %><% } %></div>
+    <div class="od-meta"><%= t("Placed on") %> <strong><%= order.created_at ? order.created_at.substring(0,10) : "—" %></strong>
+      · <%= t(order.items.length === 1 ? "{n} item" : "{n} items", { n: order.items.length }) %></div>
   </div>
   <div class="od-banner-side">
     <span class="od-status-pill status-<%= order.status %>"><%= statusLabel(order.status) %></span>
     <% if (order.payment_status === "paid") { %>
-      <span class="pay-badge paid">✔ Paid<% if (order.payment_method_label) { %> · <%= order.payment_method_label %><% } %></span>
+      <span class="pay-badge paid">✔ <%= t("Paid") %><% if (order.payment_method_label) { %> · <%= order.payment_method_label %><% } %></span>
     <% } else if (order.payment_method === "cod") { %>
-      <span class="pay-badge cod">Pay on delivery</span>
+      <span class="pay-badge cod"><%= t("Pay on delivery") %></span>
     <% } else { %>
-      <span class="pay-badge unpaid">Unpaid</span>
+      <span class="pay-badge unpaid"><%= t("Unpaid") %></span>
     <% } %>
   </div>
 </div>
@@ -33,34 +33,34 @@
       <% }) %>
     </div>
   <% } else { %>
-    <div class="order-cancelled">✕ Order cancelled</div>
+    <div class="order-cancelled">✕ <%= t("Order cancelled") %></div>
   <% } %>
 </div>
 
 <div class="cols">
   <div class="card">
-    <h3>🚚 Delivery</h3>
+    <h3>🚚 <%= t("Delivery") %></h3>
     <dl class="od-dl">
-      <div><dt>Address</dt><dd><%= order.delivery_address || "—" %></dd></div>
-      <div><dt>Pincode</dt><dd><%= order.pincode || "—" %></dd></div>
-      <div><dt>Warehouse</dt><dd><%= order.warehouse_name || "—" %></dd></div>
+      <div><dt><%= t("Address") %></dt><dd><%= order.delivery_address || "—" %></dd></div>
+      <div><dt><%= t("Pincode") %></dt><dd><%= order.pincode || "—" %></dd></div>
+      <div><dt><%= t("Warehouse") %></dt><dd><%= order.warehouse_name || "—" %></dd></div>
     </dl>
   </div>
   <div class="card">
-    <h3>💳 Payment</h3>
+    <h3>💳 <%= t("Payment") %></h3>
     <dl class="od-dl">
-      <div><dt>Method</dt><dd><%= order.payment_method_label || order.payment_method || "—" %></dd></div>
-      <div><dt>Status</dt><dd><%= order.payment_status || "—" %></dd></div>
-      <div><dt>Reference</dt><dd><%= order.payment_reference || "—" %></dd></div>
+      <div><dt><%= t("Method") %></dt><dd><%= order.payment_method_label || order.payment_method || "—" %></dd></div>
+      <div><dt><%= t("Status") %></dt><dd><%= t(order.payment_status || "—") %></dd></div>
+      <div><dt><%= t("Reference") %></dt><dd><%= order.payment_reference || "—" %></dd></div>
     </dl>
   </div>
 </div>
 
 <!-- items -->
 <div class="card">
-  <h3>📦 Items</h3>
+  <h3>📦 <%= t("Items") %></h3>
   <table class="tbl">
-    <thead><tr><th>No.</th><th>Product</th><th>Grade</th><th>Qty (kg)</th><th>Unit (Kyats)</th><th>Line Kyats </th></tr></thead>
+    <thead><tr><th><%= t("No.") %></th><th><%= t("Product") %></th><th><%= t("Grade") %></th><th><%= t("Qty (kg)") %></th><th><%= t("Unit (Kyats)") %></th><th><%= t("Line Kyats") %> </th></tr></thead>
     <tbody>
       <% order.items.forEach(function (it, i) { %>
         <tr>
@@ -68,41 +68,41 @@
           <td><strong><%= it.batch_id %></strong></td>
           <td><%= it.grade %></td>
           <td><%= it.qty_kg %></td>
-          <td><%= it.unit_price %> Kyats</td>
-          <td><%= it.line_total %> Kyats</td>
+          <td><%= t("{n} Kyats", { n: it.unit_price }) %></td>
+          <td><%= t("{n} Kyats", { n: it.line_total }) %></td>
         </tr>
       <% }) %>
     </tbody>
   </table>
 
   <div class="od-totals">
-    <div><span>Subtotal</span><span><%= order.subtotal %> Kyats</span></div>
+    <div><span><%= t("Subtotal") %></span><span><%= t("{n} Kyats", { n: order.subtotal }) %></span></div>
     <% if (order.discount_amount && Number(order.discount_amount) > 0) { %>
-      <div class="od-disc"><span>Discount</span><span>− <%= order.discount_amount %> Kyats</span></div>
+      <div class="od-disc"><span><%= t("Discount") %></span><span>− <%= t("{n} Kyats", { n: order.discount_amount }) %></span></div>
     <% } %>
-    <div><span>Delivery</span><span><%= order.delivery_charge %> Kyats</span></div>
-    <div class="od-grand"><span>Total</span><span><%= order.grand_total != null ? order.grand_total : order.total_price %> Kyats</span></div>
+    <div><span><%= t("Delivery") %></span><span><%= t("{n} Kyats", { n: order.delivery_charge }) %></span></div>
+    <div class="od-grand"><span><%= t("Total") %></span><span><%= t("{n} Kyats", { n: order.grand_total != null ? order.grand_total : order.total_price }) %></span></div>
   </div>
 </div>
 
 <!-- actions -->
 <div class="card od-actions">
   <% if (order.payment_status !== "paid" && order.payment_method !== "cod" && order.status !== "cancelled") { %>
-    <a class="btn" href="/orders/<%= order.id %>/pay">💳 Pay now</a>
+    <a class="btn" href="/orders/<%= order.id %>/pay">💳 <%= t("Pay now") %></a>
   <% } %>
   <% if (order.payment_status === "paid") { %>
-    <a class="btn" href="/orders/<%= order.id %>/payment-slip" target="_blank">🧾 Payment slip</a>
+    <a class="btn" href="/orders/<%= order.id %>/payment-slip" target="_blank">🧾 <%= t("Payment slip") %></a>
   <% } %>
   <% if (order.status === "shipped") { %>
-    <a class="btn" href="/orders/<%= order.id %>/invoice" target="_blank">📄 Invoice PDF</a>
+    <a class="btn" href="/orders/<%= order.id %>/invoice" target="_blank">📄 <%= t("Invoice PDF") %></a>
   <% } %>
   <% if (order.status === "pending" || order.status === "waiting") { %>
     <form action="/orders/<%= order.id %>/cancel" method="post" class="inline">
-      <button class="btn danger" type="submit">Cancel order</button>
+      <button class="btn danger" type="submit"><%= t("Cancel order") %></button>
     </form>
   <% } %>
-  <a class="btn" href="/orders/<%= order.id %>/messages">📝 Note</a>
-  <a class="btn gray" href="/">← Back to home</a>
+  <a class="btn" href="/orders/<%= order.id %>/messages">📝 <%= t("Note") %></a>
+  <a class="btn gray" href="/">← <%= t("Back to home") %></a>
 </div>
 
 <%- include("../partials/footer") %>

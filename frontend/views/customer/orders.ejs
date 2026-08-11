@@ -5,10 +5,9 @@
 <div class="modal-overlay" id="cancelModal">
   <div class="modal-box">
     <div class="modal-check">✓</div>
-    <h3 class="modal-title">Order cancelled</h3>
-    <p class="modal-text">Your order has been cancelled successfully. Any reserved stock has been
-      released, and you won't be charged.</p>
-    <button class="btn" id="cancelModalClose">Got it</button>
+    <h3 class="modal-title"><%= t("Order cancelled") %></h3>
+    <p class="modal-text"><%= t("Your order has been cancelled successfully. Any reserved stock has been released, and you won't be charged.") %></p>
+    <button class="btn" id="cancelModalClose"><%= t("Got it") %></button>
   </div>
 </div>
 <script>
@@ -27,18 +26,18 @@
 <% if (!orders.length) { %>
   <div class="empty-state">
     <div class="empty-icon">📦</div>
-    <div class="empty-title">No orders yet</div>
-    <div class="empty-sub">When you place an order, it'll show up here.</div>
-    <a class="btn" href="/batches">Browse categories</a>
+    <div class="empty-title"><%= t("No orders yet") %></div>
+    <div class="empty-sub"><%= t("When you place an order, it'll show up here.") %></div>
+    <a class="btn" href="/batches"><%= t("Browse categories") %></a>
   </div>
 <% } else { %>
-<h2>My Orders</h2>
+<h2><%= t("My Orders") %></h2>
 <% if (typeof updateCount !== "undefined" && updateCount > 0) { %>
   <div class="order-update-banner">
     <span class="oub-ico">🚚</span>
-    <span><strong><%= updateCount %> of your orders</strong>
-      just shipped / delivered — highlighted <%= updateCount === 1 ? "below" : "at the top" %>
-      with a <span class="oub-tag">✓ Update</span> tag.</span>
+    <span><strong><%= t("{n} of your orders", { n: updateCount }) %></strong>
+      <%= t(updateCount === 1 ? "just shipped / delivered — highlighted below with a" : "just shipped / delivered — highlighted at the top with a") %>
+      <span class="oub-tag"><%= t("✓ Update") %></span> <%= t("tag.") %></span>
   </div>
 <% } %>
 <% var steps = ["pending","waiting","shipped"]; %>
@@ -47,19 +46,19 @@
   <% var si = steps.indexOf(o.status); var cancelled = (o.status === "cancelled"); %>
   <% var needsPay = (o.payment_status !== "paid" && o.payment_method !== "cod" && o.status !== "cancelled"); %>
   <div class="order-card <%= o.isUpdate ? 'is-update' : '' %> <%= needsPay ? 'is-unpaid' : '' %>">
-    <% if (o.isUpdate) { %><span class="order-update-ribbon"><%= o.status === "delivered" ? "📦 Delivered" : "🚚 Shipped" %></span><% } %>
+    <% if (o.isUpdate) { %><span class="order-update-ribbon"><%= o.status === "delivered" ? "📦 " + t("Delivered") : "🚚 " + t("Shipped") %></span><% } %>
     <div class="order-head">
-      <div class="order-id">🧾 Order: <%= o.displayNo %>
+      <div class="order-id">🧾 <%= t("Order:") %> <%= o.displayNo %>
         <span class="order-date"><%= o.created_at ? o.created_at.substring(0,10) : "" %></span>
       </div>
       <div class="order-badges">
         <span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span>
         <% if (o.payment_status === "paid") { %>
-          <span class="pay-badge paid">✔ Paid<% if (o.payment_method_label) { %> · <%= o.payment_method_label %><% } %></span>
+          <span class="pay-badge paid">✔ <%= t("Paid") %><% if (o.payment_method_label) { %> · <%= o.payment_method_label %><% } %></span>
         <% } else if (o.payment_method === "cod") { %>
-          <span class="pay-badge cod">Pay on delivery</span>
+          <span class="pay-badge cod"><%= t("Pay on delivery") %></span>
         <% } else { %>
-          <span class="pay-badge unpaid">Unpaid</span>
+          <span class="pay-badge unpaid"><%= t("Unpaid") %></span>
         <% } %>
       </div>
     </div>
@@ -73,13 +72,13 @@
         <% }) %>
       </div>
     <% } else { %>
-      <div class="order-cancelled">✕ Order cancelled</div>
+      <div class="order-cancelled">✕ <%= t("Order cancelled") %></div>
     <% } %>
 
     <p class="muted order-meta">📍 <%= o.delivery_address %><% if (o.warehouse_name) { %> &nbsp;·&nbsp; 🏬 <%= o.warehouse_name %><% } %></p>
 
     <table class="tbl">
-      <thead><tr><th>Category</th><th>Grade</th><th>Qty (kg)</th><th>Unit (Kyats)</th><th>Line Kyats </th></tr></thead>
+      <thead><tr><th><%= t("Category") %></th><th><%= t("Grade") %></th><th><%= t("Qty (kg)") %></th><th><%= t("Unit (Kyats)") %></th><th><%= t("Line Kyats") %> </th></tr></thead>
       <tbody>
         <% o.items.forEach(it => { %>
           <tr><td><%= it.batch_id %></td><td><%= it.grade %></td><td><%= it.qty_kg %></td>
@@ -89,78 +88,78 @@
     </table>
 
     <div class="order-total-row">
-      <span class="muted">Subtotal <%= o.subtotal %> Kyats<% if (o.discount_amount > 0) { %> · Discount −<%= o.discount_amount %> Kyats<% } %> · Delivery <%= o.delivery_charge %> Kyats</span>
-      <span class="order-grand">Total <%= o.grand_total %> Kyats</span>
+      <span class="muted"><%= t("Subtotal") %> <%= t("{n} Kyats", { n: o.subtotal }) %><% if (o.discount_amount > 0) { %> · <%= t("Discount") %> −<%= t("{n} Kyats", { n: o.discount_amount }) %><% } %> · <%= t("Delivery") %> <%= t("{n} Kyats", { n: o.delivery_charge }) %></span>
+      <span class="order-grand"><%= t("Total") %> <%= t("{n} Kyats", { n: o.grand_total }) %></span>
     </div>
 
     <div class="inline" style="flex-wrap:wrap;gap:.4rem;margin-top:.6rem">
       <% if (needsPay) { %>
-        <a class="btn sm pay-now-btn" href="/orders/<%= o.id %>/pay">💳 Pay now</a>
+        <a class="btn sm pay-now-btn" href="/orders/<%= o.id %>/pay">💳 <%= t("Pay now") %></a>
       <% } %>
       <% if (o.payment_status === "paid") { %>
-        <a class="btn sm" href="/orders/<%= o.id %>/payment-slip" target="_blank">🧾 Payment slip</a>
+        <a class="btn sm" href="/orders/<%= o.id %>/payment-slip" target="_blank">🧾 <%= t("Payment slip") %></a>
       <% } %>
       <% if (o.status === "pending" || o.status === "waiting") { %>
         <form action="/orders/<%= o.id %>/cancel" method="post" class="inline">
-          <button class="btn danger sm" type="submit">Cancel</button>
+          <button class="btn danger sm" type="submit"><%= t("Cancel") %></button>
         </form>
       <% } %>
       <% if (o.status === "shipped") { %>
-        <a class="btn sm" href="/orders/<%= o.id %>/invoice" target="_blank">Invoice PDF</a>
+        <a class="btn sm" href="/orders/<%= o.id %>/invoice" target="_blank"><%= t("Invoice PDF") %></a>
       <% } %>
-      <a class="btn sm" href="/orders/<%= o.id %>/messages">📝 Note</a>
+      <a class="btn sm" href="/orders/<%= o.id %>/messages">📝 <%= t("Note") %></a>
     </div>
 
     <% if (o.status === "shipped" && !o.has_review) { %>
       <form action="/orders/<%= o.id %>/review" method="post" class="row-form" style="margin-top:.5rem">
         <select name="rating" required>
-          <option value="">Rating…</option>
+          <option value=""><%= t("Rating…") %></option>
           <% for (let r=5; r>=1; r--) { %><option value="<%= r %>"><%= "★".repeat(r) %></option><% } %>
         </select>
-        <input name="comment" placeholder="Your review (optional)">
-        <button class="btn sm" type="submit">Submit review</button>
+        <input name="comment" placeholder="<%= t("Your review (optional)") %>">
+        <button class="btn sm" type="submit"><%= t("Submit review") %></button>
       </form>
     <% } else if (o.has_review) { %>
-      <p class="muted">✔ You reviewed this order.</p>
+      <p class="muted">✔ <%= t("You reviewed this order.") %></p>
     <% } %>
   </div>
 <% }) %>
 </div>
 
 <% if (orders.length > 5) { %>
-  <button type="button" class="btn" id="ordersReadMore" style="margin-top:.4rem">📋 Read more — view all <%= orders.length %> orders with dates →</button>
+  <button type="button" class="btn" id="ordersReadMore" style="margin-top:.4rem">📋 <%= t("Read more — view all {n} orders with dates", { n: orders.length }) %> →</button>
 <% } %>
 
 <!-- popup: all orders with date + date search -->
 <div class="modal-overlay" id="ordersModal" style="display:none">
   <div class="modal-box perf-modal-box">
-    <div class="perf-modal-head">🧾 All my orders — <%= orders.length %></div>
+    <div class="perf-modal-head">🧾 <%= t("All my orders — {n}", { n: orders.length }) %></div>
     <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem">
-      <label class="ot-field">From <input type="date" id="ordFrom"></label>
-      <label class="ot-field">To <input type="date" id="ordTo"></label>
-      <button type="button" class="btn sm" id="ordSearch">🔍 Search</button>
-      <button type="button" class="btn sm gray" id="ordClear">Clear</button>
+      <label class="ot-field"><%= t("From") %> <input type="date" id="ordFrom"></label>
+      <label class="ot-field"><%= t("To") %> <input type="date" id="ordTo"></label>
+      <button type="button" class="btn sm" id="ordSearch">🔍 <%= t("Search") %></button>
+      <button type="button" class="btn sm gray" id="ordClear"><%= t("Clear") %></button>
     </div>
     <div class="perf-modal-scroll">
       <table class="tbl" id="ordTable">
-        <thead><tr><th>No.</th><th>📅 Date</th><th>Category</th><th>Status</th><th>Payment</th><th>Total (Kyats)</th><th>Action</th></tr></thead>
+        <thead><tr><th><%= t("No.") %></th><th>📅 <%= t("Date") %></th><th><%= t("Category") %></th><th><%= t("Status") %></th><th><%= t("Payment") %></th><th><%= t("Total (Kyats)") %></th><th><%= t("Action") %></th></tr></thead>
         <tbody>
           <% orders.forEach(function(o, i) { var d = o.created_at ? o.created_at.substring(0,10) : ""; %>
             <tr data-date="<%= d %>">
               <td><strong><%= orders.length - i %></strong></td>
               <td class="muted"><%= d || "—" %></td>
-              <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %> <span class="muted">×<%= it.qty_kg %>kg</span></div><% }) %></td>
+              <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %> <span class="muted">×<%= t("{n}kg", { n: it.qty_kg }) %></span></div><% }) %></td>
               <td><span class="status status-<%= o.status %>"><%= statusLabel(o.status) %></span></td>
-              <td><% if (o.payment_status === "paid") { %>Paid<% } else if (o.payment_method === "cod") { %>On delivery<% } else if (o.status === "cancelled") { %>Unpaid<% } else { %><span class="unpaid-cell-tag">💰 Unpaid</span><% } %></td>
-              <td><%= o.grand_total %> Kyats</td>
-              <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= orders.length - i %>">🔍 Details</a></td>
+              <td><% if (o.payment_status === "paid") { %><%= t("Paid") %><% } else if (o.payment_method === "cod") { %><%= t("On delivery") %><% } else if (o.status === "cancelled") { %><%= t("Unpaid") %><% } else { %><span class="unpaid-cell-tag">💰 <%= t("Unpaid") %></span><% } %></td>
+              <td><%= t("{n} Kyats", { n: o.grand_total }) %></td>
+              <td><a class="btn sm" href="/orders/<%= o.id %>/details?n=<%= orders.length - i %>">🔍 <%= t("Details") %></a></td>
             </tr>
           <% }) %>
         </tbody>
       </table>
-      <p class="muted" id="ordNoRows" style="display:none;padding:.6rem">No orders in this date range.</p>
+      <p class="muted" id="ordNoRows" style="display:none;padding:.6rem"><%= t("No orders in this date range.") %></p>
     </div>
-    <button type="button" class="btn" id="ordClose" style="margin-top:.7rem">Close</button>
+    <button type="button" class="btn" id="ordClose" style="margin-top:.7rem"><%= t("Close") %></button>
   </div>
 </div>
 <script>

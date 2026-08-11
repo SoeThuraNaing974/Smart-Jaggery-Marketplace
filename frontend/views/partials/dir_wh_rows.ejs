@@ -5,7 +5,7 @@
     <td data-label="Email" class="muted"><%= w.email || '—' %></td>
     <td data-label="Location" class="muted"><%= w.location || '—' %></td>
     <td data-label="Staff" class="wh-staff"><%= w.staff_count %></td>
-    <td data-label="Package" class="muted">
+    <td data-label="Subscription" class="muted">
       <% if (w.subscription) { %><%= w.subscription.plan_name || 'Plan' %> · ends <%= (w.subscription.end_date || '').substring(0,10) %>
       <% } else { %>— none —<% } %>
     </td>

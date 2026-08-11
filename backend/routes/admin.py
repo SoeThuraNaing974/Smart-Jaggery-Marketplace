@@ -60,7 +60,7 @@ def update_warehouse(wid):
 
 
 def _purge_warehouse(wid):
-    """Hard-delete one warehouse and everything tied to it — products, packages/
+    """Hard-delete one warehouse and everything tied to it — products, subscriptions/
     payments, stock transfers, product requests — AND its staff login(s), so no
     account is ever left orphaned. Past customer orders are kept (just unassigned).
     Uses direct SQL so the database's ON DELETE rules handle the cascade reliably."""
@@ -301,7 +301,7 @@ def unblock_user(uid):
 @role_required("admin")
 def delete_warehouses():
     """Bulk-delete warehouses. Each warehouse and everything tied to it — products,
-    packages/payments, transfers, requests, AND its staff login(s) — is removed, so no
+    subscriptions/payments, transfers, requests, AND its staff login(s) — is removed, so no
     account is ever left orphaned. Past customer orders are kept (just unassigned)."""
     from sqlalchemy import text
     data = request.get_json(silent=True) or {}
@@ -364,7 +364,7 @@ def bulk_delete_subscription_plans():
 def bulk_delete_subscriptions():
     n = _bulk_delete(WarehouseSubscription, request.get_json(silent=True) or {})
     if n is None:
-        return jsonify({"error": "no packages selected"}), 400
+        return jsonify({"error": "no subscriptions selected"}), 400
     return jsonify({"message": "deleted", "count": n})
 
 
@@ -610,7 +610,7 @@ def export_csv():
     buf = io.StringIO()
     w = csv.writer(buf)
     # --- report details header ---
-    w.writerow(["Smart Jaggery Marketplace — Sales Report"])
+    w.writerow(["Smart Jaggery Mart — Sales Report"])
     w.writerow(["Report type", ctx["label"]])
     w.writerow(["Date range", f"{ctx['start']} to {ctx['end']}"])
     w.writerow(["Generated", ctx["generated"]])
@@ -643,9 +643,9 @@ def kpis():
     pending_assignments = Order.query.filter_by(status="pending").count()
     total_stock = float(db.session.query(func.coalesce(func.sum(JaggeryBatch.qty_kg), 0)).scalar())
     total_customers = User.query.filter_by(role="customer").count()
-    # admin-focused numbers: platform size, its own package income, and work waiting
+    # admin-focused numbers: platform size, its own subscription income, and work waiting
     total_warehouses = Warehouse.query.count()
-    package_revenue = round(float(db.session.query(
+    subscription_revenue = round(float(db.session.query(
         func.coalesce(func.sum(Payment.amount), 0)
     ).filter(Payment.status == "paid").scalar()))
     # promotions running right now: switched on and inside their date window
@@ -669,7 +669,7 @@ def kpis():
         "pending_assignments": pending_assignments,
         "total_stock_kg": total_stock,
         "total_warehouses": total_warehouses,
-        "package_revenue": package_revenue,
+        "subscription_revenue": subscription_revenue,
         "active_promotions": active_promotions,
         "active_ads": active_ads,
         "pending_requests": pending_requests,
@@ -774,7 +774,7 @@ def report_excel_export():
     headers = ["No.", "Date", "Qty (kg)", "Revenue (Kyats)"]
     rows = [[i, d[0], round(d[1], 2), round(d[2])] for i, d in enumerate(ctx["data"], start=1)]
     info_lines = [
-        ["Smart Jaggery Marketplace — Sales Report"],
+        ["Smart Jaggery Mart — Sales Report"],
         ["Report type", ctx["label"]],
         ["Date range", f"{ctx['start']} to {ctx['end']}"],
         ["Generated", ctx["generated"]],
@@ -882,6 +882,11 @@ def upsert_delivery_charge():
         amount = float(data["charge_amount"])
     except (KeyError, ValueError, TypeError):
         return jsonify({"error": "charge_amount (number) required"}), 400
+    # Foreign locations (a shipping country or the "Foreign" catch-all) are kept
+    # inside the 20k–50k Kyats band, so the table always shows what is charged.
+    key = pincode.lower()
+    if key in Config.FOREIGN_COUNTRY_FEES or key == "foreign":
+        amount = min(max(amount, Config.FOREIGN_FEE_MIN), Config.FOREIGN_FEE_MAX)
     dc = DeliveryCharge.query.filter_by(pincode=pincode).first()
     if dc:
         dc.charge_amount = amount
@@ -1178,9 +1183,8 @@ def decide_product_request(rid):
         db.session.commit()
         return jsonify({"message": "request rejected", "request": req.to_dict()})
 
-    # approved -> create the live batch (the warehouse can now see it in batches)
-    if JaggeryBatch.query.filter_by(batch_id=req.batch_code).first():
-        return jsonify({"error": f"a category with code {req.batch_code} already exists"}), 409
+    # approved -> create the live batch (the warehouse can now see it in batches);
+    # category names are NOT unique, so an existing name never blocks approval
     batch = JaggeryBatch(
         warehouse_id=req.warehouse_id, batch_id=req.batch_code, grade=req.grade,
         qty_kg=req.qty_kg, harvest_date=req.harvest_date, price_per_kg=req.price_per_kg,
@@ -1264,7 +1268,7 @@ def delete_plan(pid):
     if not plan:
         return jsonify({"error": "plan not found"}), 404
     if WarehouseSubscription.query.filter_by(plan_id=pid).first():
-        return jsonify({"error": "plan has packages; set is_active=false instead"}), 409
+        return jsonify({"error": "plan has subscriptions; set is_active=false instead"}), 409
     name = plan.name
     db.session.delete(plan)
     audit("plan_delete", name)
@@ -1277,12 +1281,12 @@ def delete_plan(pid):
 def delete_subscription(sid):
     sub = db.session.get(WarehouseSubscription, sid)
     if not sub:
-        return jsonify({"error": "package not found"}), 404
+        return jsonify({"error": "subscription not found"}), 404
     wh = sub.warehouse.name if sub.warehouse else str(sub.warehouse_id)
     db.session.delete(sub)
     audit("subscription_delete", wh)
     db.session.commit()
-    return jsonify({"message": "package deleted"})
+    return jsonify({"message": "subscription deleted"})
 
 
 @bp.get("/payments")
@@ -1315,7 +1319,7 @@ def all_payments():
 @bp.post("/payments/delete")
 @role_required("admin")
 def delete_payments():
-    """Bulk-delete payment records (the receipts only — packages stay active)."""
+    """Bulk-delete payment records (the receipts only — subscriptions stay active)."""
     data = request.get_json(silent=True) or {}
     ids = [int(x) for x in (data.get("ids") or []) if str(x).isdigit()]
     if not ids:
@@ -1378,7 +1382,7 @@ def payments_pdf_export():
     dates = [r[1] for r in rows if r[1]]
     start = dfrom or (min(dates) if dates else "—")
     end = dto or (max(dates) if dates else "—")
-    title = "Package Payments Received"
+    title = "Subscription Payments Received"
     if wh:
         title += f" - {wh}"
     pdf = report_pdf(title, headers, rows, summary, period=f"{start} - {end}")
@@ -1479,8 +1483,7 @@ def admin_create_batch():
         return jsonify({"error": "warehouse_id does not exist"}), 400
     if data["grade"].upper() not in {"A", "B", "C"}:
         return jsonify({"error": "grade must be A, B or C"}), 400
-    if JaggeryBatch.query.filter_by(batch_id=data["batch_id"].strip()).first():
-        return jsonify({"error": "category name already exists"}), 409
+    # category names are NOT unique — the same name may be used freely
     try:
         batch = JaggeryBatch(
             warehouse_id=int(data["warehouse_id"]),
@@ -1513,10 +1516,12 @@ def admin_update_batch(pk):
             if not db.session.get(Warehouse, data["warehouse_id"]):
                 return jsonify({"error": "warehouse_id does not exist"}), 400
             batch.warehouse_id = int(data["warehouse_id"])
-        if "batch_id" in data and data["batch_id"].strip() != batch.batch_id:
-            if JaggeryBatch.query.filter_by(batch_id=data["batch_id"].strip()).first():
-                return jsonify({"error": "category name already exists"}), 409
-            batch.batch_id = data["batch_id"].strip()
+        if "batch_id" in data:
+            name = data["batch_id"].strip()
+            if not name:
+                return jsonify({"error": "name cannot be empty"}), 400
+            # category names are NOT unique — the same name may be used freely
+            batch.batch_id = name
         if "qty_kg" in data:
             batch.qty_kg = float(data["qty_kg"])
         if "price_per_kg" in data:
@@ -1625,16 +1630,17 @@ def admin_delete_batch_image(pk, img_id):
 @bp.delete("/batches/<int:pk>")
 @role_required("admin")
 def admin_delete_batch(pk):
+    """Admin removes a category: a soft delete, so order history stays intact.
+    The product instantly disappears from the shop and from the owning
+    warehouse's stock, and the warehouse is notified about the removal."""
     batch = db.session.get(JaggeryBatch, pk)
-    if not batch:
+    if not batch or batch.deleted_at is not None:
         return jsonify({"error": "category not found"}), 404
-    # order_items reference batches with ON DELETE RESTRICT — block & suggest deactivating
-    if OrderItem.query.filter_by(batch_pk=pk).first():
-        return jsonify({
-            "error": "category is referenced by existing orders; set is_active=false instead of deleting"
-        }), 409
     code = batch.batch_id
-    db.session.delete(batch)
-    audit("batch_delete", code)
+    batch.deleted_at = datetime.now(timezone.utc)
+    batch.deleted_by = "admin"
+    batch.delete_ack = True   # the admin's own deletion needs no admin-side alarm
+    batch.is_active = False
+    audit("batch_deleted_by_admin", f"{code} (WH#{batch.warehouse_id})")
     db.session.commit()
-    return jsonify({"message": "category deleted"})
+    return jsonify({"message": f"{code} deleted — removed from the shop and the warehouse has been notified"})

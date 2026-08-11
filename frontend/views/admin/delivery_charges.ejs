@@ -2,17 +2,17 @@
 <div class="page-intro">
   <span class="page-intro-ico">🚚</span>
   <div>
-    <strong>Delivery charges</strong>
-    <span>One charge per location. Customers pay the amount that matches their city at checkout.</span>
+    <strong><%= t("Delivery charges") %></strong>
+    <span><%= t("One charge per location — a Myanmar city (Local) or a country (Foreign). Customers pay the amount that matches the location they pick at checkout.") %></span>
   </div>
 </div>
 
   <div class="card">
-    <h3>Delivery charges (per Location) <span class="muted">(<%= charges.length %>)</span></h3>
-    <% if (!charges.length) { %><p class="muted">No delivery charges yet — add one below.</p><% } else { %>
-      <form id="bulkDc" action="/admin/delivery-charges/bulk-delete" method="post" data-confirm="Delete the selected delivery charge(s)?"></form>
+    <h3><%= t("Delivery charges (per Location)") %> <span class="muted">(<%= charges.length %>)</span></h3>
+    <% if (!charges.length) { %><p class="muted"><%= t("No delivery charges yet — add one below.") %></p><% } else { %>
+      <form id="bulkDc" action="/admin/delivery-charges/bulk-delete" method="post" data-confirm="<%= t("Delete the selected delivery charge(s)?") %>"></form>
       <table class="tbl">
-        <thead><tr><th><input type="checkbox" class="bulk-all" data-group="dc" title="Select all"></th><th>No.</th><th>📍 Location</th><th>📅 Added</th><th style="text-align:center">Charge (Kyats)</th><th style="text-align:center">Action</th></tr></thead>
+        <thead><tr><th><input type="checkbox" class="bulk-all" data-group="dc" title="<%= t("Select all") %>"></th><th><%= t("No.") %></th><th>📍 <%= t("Location") %></th><th>📅 <%= t("Added") %></th><th style="text-align:center"><%= t("Charge (Kyats)") %></th><th style="text-align:center"><%= t("Action") %></th></tr></thead>
         <tbody>
           <% charges.slice(0,3).forEach((c, idx) => { %>
             <tr>
@@ -24,54 +24,82 @@
                 <form action="/admin/delivery-charges" method="post" class="inline" style="gap:.3rem;display:flex;justify-content:center">
                   <input type="hidden" name="pincode" value="<%= c.pincode %>">
                   <input name="charge_amount" type="text" inputmode="numeric" value="<%= c.charge_amount %>" style="width:75px"
-                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"> Kyats
-                  <button class="btn sm" type="submit">Save</button>
+                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"> <%= t("Kyats") %>
+                  <button class="btn sm" type="submit"><%= t("Save") %></button>
                 </form>
               </td>
               <td style="text-align:center">
                 <form action="/admin/delivery-charges/<%= c.id %>/delete" method="post" class="inline"
-                      data-confirm="Delete delivery charge for <%= c.pincode %>?">
-                  <button class="btn sm danger" type="submit">🗑 Delete</button>
+                      data-confirm="<%= t("Delete delivery charge for {location}?", { location: c.pincode }) %>">
+                  <button class="btn sm danger" type="submit">🗑 <%= t("Delete") %></button>
                 </form>
               </td>
             </tr>
           <% }) %>
         </tbody>
       </table>
-      <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkDc">🗑 Delete selected</button></div>
+      <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkDc">🗑 <%= t("Delete selected") %></button></div>
       <% if (charges.length > 3) { %>
-        <button type="button" class="btn sm" id="dcReadMore" style="margin:.3rem 0 .7rem">🚚 Read more — view all <%= charges.length %> locations →</button>
+        <button type="button" class="btn sm" id="dcReadMore" style="margin:.3rem 0 .7rem">🚚 <%= t("Read more — view all {n} locations", { n: charges.length }) %> →</button>
       <% } %>
     <% } %>
 
     <form action="/admin/delivery-charges" method="post" class="row-form" id="dcAddForm">
-      <input name="pincode" placeholder="City (optional)" list="mmCities" autocomplete="off">
-      <input name="charge_amount" type="text" inputmode="numeric" placeholder="Amount (Kyats)" required
+      <select name="scope" id="dcScope" title="<%= t("Local or Foreign?") %>">
+        <option value="local"><%= t("Local (Myanmar city)") %></option>
+        <option value="foreign"><%= t("Foreign (country)") %></option>
+      </select>
+      <input name="pincode" id="dcCityInput" placeholder="<%= t("City name") %>" list="mmCities" autocomplete="off" required>
+      <select name="pincode" id="dcCountrySel" disabled style="display:none">
+        <option value=""><%= t("— Choose a country —") %></option>
+        <% countries.forEach(function (c) { %><option value="<%= c %>"><%= c %></option><% }) %>
+        <option value="Foreign"><%= t("Foreign — any other country") %></option>
+      </select>
+      <input name="charge_amount" type="text" inputmode="numeric" placeholder="<%= t("Amount (Kyats)") %>" required
              oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-      <button class="btn sm" type="submit">Add</button>
+      <button class="btn sm" type="submit"><%= t("Add") %></button>
     </form>
+    <!-- Local = exactly the Myanmar cities customers can pick at checkout -->
     <datalist id="mmCities">
-      <% [
-        "Yangon","Mandalay","Naypyitaw","Bago","Mawlamyine","Taunggyi","Pathein",
-        "Monywa","Meiktila","Myitkyina","Sittwe","Pyay","Hpa-An","Magway","Dawei",
-        "Lashio","Pakokku","Hinthada","Myingyan","Pyin Oo Lwin","Kalaw","Nyaung-U"
-      ].forEach(function (c) { %><option value="<%= c %>"></option><% }) %>
+      <% localCities.forEach(function (c) { %><option value="<%= c %>"></option><% }) %>
     </datalist>
+    <script>
+      // Add form: choosing Local/Foreign swaps the location picker — a city text
+      // input with suggestions vs. the fixed country list (+ "Foreign" catch-all).
+      // Both fields are named "pincode"; only the enabled one is submitted.
+      (function () {
+        var scopeSel = document.getElementById("dcScope");
+        if (!scopeSel) return;
+        var city = document.getElementById("dcCityInput");
+        var country = document.getElementById("dcCountrySel");
+        function render() {
+          var foreign = scopeSel.value === "foreign";
+          city.style.display = foreign ? "none" : "";
+          city.disabled = foreign;
+          city.required = !foreign;
+          country.style.display = foreign ? "" : "none";
+          country.disabled = !foreign;
+          country.required = foreign;
+        }
+        scopeSel.addEventListener("change", render);
+        render();
+      })();
+    </script>
 
     <!-- popup: all delivery charges + search by location -->
     <div class="modal-overlay" id="dcModal" style="display:none">
       <div class="modal-box perf-modal-box">
-        <div class="perf-modal-head">🚚 All delivery charges — <%= charges.length %></div>
+        <div class="perf-modal-head">🚚 <%= t("All delivery charges") %> — <%= charges.length %></div>
         <div class="orders-toolbar" style="justify-content:flex-start;margin-bottom:.4rem;flex-wrap:wrap">
-          <label class="ot-field">🔎 <input type="text" id="dcSearchInput" placeholder="Search location…" style="width:140px"></label>
-          <label class="ot-field">From <input type="date" id="dcFrom"></label>
-          <label class="ot-field">To <input type="date" id="dcTo"></label>
-          <button type="button" class="btn sm gray" id="dcClear">Clear</button>
+          <label class="ot-field">🔎 <input type="text" id="dcSearchInput" placeholder="<%= t("Search location…") %>" style="width:140px"></label>
+          <label class="ot-field"><%= t("From") %> <input type="date" id="dcFrom"></label>
+          <label class="ot-field"><%= t("To") %> <input type="date" id="dcTo"></label>
+          <button type="button" class="btn sm gray" id="dcClear"><%= t("Clear") %></button>
         </div>
         <div class="perf-modal-scroll">
-          <form id="bulkDcAll" action="/admin/delivery-charges/bulk-delete" method="post" data-confirm="Delete the selected delivery charge(s)?"></form>
+          <form id="bulkDcAll" action="/admin/delivery-charges/bulk-delete" method="post" data-confirm="<%= t("Delete the selected delivery charge(s)?") %>"></form>
           <table class="tbl" id="dcTable">
-            <thead><tr><th><input type="checkbox" class="bulk-all" data-group="dcAll" title="Select all"></th><th>No.</th><th>📍 Location</th><th>📅 Added</th><th style="text-align:center">Charge (Kyats)</th><th>Action</th></tr></thead>
+            <thead><tr><th><input type="checkbox" class="bulk-all" data-group="dcAll" title="<%= t("Select all") %>"></th><th><%= t("No.") %></th><th>📍 <%= t("Location") %></th><th>📅 <%= t("Added") %></th><th style="text-align:center"><%= t("Charge (Kyats)") %></th><th><%= t("Action") %></th></tr></thead>
             <tbody>
               <% charges.forEach((c, idx) => { var dd = c.created_at ? c.created_at.substring(0,10) : ""; %>
                 <tr data-loc="<%= String(c.pincode).toLowerCase() %>" data-date="<%= dd %>">
@@ -83,13 +111,13 @@
                     <form action="/admin/delivery-charges" method="post" class="inline" style="gap:.3rem">
                       <input type="hidden" name="pincode" value="<%= c.pincode %>">
                       <input name="charge_amount" type="text" inputmode="numeric" value="<%= c.charge_amount %>" style="width:75px"
-                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"> Kyats
-                      <button class="btn sm" type="submit">Save</button>
+                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"> <%= t("Kyats") %>
+                      <button class="btn sm" type="submit"><%= t("Save") %></button>
                     </form>
                   </td>
                   <td>
                     <form action="/admin/delivery-charges/<%= c.id %>/delete" method="post" class="inline"
-                          data-confirm="Delete delivery charge for <%= c.pincode %>?">
+                          data-confirm="<%= t("Delete delivery charge for {location}?", { location: c.pincode }) %>">
                       <button class="btn sm danger" type="submit">🗑</button>
                     </form>
                   </td>
@@ -97,11 +125,11 @@
               <% }) %>
             </tbody>
           </table>
-          <p class="muted" id="dcNoRows" style="display:none;padding:.6rem">No matching location.</p>
+          <p class="muted" id="dcNoRows" style="display:none;padding:.6rem"><%= t("No matching location.") %></p>
         </div>
         <div class="acc-actions" style="margin-top:.7rem">
-          <button class="btn sm danger" type="submit" form="bulkDcAll">🗑 Delete selected</button>
-          <button type="button" class="btn" id="dcClose">Close</button>
+          <button class="btn sm danger" type="submit" form="bulkDcAll">🗑 <%= t("Delete selected") %></button>
+          <button type="button" class="btn" id="dcClose"><%= t("Close") %></button>
         </div>
       </div>
     </div>
@@ -143,12 +171,11 @@
     <div class="modal-overlay" id="dupModal" style="display:none">
       <div class="modal-box confirm-box">
         <div class="confirm-ico" style="background:#fff4e0">📍</div>
-        <h3 class="confirm-title">Location already added</h3>
-        <p class="confirm-msg"><strong id="dupCity"></strong> already has a delivery charge.
-          Do you want to <strong>update</strong> it with the new amount instead?</p>
+        <h3 class="confirm-title"><%= t("Location already added") %></h3>
+        <p class="confirm-msg"><strong id="dupCity"></strong> <%= t("already has a delivery charge. Do you want to update it with the new amount instead?") %></p>
         <div class="confirm-actions">
-          <button type="button" class="btn confirm-cancel" id="dupCancel">✕ Cancel</button>
-          <button type="button" class="btn bright" id="dupOk">✓ Yes, update it</button>
+          <button type="button" class="btn confirm-cancel" id="dupCancel">✕ <%= t("Cancel") %></button>
+          <button type="button" class="btn bright" id="dupOk">✓ <%= t("Yes, update it") %></button>
         </div>
       </div>
     </div>

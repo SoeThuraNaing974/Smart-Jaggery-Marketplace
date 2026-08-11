@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const FormData = require("form-data");
 const { client } = require("../lib/api");
+const { askToLogin } = require("../middleware/auth");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -15,22 +16,46 @@ const TOKEN_COOKIE = {
   maxAge: 1000 * 60 * 60 * 12, // 12h, matches the JWT expiry
 };
 
-router.get("/login", (req, res) => res.render("login", { error: null }));
-router.get("/register", (req, res) => res.render("register", { error: null }));
+/**
+ * Where to go after logging in.
+ *
+ * A guest who clicked "Login to buy" arrives with ?next=/batches, and we send them
+ * back there instead of the generic landing page. Only same-site paths are honoured
+ * — anything absolute, protocol-relative or otherwise foreign is discarded so the
+ * login form can't be used to bounce someone to another site.
+ */
+function safeNext(value) {
+  const next = String(value || "");
+  if (!next.startsWith("/") || next.startsWith("//")) return "";
+  if (/^\/(login|register|logout)\b/.test(next)) return "";   // no login loops
+  return next;
+}
+
+router.get("/login", (req, res) => res.render("login", {
+  error: req.query.err || null, next: safeNext(req.query.next),
+}));
+router.get("/register", (req, res) => res.render("register", {
+  error: req.query.err || null, next: safeNext(req.query.next),
+}));
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  const next = safeNext(req.body.next);
   const r = await client().post("/api/login", { email, password });
   if (r.status !== 200) {
-    return res.status(r.status).render("login", { error: r.data.error || "Login failed" });
+    return res.status(r.status).render("login", {
+      error: r.data.error || "Login failed", next,
+    });
   }
   // store the API's JWT in our own HTTP-only cookie
   res.cookie("token", r.data.token, TOKEN_COOKIE);
-  res.redirect("/");
+  // back to whatever they were trying to do, else the role-based landing page
+  res.redirect(next || "/");
 });
 
 router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
+  const next = safeNext(req.body.next);
   const accountType = req.body.account_type === "warehouse" ? "warehouse" : "customer";
   // store the phone with the chosen country code in front of the local number (like profile)
   const cc = (req.body.country_code || "+95").trim();
@@ -45,10 +70,14 @@ router.post("/register", async (req, res) => {
   }
   const r = await client().post("/api/register", payload);
   if (r.status !== 201) {
-    return res.status(r.status).render("register", { error: r.data.error || "Registration failed" });
+    return res.status(r.status).render("register", {
+      error: r.data.error || "Registration failed", next,
+    });
   }
   res.cookie("token", r.data.token, TOKEN_COOKIE);
-  res.redirect("/");   // role-based redirect → warehouse lands on /warehouse
+  // a customer who registered mid-shop returns to the page they were on;
+  // otherwise the role-based redirect (warehouse lands on /warehouse)
+  res.redirect((accountType === "customer" && next) || "/");
 });
 
 router.post("/logout", async (req, res) => {
@@ -60,12 +89,12 @@ router.post("/logout", async (req, res) => {
   }
   res.clearCookie("token");
   res.clearCookie("cart");
-  res.redirect("/login");
+  res.redirect("/");        // public shop front — they can keep browsing as a guest
 });
 
 // ------------------------------------------------ profile (any logged-in user)
 function requireLogin(req, res, next) {
-  if (!req.user) return res.redirect("/login");
+  if (!req.user) return askToLogin(req, res);   // remembers where they were going
   next();
 }
 

@@ -1,14 +1,13 @@
 <%- include("../partials/header") %>
-<h2>Request</h2>
+<h2><%= t("Request") %></h2>
 
 <% if (typeof submitted !== "undefined" && submitted) { %>
 <div class="modal-overlay" id="reqModal">
   <div class="modal-box">
     <div class="modal-check">✓</div>
-    <h3 class="modal-title">Request submitted!</h3>
-    <p class="modal-text">Your product has been sent to the admin for approval.
-      Once approved, it goes live on the <strong>Categories</strong> page for customers to buy.</p>
-    <button class="btn" id="reqModalClose">Got it</button>
+    <h3 class="modal-title"><%= t("Request submitted!") %></h3>
+    <p class="modal-text"><%= t("Your product has been sent to the admin for approval. Once approved, it goes live on the Categories page for customers to buy.") %></p>
+    <button class="btn" id="reqModalClose"><%= t("Got it") %></button>
   </div>
 </div>
 <script>
@@ -25,57 +24,58 @@
 <% } %>
 
 <div class="card">
-  <h3>Request a new category</h3>
-  <p class="req-hint">🛍️ Add your product and send it to the admin for review — once approved, it goes <strong>live on the Categories page</strong> for customers to buy.</p>
+  <h3><%= t("Request a new category") %></h3>
+  <p class="req-hint">🛍️ <%= t("Add your product and send it to the admin for review — once approved, it goes live on the Categories page for customers to buy.") %></p>
   <% if (subscribed) { %>
+    <script>var WHL = <%- JSON.stringify({ photosSelected: t("{n} photo(s) selected"), noPhotos: t("No photos selected") }) %>;</script>
     <form action="/warehouse/product-requests" method="post" enctype="multipart/form-data" class="row-form">
-      <input name="product_name" placeholder="Product name" required>
+      <input name="product_name" placeholder="<%= t("Product name") %>" required>
       <select name="grade"><option>A</option><option>B</option><option>C</option></select>
-      <input name="qty_kg" type="text" inputmode="decimal" placeholder="Amount (kg)" required
+      <input name="qty_kg" type="text" inputmode="decimal" placeholder="<%= t("Amount (kg)") %>" required
              oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')">
-      <input name="price_per_kg" type="text" inputmode="numeric" placeholder="Price Kyats/kg" required
-             title="Whole numbers only" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <input name="price_per_kg" type="text" inputmode="numeric" placeholder="<%= t("Price Kyats/kg") %>" required
+             title="<%= t("Whole numbers only") %>" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
       <input name="harvest_date" type="date" required>
-      <label class="upl-label btn sm btn-outline" title="Add one or more product photos">📷 Add photos
+      <label class="upl-label btn sm btn-outline" title="<%= t("Add one or more product photos") %>">📷 <%= t("Add photos") %>
         <input type="file" name="files" accept="image/*" multiple hidden
-               onchange="document.getElementById('reqFileHint').textContent = this.files.length ? (this.files.length + ' photo(s) selected') : 'No photos selected';">
+               onchange="document.getElementById('reqFileHint').textContent = this.files.length ? WHL.photosSelected.replace('{n}', this.files.length) : WHL.noPhotos;">
       </label>
-      <span class="muted file-hint" id="reqFileHint">No photos selected</span>
+      <span class="muted file-hint" id="reqFileHint"><%= t("No photos selected") %></span>
       <div class="desc-split">
         <label class="desc-col">
-          <span class="desc-col-head">🧪 Ingredients</span>
+          <span class="desc-col-head">🧪 <%= t("Ingredients") %></span>
           <input type="text" name="ingredients" maxlength="200"
-                 placeholder="e.g. pure sugarcane juice, no additives">
+                 placeholder="<%= t("e.g. pure sugarcane juice, no additives") %>">
         </label>
         <label class="desc-col">
-          <span class="desc-col-head">💪 Effectiveness</span>
+          <span class="desc-col-head">💪 <%= t("Effectiveness") %></span>
           <input type="text" name="effectiveness" maxlength="200"
-                 placeholder="e.g. rich in iron, boosts energy, aids digestion">
+                 placeholder="<%= t("e.g. rich in iron, boosts energy, aids digestion") %>">
         </label>
       </div>
-      <button class="btn sm" type="submit" style="margin-top:.2rem">Request product</button>
+      <button class="btn sm" type="submit" style="margin-top:.2rem"><%= t("Request product") %></button>
     </form>
   <% } else { %>
-    <div class="alert err">⚠ You need an active package to request products.
-      <a href="/warehouse/subscription"><strong>Buy a plan</strong></a>.</div>
+    <div class="alert err">⚠ <%= t("You need an active subscription to request products.") %>
+      <a href="/warehouse/subscription"><strong><%= t("Buy a plan") %></strong></a>.</div>
   <% } %>
 
   <% if (productRequests && productRequests.length) { %>
-    <h4 style="margin-top:2.2rem">My product requests <span class="muted">(<%= productRequests.length %>)</span></h4>
+    <h4 style="margin-top:2.2rem"><%= t("My product requests") %> <span class="muted">(<%= productRequests.length %>)</span></h4>
     <table class="tbl">
-      <thead><tr><th>Image</th><th>Product</th><th>Grade</th><th>Amount</th><th>Price (Kyats)</th><th>Status</th><th>Admin's Note</th></tr></thead>
+      <thead><tr><th><%= t("Image") %></th><th><%= t("Product") %></th><th><%= t("Grade") %></th><th><%= t("Amount") %></th><th><%= t("Price (Kyats)") %></th><th><%= t("Status") %></th><th><%= t("Admin's Note") %></th></tr></thead>
       <tbody>
         <% productRequests.slice(0, 3).forEach(r => { %>
           <tr>
             <td><% if (r.image_path) { %><img src="<%= apiBase %>/uploads/<%= r.image_path %>" alt="" class="thumb"><% } else { %><span class="muted">—</span><% } %></td>
             <td><%= r.product_name %></td><td><%= r.grade %></td><td><%= r.qty_kg %></td><td><%= r.price_per_kg %></td>
-            <td><span class="status status-<%= r.status === 'approved' ? 'delivered' : (r.status === 'pending' ? 'pending' : 'cancelled') %>"><%= r.status %></span></td>
+            <td><span class="status status-<%= r.status === 'approved' ? 'delivered' : (r.status === 'pending' ? 'pending' : 'cancelled') %>"><%= t(r.status) %></span></td>
             <td>
               <% if (r.admin_note) { %>
                 <div class="note-wrap">
                   <span class="note-prev"><%= r.admin_note %></span>
                   <% if (r.admin_note.length > 30) { %>
-                    <button type="button" class="note-more" data-note="<%= r.admin_note %>">📄 Read more</button>
+                    <button type="button" class="note-more" data-note="<%= r.admin_note %>">📄 <%= t("Read more") %></button>
                   <% } %>
                 </div>
               <% } else { %><span class="muted">—</span><% } %>
@@ -85,18 +85,18 @@
       </tbody>
     </table>
     <% if (productRequests.length > 3) { %>
-      <a class="btn sm" href="/warehouse/product-requests-all">📦 Read more — view all <%= productRequests.length %> requests →</a>
+      <a class="btn sm" href="/warehouse/product-requests-all">📦 <%= t("Read more — view all {n} requests →", { n: productRequests.length }) %></a>
     <% } else { %>
-      <a class="btn sm" href="/warehouse/product-requests-all">View all · search by date →</a>
+      <a class="btn sm" href="/warehouse/product-requests-all"><%= t("View all · search by date →") %></a>
     <% } %>
 
     <!-- full admin-note popup (for long notes) -->
     <div id="noteModal" class="modal-overlay" style="display:none">
       <div class="modal-box note-modal-box">
         <button type="button" class="otp-close" id="noteModalClose">✕</button>
-        <div class="note-modal-head"><span class="note-modal-ico">📝</span> Admin's note</div>
+        <div class="note-modal-head"><span class="note-modal-ico">📝</span> <%= t("Admin's note") %></div>
         <p id="noteModalBody" class="note-modal-body"></p>
-        <button type="button" class="btn" id="noteModalOk" style="width:100%">Got it</button>
+        <button type="button" class="btn" id="noteModalOk" style="width:100%"><%= t("Got it") %></button>
       </div>
     </div>
     <script>
@@ -116,27 +116,27 @@
 </div>
 
 <div class="card">
-  <h3>Transfer history <span class="muted">(<%= transfers.length %>)</span></h3>
-  <% if (!transfers.length) { %><p class="muted">No transfers yet.</p><% } %>
+  <h3><%= t("Transfer history") %> <span class="muted">(<%= transfers.length %>)</span></h3>
+  <% if (!transfers.length) { %><p class="muted"><%= t("No transfers yet.") %></p><% } %>
   <table class="tbl">
-    <thead><tr><th>No.</th><th>Category</th><th>From → To</th><th>Qty</th><th>Status</th><th>Requested</th></tr></thead>
+    <thead><tr><th><%= t("No.") %></th><th><%= t("Category") %></th><th><%= t("From → To") %></th><th><%= t("Qty") %></th><th><%= t("Status") %></th><th><%= t("Requested") %></th></tr></thead>
     <tbody>
-    <% transfers.slice(0, 3).forEach((t, idx) => { %>
+    <% transfers.slice(0, 3).forEach((tr, idx) => { %>
       <tr>
         <td><%= idx + 1 %></td>
-        <td><%= t.batch_code %></td>
-        <td><%= t.from_warehouse %> → <%= t.to_warehouse %></td>
-        <td><%= t.quantity_kg %></td>
-        <td><span class="status status-<%= t.status === 'completed' ? 'delivered' : (t.status === 'pending' ? 'pending' : 'cancelled') %>"><%= t.status %></span></td>
-        <td class="muted"><%= t.requested_at ? t.requested_at.substring(0,10) : "" %></td>
+        <td><%= tr.batch_code %></td>
+        <td><%= tr.from_warehouse %> → <%= tr.to_warehouse %></td>
+        <td><%= tr.quantity_kg %></td>
+        <td><span class="status status-<%= tr.status === 'completed' ? 'delivered' : (tr.status === 'pending' ? 'pending' : 'cancelled') %>"><%= t(tr.status) %></span></td>
+        <td class="muted"><%= tr.requested_at ? tr.requested_at.substring(0,10) : "" %></td>
       </tr>
     <% }) %>
     </tbody>
   </table>
   <% if (transfers.length > 3) { %>
-    <a class="btn sm" href="/warehouse/transfers-all">🔄 Read more — view all <%= transfers.length %> transfers →</a>
+    <a class="btn sm" href="/warehouse/transfers-all">🔄 <%= t("Read more — view all {n} transfers →", { n: transfers.length }) %></a>
   <% } else if (transfers.length) { %>
-    <a class="btn sm" href="/warehouse/transfers-all">View all · search by date →</a>
+    <a class="btn sm" href="/warehouse/transfers-all"><%= t("View all · search by date →") %></a>
   <% } %>
 </div>
 <%- include("../partials/footer") %>

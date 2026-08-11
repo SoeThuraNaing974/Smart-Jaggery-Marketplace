@@ -1,6 +1,6 @@
 {
-  "name": "Smart Jaggery Marketplace",
-  "short_name": "Local Jaggery",
+  "name": "Smart Jaggery Mart",
+  "short_name": "Smart Jaggery Mart",
   "description": "Browse, order and manage local jaggery products.",
   "start_url": "/",
   "scope": "/",

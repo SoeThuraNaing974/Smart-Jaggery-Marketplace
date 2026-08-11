@@ -1,18 +1,17 @@
 <%- include("../partials/header") %>
-<h2>Checkout</h2>
-<a class="btn sm" href="/warehouse/subscription" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; Back to plans</a>
+<h2><%= t("Checkout") %></h2>
+<a class="btn sm" href="/warehouse/subscription" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; <%= t("Back to plans") %></a>
 
 <div class="cols">
   <div class="card">
-    <h3>Order summary</h3>
-    <p class="price"><%= plan.price %> Kyats</p>
-    <p><strong><%= plan.name %></strong> — <%= plan.duration_months %> month(s)</p>
-    <p class="muted">Your package activates as soon as payment is confirmed.
-      If you already have an active plan, this term is added on top.</p>
+    <h3><%= t("Order summary") %></h3>
+    <p class="price"><%= t("{n} Kyats", { n: plan.price }) %></p>
+    <p><strong><%= plan.name %></strong> — <%= t(plan.duration_months === 1 ? "{n} month" : "{n} months", { n: plan.duration_months }) %></p>
+    <p class="muted"><%= t("Your subscription activates as soon as payment is confirmed. If you already have an active plan, this term is added on top.") %></p>
   </div>
 
   <div class="card">
-    <h3>Pay with</h3>
+    <h3><%= t("Pay with") %></h3>
     <form action="/warehouse/subscription/pay" method="post" id="payForm">
       <input type="hidden" name="plan_id" value="<%= plan.id %>">
 
@@ -26,19 +25,19 @@
         <% }) %>
       </div>
 
-      <label id="phoneLabel">Phone number</label>
+      <label id="phoneLabel"><%= t("Phone number") %></label>
       <div class="phone-group">
         <select name="country_code" class="phone-cc-select" id="phoneCc"><%- include("../partials/ccodes", { selected: "+95" }) %></select>
         <input name="phone" type="tel" inputmode="numeric" placeholder="9xxxxxxxx"
-               maxlength="9" pattern="[0-9]{1,9}" title="Up to 9 digits" id="phoneInput" required>
+               maxlength="9" pattern="[0-9]{1,9}" title="<%= t("Up to 9 digits") %>" id="phoneInput" required>
       </div>
 
-      <label>Description:
+      <label><%= t("Description:") %>
         <input name="description" id="descInput">
       </label>
       <div class="note-chips">
         <% ["Transfer","Payment","Gift","Chilling"].forEach(function(p){ %>
-          <button type="button" class="note-chip" data-note="<%= p %>"><%= p %></button>
+          <button type="button" class="note-chip" data-note="<%= t(p) %>"><%= t(p) %></button>
         <% }) %>
       </div>
 
@@ -46,25 +45,36 @@
         <div class="otp-box">
           <button type="button" class="otp-close" id="otpClose">✕</button>
           <div class="otp-icon">📧</div>
-          <h3 class="otp-title">Verify your payment</h3>
-          <p id="otpInfo" class="muted">Sending a verification code to your email…</p>
+          <h3 class="otp-title"><%= t("Verify your payment") %></h3>
+          <p id="otpInfo" class="muted"><%= t("Sending a verification code to your email…") %></p>
           <input name="otp" id="otpInput" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
                  autocomplete="one-time-code" placeholder="––––––" class="otp-input"
                  oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
-          <button class="btn otp-verify" type="submit">Verify &amp; Pay — <%= plan.price %> Kyats</button>
+          <button class="btn otp-verify" type="submit"><%= t("Verify & Pay — {n} Kyats", { n: plan.price }) %></button>
           <div class="otp-actions">
-            <button type="button" class="link-btn otp-autofill" id="otpAutofill" style="display:none">✨ Autofill code</button>
-            <button type="button" class="link-btn" id="otpResend" style="color:#1a3aa0">Resend code</button>
+            <button type="button" class="link-btn otp-autofill" id="otpAutofill" style="display:none">✨ <%= t("Autofill code") %></button>
+            <button type="button" class="link-btn" id="otpResend" style="color:#1a3aa0"><%= t("Resend code") %></button>
           </div>
         </div>
       </div>
 
-      <button class="btn" type="button" id="payBtn">Confirm payment — <%= plan.price %> Kyats</button>
+      <button class="btn" type="button" id="payBtn"><%= t("Confirm payment — {n} Kyats", { n: plan.price }) %></button>
     </form>
   </div>
 </div>
 
 <script>
+  var WHL = <%- JSON.stringify({
+    bankNumber: t("Bank Number"),
+    bankPlaceholder: t("Enter your bank account number"),
+    phoneNumber: t("Phone number"),
+    upTo9: t("Up to 9 digits"),
+    sending: t("Sending a verification code to your email…"),
+    sentDev: t("Sent to {email}. Your code is {code} — type it in, or tap Autofill."),
+    typeCode: t("Type the 6-digit code sent to {email}."),
+    yourEmail: t("your email"),
+    sendFail: t("Could not send the code. Tap Resend.")
+  }) %>;
   // switch phone/bank field when the method changes
   (function () {
     const phone = document.getElementById("phoneInput");
@@ -79,19 +89,19 @@
       if (prevIsBank !== null && isBank !== prevIsBank) phone.value = "";
       prevIsBank = isBank;
       if (isBank) {
-        phoneLabel.textContent = "Bank Number";
+        phoneLabel.textContent = WHL.bankNumber;
         phoneCc.style.display = "none";
-        phone.placeholder = "Enter your bank account number";
+        phone.placeholder = WHL.bankPlaceholder;
         phone.maxLength = 20;
         phone.removeAttribute("pattern");
         phone.title = "";
         phone.classList.add("no-cc");
       } else {
-        phoneLabel.textContent = "Phone number";
+        phoneLabel.textContent = WHL.phoneNumber;
         phoneCc.style.display = "";
         phone.classList.remove("no-cc");
         if (window.applyPhoneLen) { window.applyPhoneLen(phone, phoneCc.value); }
-        else { phone.maxLength = 9; phone.setAttribute("pattern", "[0-9]{1,9}"); phone.title = "Up to 9 digits"; }
+        else { phone.maxLength = 9; phone.setAttribute("pattern", "[0-9]{1,9}"); phone.title = WHL.upTo9; }
       }
     }
     phone.addEventListener("input", function () {
@@ -127,18 +137,20 @@
     var devCode = null;
 
     async function requestCode() {
-      otpInfo.textContent = "Sending a verification code to your email…";
+      otpInfo.textContent = WHL.sending;
       otpAutofill.style.display = "none"; devCode = null;
       try {
         var r = await fetch("/warehouse/subscription/otp", { method: "POST" });
         var d = await r.json();
         if (d.dev_code) {
           devCode = d.dev_code; otpAutofill.style.display = "inline-block";
-          otpInfo.innerHTML = "Sent to <strong>" + (d.email || "your email") + "</strong>. Your code is <strong>" + d.dev_code + "</strong> — type it in, or tap Autofill.";
+          otpInfo.innerHTML = WHL.sentDev
+            .replace("{email}", "<strong>" + (d.email || WHL.yourEmail) + "</strong>")
+            .replace("{code}", "<strong>" + d.dev_code + "</strong>");
         } else {
-          otpInfo.textContent = "Type the 6-digit code sent to " + (d.email || "your email") + ".";
+          otpInfo.textContent = WHL.typeCode.replace("{email}", d.email || WHL.yourEmail);
         }
-      } catch (e) { otpInfo.textContent = "Could not send the code. Tap Resend."; }
+      } catch (e) { otpInfo.textContent = WHL.sendFail; }
     }
     otpAutofill.addEventListener("click", function () {
       if (!devCode) return;

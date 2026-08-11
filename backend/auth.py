@@ -74,6 +74,33 @@ def token_required(fn):
     return wrapper
 
 
+def optional_auth(fn):
+    """
+    Public read-only endpoint: works with OR without a login.
+
+    Sets g.current_user to the signed-in user when a valid token is present, and
+    to None for a guest (browsing the shop before registering). A bad/expired
+    token is treated as a guest rather than an error, so a stale cookie still
+    lets someone browse the catalogue.
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        g.current_user = None
+        token = _extract_token()
+        if token:
+            try:
+                payload = _decode_token(token)
+                user = db_get_user(int(payload["sub"]))
+                # a blocked account browses as a guest — it can't act anyway
+                if user and not user.is_blocked:
+                    g.current_user = user
+            except (jwt.InvalidTokenError, KeyError, ValueError, TypeError):
+                pass
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 def role_required(*roles):
     """Use AFTER token_required, or standalone (it implies token_required)."""
     def decorator(fn):

@@ -1,39 +1,38 @@
 <%- include("../partials/header") %>
 <%- include("../partials/pay_success_modal") %>
-<h2>Package</h2>
+<h2><%= t("Subscription Plan") %></h2>
 
 <div class="card">
-  <h3>Current status</h3>
+  <h3><%= t("Current status") %></h3>
   <% if (sub.active) { %>
     <div class="alert-card ok">
       <span class="alert-ico">✅</span>
       <div class="alert-body">
-        <div class="alert-title">Package active</div>
-        <div class="alert-text"><strong><%= sub.current.plan_name %></strong> · active until
-          <strong><%= sub.current.end_date %></strong> · <%= sub.current.days_remaining %> day(s) left</div>
+        <div class="alert-title"><%= t("Subscription active") %></div>
+        <div class="alert-text"><strong><%= sub.current.plan_name %></strong> · <%= t("active until {d}", { d: sub.current.end_date }) %>
+          · <%= t(sub.current.days_remaining === 1 ? "{n} day left" : "{n} days left", { n: sub.current.days_remaining }) %></div>
       </div>
     </div>
   <% } else if (sub.current) { %>
     <div class="alert-card warn">
       <span class="alert-ico">⏳</span>
       <div class="alert-body">
-        <div class="alert-title">Package expired</div>
-        <div class="alert-text">Your <strong><%= sub.current.plan_name %></strong> expired on
-          <%= sub.current.end_date %>. Renew below to keep selling.</div>
+        <div class="alert-title"><%= t("Subscription expired") %></div>
+        <div class="alert-text"><%= t("Your {plan} expired on {d}. Renew below to keep selling.", { plan: sub.current.plan_name, d: sub.current.end_date }) %></div>
       </div>
     </div>
   <% } else { %>
     <div class="alert-card danger">
       <span class="alert-ico">🚀</span>
       <div class="alert-body">
-        <div class="alert-title">No package yet</div>
-        <div class="alert-text">Pick a plan below to start listing your products and selling to customers.</div>
+        <div class="alert-title"><%= t("No subscription yet") %></div>
+        <div class="alert-text"><%= t("Pick a plan below to start listing your products and selling to customers.") %></div>
       </div>
     </div>
   <% } %>
 </div>
 
-<h3>Choose a plan</h3>
+<h3><%= t("Choose a plan") %></h3>
 <%
   var rates = plans.map(function (p) { return p.price / p.duration_months; });
   var baseRate = rates.length ? Math.max.apply(null, rates) : 0;
@@ -48,14 +47,14 @@
        var icon = icons[p.duration_months] || "🗓️";
   %>
     <div class="plan-card <%= isBest ? 'plan-best' : '' %>">
-      <% if (isBest) { %><div class="plan-ribbon">Best value</div><% } %>
+      <% if (isBest) { %><div class="plan-ribbon"><%= t("Best value") %></div><% } %>
       <div class="plan-icon"><%= icon %></div>
       <div class="plan-name"><%= p.name %></div>
-      <div class="plan-dur"><%= p.duration_months %> month<%= p.duration_months > 1 ? "s" : "" %></div>
-      <div class="plan-price"><%= p.price %> Kyats</div>
-      <div class="plan-permo"><%= perMonth.toFixed(0) %> Kyats/mo<% if (savePct > 0) { %> · <span class="plan-save">save <%= savePct %>%</span><% } %></div>
+      <div class="plan-dur"><%= t(p.duration_months === 1 ? "{n} month" : "{n} months", { n: p.duration_months }) %></div>
+      <div class="plan-price"><%= t("{n} Kyats", { n: p.price }) %></div>
+      <div class="plan-permo"><%= t("{n} Kyats/mo", { n: perMonth.toFixed(0) }) %><% if (savePct > 0) { %> · <span class="plan-save"><%= t("save {p}%", { p: savePct }) %></span><% } %></div>
       <a class="btn plan-btn" href="/warehouse/subscription/checkout?plan_id=<%= p.id %>">
-        <%= sub.active ? "Extend / Buy" : "Choose plan" %>
+        <%= t(sub.active ? "Extend / Buy" : "Choose plan") %>
       </a>
     </div>
   <% }) %>
@@ -81,10 +80,10 @@
   combined.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
 %>
 <div class="card">
-  <h3>Purchase &amp; payment history <span class="muted">(<%= combined.length %>)</span></h3>
-  <% if (!combined.length) { %><p class="muted">No purchases yet — buy a plan above and it will be listed here.</p><% } else { %>
+  <h3><%= t("Purchase & payment history") %> <span class="muted">(<%= combined.length %>)</span></h3>
+  <% if (!combined.length) { %><p class="muted"><%= t("No purchases yet — buy a plan above and it will be listed here.") %></p><% } else { %>
     <table class="tbl">
-      <thead><tr><th>📅 Paid on</th><th>Plan</th><th>Valid from</th><th>Valid to</th><th>Amount (Kyats)</th><th>Method</th><th>Reference</th><th>Status</th><th>Slip</th></tr></thead>
+      <thead><tr><th>📅 <%= t("Paid on") %></th><th><%= t("Plan") %></th><th><%= t("Valid from") %></th><th><%= t("Valid to") %></th><th><%= t("Amount (Kyats)") %></th><th><%= t("Method") %></th><th><%= t("Reference") %></th><th><%= t("Status") %></th><th><%= t("Slip") %></th></tr></thead>
       <tbody>
         <% combined.slice(0, 5).forEach(r => { %>
           <tr>
@@ -95,16 +94,16 @@
             <td><%= r.amount %></td>
             <td><%= r.method || "—" %></td>
             <td class="muted"><%= r.reference || "—" %></td>
-            <td><span class="status status-<%= r.active ? 'delivered' : 'cancelled' %>"><%= r.active ? "active" : "expired" %></span></td>
+            <td><span class="status status-<%= r.active ? 'delivered' : 'cancelled' %>"><%= t(r.active ? "active" : "expired") %></span></td>
             <td><% if (r.slip) { %><a class="btn sm" href="/warehouse/payments/<%= r.slip %>/slip" target="_blank">🧾 PDF</a><% } else { %><span class="muted">—</span><% } %></td>
           </tr>
         <% }) %>
       </tbody>
     </table>
     <% if (combined.length > 5) { %>
-      <a class="btn sm" href="/warehouse/payment-history-all">🧾 Read more — view all <%= combined.length %> →</a>
+      <a class="btn sm" href="/warehouse/payment-history-all">🧾 <%= t("Read more — view all {n} →", { n: combined.length }) %></a>
     <% } else { %>
-      <a class="btn sm" href="/warehouse/payment-history-all">View all · search by date →</a>
+      <a class="btn sm" href="/warehouse/payment-history-all"><%= t("View all · search by date →") %></a>
     <% } %>
   <% } %>
 </div>

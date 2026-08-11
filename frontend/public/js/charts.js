@@ -60,16 +60,40 @@
         id: "spendValueLabels",
         afterDatasetsDraw(chart) {
           const g = chart.ctx;
-          (chart.getDatasetMeta(0).data || []).forEach((bar, i) => {
+          const area = chart.chartArea;
+          const bars = chart.getDatasetMeta(0).data || [];
+          // space each label may occupy without touching its neighbour
+          const slot = bars.length > 1 ? Math.abs(bars[1].x - bars[0].x) - 4 : (area.right - area.left);
+          g.save();
+          g.fillStyle = "#7a4a1e";
+          g.font = "700 11px Helvetica, Arial, sans-serif";
+          g.textAlign = "center";
+          g.textBaseline = "bottom";
+          bars.forEach((bar, i) => {
             const v = values[i]; if (v == null) return;
-            g.save();
-            g.fillStyle = "#7a4a1e";
-            g.font = "700 11px Helvetica, Arial, sans-serif";
-            g.textAlign = "center";
-            g.fillText(Number(v).toLocaleString() + " Kyats", bar.x, bar.y - 7);
-            g.restore();
+            // adaptive: full "108,750 Kyats" -> "108,750" -> "108.8K" as space shrinks
+            const forms = [
+              Number(v).toLocaleString() + " Kyats",
+              Number(v).toLocaleString(),
+              Math.abs(v) >= 1000 ? (v / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "K" : String(v),
+            ];
+            let text = forms[forms.length - 1];
+            for (const f of forms) { if (g.measureText(f).width <= slot) { text = f; break; } }
+            // keep the label fully inside the plot area so it never clips at the edges
+            const half = g.measureText(text).width / 2;
+            const x = Math.min(Math.max(bar.x, area.left + half), area.right - half);
+            const y = Math.max(bar.y - 7, area.top + 11);
+            g.fillText(text, x, y);
           });
+          g.restore();
         },
+      };
+      // compact axis numbers (120000 -> 120K) so labels never crowd a narrow card
+      const kFmt = (v) => {
+        const n = Number(v);
+        if (Math.abs(n) >= 1e6) return (n / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "M";
+        if (Math.abs(n) >= 1e3) return Math.round(n / 1e3) + "K";
+        return String(n);
       };
       new Chart(c, {
         type: "bar",
@@ -79,7 +103,8 @@
         }] },
         options: {
           responsive: true,
-          layout: { padding: { top: 20 } },
+          maintainAspectRatio: false,
+          layout: { padding: { top: 22, left: 2, right: 6 } },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -91,7 +116,7 @@
           scales: {
             y: { beginAtZero: true, border: { display: false },
               grid: { color: "rgba(122,74,30,.08)" },
-              ticks: { color: "#9a8b76", callback: (v) => v + " Kyats" } },
+              ticks: { color: "#9a8b76", maxTicksLimit: 5, callback: kFmt } },
             x: { border: { display: false }, grid: { display: false },
               ticks: { color: "#5a3514", font: { weight: "600" } } },
           },

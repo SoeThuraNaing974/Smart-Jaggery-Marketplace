@@ -1,36 +1,36 @@
 <%- include("partials/header") %>
-<h2>My Profile</h2>
+<h2><%= t("My Profile") %></h2>
 
 <div class="card">
-  <h3>Profile picture</h3>
+  <h3><%= t("Profile picture") %></h3>
   <div class="avatar-row">
     <% if (profile.avatar_path) { %>
-      <img class="avatar-lg" src="<%= apiBase %>/uploads/<%= profile.avatar_path %>" alt="Profile picture">
+      <img class="avatar-lg" src="<%= apiBase %>/uploads/<%= profile.avatar_path %>" alt="<%= t("Profile picture") %>">
     <% } else { %>
       <span class="avatar-lg avatar-ph"><%= (profile.name || '?').trim().charAt(0).toUpperCase() %></span>
     <% } %>
     <div>
       <form action="/profile/avatar" method="post" enctype="multipart/form-data">
         <input type="file" name="file" accept="image/*" required>
-        <button class="btn sm" type="submit">Upload photo</button>
+        <button class="btn sm" type="submit"><%= t("Upload photo") %></button>
       </form>
       <% if (profile.avatar_path) { %>
         <form action="/profile/avatar/remove" method="post" style="margin-top:.4rem"
-              data-confirm="Remove your profile picture?">
-          <button class="link-btn danger" type="submit">Remove photo</button>
+              data-confirm="<%= t("Remove your profile picture?") %>">
+          <button class="link-btn danger" type="submit"><%= t("Remove photo") %></button>
         </form>
       <% } %>
-      <p class="muted">JPG, PNG, GIF or WEBP.</p>
+      <p class="muted"><%= t("JPG, PNG, GIF or WEBP.") %></p>
     </div>
   </div>
 </div>
 
 <div class="cols">
   <div class="card">
-    <h3>Details</h3>
+    <h3><%= t("Details") %></h3>
     <form action="/profile" method="post">
-      <label>Name: <input name="name" value="<%= profile.name || '' %>" required></label>
-      <label>Email: <input value="<%= profile.email || '' %>" readonly
+      <label><%= t("Name") %>: <input name="name" value="<%= profile.name || '' %>" required></label>
+      <label><%= t("Email") %>: <input value="<%= profile.email || '' %>" readonly
              style="color:#333;-webkit-text-fill-color:#333;opacity:1;background:#fff"></label>
       <%
         var savedPhone = (profile.phone || '').trim();
@@ -40,16 +40,16 @@
           if (savedPhone.indexOf(ccCodes[i]) === 0) { ccSel = ccCodes[i]; localPhone = savedPhone.slice(ccCodes[i].length).replace(/\D/g, ''); break; }
         }
       %>
-      <label>Phone Number:</label>
+      <label><%= t("Phone Number") %>:</label>
       <div class="phone-group">
         <select name="country_code" class="phone-cc-select"><%- include("partials/ccodes", { selected: ccSel }) %></select>
         <input name="phone" type="tel" inputmode="numeric" value="<%= localPhone %>"
-               maxlength="12" pattern="[0-9]{1,12}" title="Phone number">
+               maxlength="12" pattern="[0-9]{1,12}" title="<%= t("Phone number") %>">
       </div>
-      <label>Address: <input name="address" value="<%= profile.address || '' %>"></label>
-      <label>State: <span class="muted">(optional)</span>
+      <label><%= t("Address") %>: <input name="address" value="<%= profile.address || '' %>"></label>
+      <label><%= t("State") %>: <span class="muted"><%= t("(optional)") %></span>
         <input name="pincode" list="mmStates" value="<%= profile.pincode || '' %>"
-               autocomplete="off" placeholder="Start typing a state…">
+               autocomplete="off" placeholder="<%= t("Start typing a state…") %>">
       </label>
       <datalist id="mmStates">
         <% [
@@ -60,18 +60,18 @@
           <option value="<%= s %>"></option>
         <% }) %>
       </datalist>
-      <button class="btn" type="submit">Save changes</button>
+      <button class="btn" type="submit"><%= t("Save changes") %></button>
     </form>
   </div>
 
   <div class="card">
-    <h3>Change password</h3>
+    <h3><%= t("Change password") %></h3>
     <form action="/change-password" method="post">
-      <label>Current password <input type="password" name="current_password" required></label>
-      <label>New password <input type="password" name="new_password" minlength="6" required></label>
-      <button class="btn" type="submit">Update password</button>
+      <label><%= t("Current password") %> <input type="password" name="current_password" required></label>
+      <label><%= t("New password") %> <input type="password" name="new_password" minlength="6" required></label>
+      <button class="btn" type="submit"><%= t("Update password") %></button>
     </form>
-    <p class="muted">Role: <%= profile.role %></p>
+    <p class="muted"><%= t("Role") %>: <%= profile.role %></p>
   </div>
 </div>
 <%- include("partials/footer") %>

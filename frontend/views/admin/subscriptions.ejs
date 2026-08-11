@@ -1,9 +1,9 @@
 <%- include("../partials/header") %>
-<h2>Package Plans</h2>
+<h2>Subscription Plans</h2>
 <div class="page-intro">
   <span class="page-intro-ico">📦</span>
   <div>
-    <strong>Plans &amp; packages</strong>
+    <strong>Plans &amp; subscriptions</strong>
     <span>Manage the plans warehouses can buy — 1, 2, 6 or 12 months.</span>
   </div>
 </div>
@@ -49,15 +49,15 @@
 </div>
 
 <div class="card">
-  <h3>Warehouse package status</h3>
+  <h3>Warehouse subscription status</h3>
   <% if (!subs.length) { %>
     <div class="card-empty">
       <span class="ce-icon">📦</span>
-      <div class="ce-title">No packages bought yet</div>
-      <div class="ce-sub">When a warehouse buys a package, it appears here with its plan and expiry. Warehouses that haven't bought one aren't listed.</div>
+      <div class="ce-title">No subscriptions bought yet</div>
+      <div class="ce-sub">When a warehouse buys a subscription, it appears here with its plan and expiry. Warehouses that haven't bought one aren't listed.</div>
     </div>
   <% } else { %>
-  <form id="bulkSub" action="/admin/subscriptions/bulk-delete" method="post" data-confirm="Delete the selected package(s)?"></form>
+  <form id="bulkSub" action="/admin/subscriptions/bulk-delete" method="post" data-confirm="Delete the selected subscription(s)?"></form>
   <table class="tbl">
     <thead><tr><th><input type="checkbox" class="bulk-all" data-group="sub" title="Select all"></th><th>Warehouse</th><th>Status</th><th>Plan</th><th>Started</th><th>Expires</th><th>Days left</th><th>Action</th></tr></thead>
     <tbody>
@@ -73,7 +73,7 @@
         <td>
           <% if (s.current) { %>
             <form action="/admin/subscriptions/<%= s.current.id %>/delete" method="post" class="ct-form"
-                  data-confirm="Delete <%= s.warehouse %>'s package?">
+                  data-confirm="Delete <%= s.warehouse %>'s subscription?">
               <button class="btn sm danger" type="submit">Delete</button>
             </form>
           <% } else { %><span class="muted">—</span><% } %>

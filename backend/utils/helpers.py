@@ -29,7 +29,7 @@ _GOLD = colors.HexColor("#c98a3a")
 _DARK = colors.HexColor("#3d2a16")
 _CREAM = colors.HexColor("#faf3e9")
 _LINE = colors.HexColor("#e6dcc9")
-_BRAND_NAME = "Smart Jaggery Marketplace"
+_BRAND_NAME = "Smart Jaggery Mart"
 _TAGLINE = "pure local jaggery &mdash; from farm to family"
 
 

@@ -1,41 +1,44 @@
 <%- include("../partials/header") %>
-<% var whName = (user && user.name) ? user.name : "Warehouse"; %>
+<% var whName = (user && user.name) ? user.name : t("Warehouse"); %>
 <div class="welcome-hero">
   <div class="welcome-avatar"><%= whName.charAt(0).toUpperCase() %></div>
   <div class="welcome-text">
-    <span class="welcome-greeting" id="welcomeGreeting">Welcome back,</span>
+    <span class="welcome-greeting" id="welcomeGreeting"><%= t("Welcome back,") %></span>
     <span class="welcome-name"><%= whName %></span>
-    <span class="welcome-sub">📦 Manage your stock, orders, and packages here.</span>
+    <span class="welcome-sub">📦 <%= t("Manage your stock, orders, and subscriptions here.") %></span>
   </div>
-  <a class="welcome-cta" href="/warehouse/stock-all">View stock →</a>
+  <a class="welcome-cta" href="/warehouse/stock-all"><%= t("View stock →") %></a>
 </div>
 <script>
   (function () {
+    var L = <%- JSON.stringify({ m: t("Good morning,"), a: t("Good afternoon,"), e: t("Good evening,") }) %>;
     var h = new Date().getHours();
-    var g = h < 12 ? "Good morning" : (h < 17 ? "Good afternoon" : "Good evening");
+    var g = h < 12 ? L.m : (h < 17 ? L.a : L.e);
     var el = document.getElementById("welcomeGreeting");
-    if (el) el.textContent = g + ",";
+    if (el) el.textContent = g;
   })();
 </script>
+
+<%- include("../partials/wh_deleted_alert") %>
 
 <% if (subscription && subscription.active) { %>
   <div class="alert-card ok">
     <span class="alert-ico">✅</span>
     <div class="alert-body">
-      <div class="alert-title">Package active</div>
+      <div class="alert-title"><%= t("Subscription active") %></div>
       <div class="alert-text"><strong><%= subscription.current.plan_name %></strong> ·
-        <%= subscription.current.days_remaining %> day(s) left · expires <%= subscription.current.end_date %></div>
+        <%= t(subscription.current.days_remaining === 1 ? "{n} day left" : "{n} days left", { n: subscription.current.days_remaining }) %> · <%= t("expires {d}", { d: subscription.current.end_date }) %></div>
     </div>
-    <a class="alert-cta" href="/warehouse/subscription">Manage</a>
+    <a class="alert-cta" href="/warehouse/subscription"><%= t("Manage") %></a>
   </div>
 <% } else { %>
   <div class="alert-card danger">
     <span class="alert-ico">🔔</span>
     <div class="alert-body">
-      <div class="alert-title">No active package</div>
-      <div class="alert-text">Buy a plan to keep your warehouse listed and sell products.</div>
+      <div class="alert-title"><%= t("No active subscription") %></div>
+      <div class="alert-text"><%= t("Buy a plan to keep your warehouse listed and sell products.") %></div>
     </div>
-    <a class="alert-cta" href="/warehouse/subscription">Buy a plan</a>
+    <a class="alert-cta" href="/warehouse/subscription"><%= t("Buy a plan") %></a>
   </div>
 <% } %>
 
@@ -43,11 +46,11 @@
 <div class="alert-card warn">
   <span class="alert-ico">📉</span>
   <div class="alert-body">
-    <div class="alert-title">Low stock <span class="alert-count"><%= stock.low_stock_alerts.length %></span>
-      <span class="alert-sub">under <%= stock.low_stock_threshold_kg %>kg</span></div>
+    <div class="alert-title"><%= t("Low stock") %> <span class="alert-count"><%= stock.low_stock_alerts.length %></span>
+      <span class="alert-sub"><%= t("under {n}kg", { n: stock.low_stock_threshold_kg }) %></span></div>
     <div class="alert-chips">
       <% stock.low_stock_alerts.forEach(b => { %>
-        <span class="alert-chip"><%= b.batch_id %> · <%= b.qty_kg %>kg</span>
+        <span class="alert-chip"><%= b.batch_id %> · <%= t("{n}kg", { n: b.qty_kg }) %></span>
       <% }) %>
     </div>
   </div>
@@ -58,10 +61,10 @@
 <div class="alert-card danger">
   <span class="alert-ico">⏳</span>
   <div class="alert-body">
-    <div class="alert-title">Expiry alerts <span class="alert-count"><%= expiry.count %></span></div>
+    <div class="alert-title"><%= t("Expiry alerts") %> <span class="alert-count"><%= expiry.count %></span></div>
     <div class="alert-chips">
       <% expiry.alerts.forEach(b => { %>
-        <span class="alert-chip <%= b.expiry_status === 'expired' ? 'expired' : 'warn' %>"><%= b.batch_id %> · <%= b.expiry_status.replace('_',' ') %></span>
+        <span class="alert-chip <%= b.expiry_status === 'expired' ? 'expired' : 'warn' %>"><%= b.batch_id %> · <%= t(b.expiry_status.replace('_',' ')) %></span>
       <% }) %>
     </div>
   </div>
@@ -71,27 +74,27 @@
 <% var hasStock = (stock.batches || []).length > 0; %>
 <div class="cols">
   <div class="card">
-    <h3>Stock by grade</h3>
+    <h3><%= t("Stock by grade") %></h3>
     <% if (hasStock) { %>
       <canvas id="stockGrade" height="180"></canvas>
     <% } else { %>
       <div class="card-empty">
         <span class="ce-icon">📊</span>
-        <div class="ce-title">No stock to show yet</div>
-        <div class="ce-sub">When you add products, this chart shows how your stock splits across <strong>Grade A, B &amp; C</strong>.</div>
+        <div class="ce-title"><%= t("No stock to show yet") %></div>
+        <div class="ce-sub"><%= t("When you add products, this chart shows how your stock splits across Grade A, B & C.") %></div>
       </div>
     <% } %>
   </div>
   <% var rev7 = (charts && charts.revenue_7d) || {}; var hasRevenue = (rev7.values || []).some(function (v) { return Number(v) > 0; }); %>
   <div class="card">
-    <h3>Revenue — last 7 days</h3>
+    <h3><%= t("Revenue — last 7 days") %></h3>
     <% if (hasRevenue) { %>
       <canvas id="rev7" height="180"></canvas>
     <% } else { %>
       <div class="card-empty">
         <span class="ce-icon">💰</span>
-        <div class="ce-title">No sales yet</div>
-        <div class="ce-sub">Your earnings from the last 7 days will show here once customers start buying your products.</div>
+        <div class="ce-title"><%= t("No sales yet") %></div>
+        <div class="ce-sub"><%= t("Your earnings from the last 7 days will show here once customers start buying your products.") %></div>
       </div>
     <% } %>
   </div>
@@ -99,15 +102,16 @@
 
 <script>
   window.CHART_DATA = <%- JSON.stringify(charts) %>;
+  window.CHART_L = <%- JSON.stringify({ kgByGrade: t("kg by grade"), revenue: t("Revenue (Kyats)") }) %>;
   // Draw immediately when the page arrives via the no-reload engine (libs are
   // already present); fall back to the load event on a normal first visit.
   (function () {
     function initCharts() {
       if (document.getElementById("stockGrade") && CHART_DATA.stock_by_grade && Object.keys(CHART_DATA.stock_by_grade).length) {
-        JaggeryCharts.pie("stockGrade", CHART_DATA.stock_by_grade, "kg by grade");
+        JaggeryCharts.pie("stockGrade", CHART_DATA.stock_by_grade, CHART_L.kgByGrade);
       }
       if (document.getElementById("rev7") && CHART_DATA.revenue_7d) {
-        JaggeryCharts.line("rev7", CHART_DATA.revenue_7d.labels, CHART_DATA.revenue_7d.values, "Revenue (Kyats)");
+        JaggeryCharts.line("rev7", CHART_DATA.revenue_7d.labels, CHART_DATA.revenue_7d.values, CHART_L.revenue);
       }
     }
     if (document.readyState === "complete" && window.JaggeryCharts) initCharts();
@@ -117,12 +121,12 @@
 
 
 <div class="card">
-  <h3>Customers who left items in cart <span class="muted">(last 7 days · <%= carts.length %>)</span></h3>
+  <h3><%= t("Customers who left items in cart") %> <span class="muted">(<%= t("last 7 days") %> · <%= carts.length %>)</span></h3>
   <% if (!carts.length) { %>
-    <p class="muted">🎉 None — no customers left your products in their cart recently.</p>
+    <p class="muted">🎉 <%= t("None — no customers left your products in their cart recently.") %></p>
   <% } else { %>
     <table class="tbl" id="whCartTable">
-      <thead><tr><th>No.</th><th>👤 Customer</th><th>✉ Email</th><th>🛒 Your products in their cart</th><th>📅 Date</th></tr></thead>
+      <thead><tr><th><%= t("No.") %></th><th>👤 <%= t("Customer") %></th><th>✉ <%= t("Email") %></th><th>🛒 <%= t("Your products in their cart") %></th><th>📅 <%= t("Date") %></th></tr></thead>
       <tbody>
         <% carts.slice(0,5).forEach((c, idx) => { %>
           <tr>
@@ -135,7 +139,7 @@
         <% }) %>
       </tbody>
     </table>
-    <% if (carts.length > 5) { %><p class="muted" style="margin-top:.4rem">Showing 5 of <%= carts.length %>.</p><% } %>
+    <% if (carts.length > 5) { %><p class="muted" style="margin-top:.4rem"><%= t("Showing 5 of {n}.", { n: carts.length }) %></p><% } %>
   <% } %>
 </div>
 <%- include("../partials/footer") %>

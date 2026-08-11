@@ -1,9 +1,9 @@
 <%- include("partials/header") %>
-<h2>Messages — Order</h2>
-<a class="btn sm" href="<%= backUrl %>" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; Back</a>
+<h2><%= t("Messages — Order") %></h2>
+<a class="btn sm" href="<%= backUrl %>" style="display:inline-block;margin:.2rem 0 1.2rem">&larr; <%= t("Back") %></a>
 
 <div class="card">
-  <% if (!messages.length) { %><p class="muted">No messages yet. Start the conversation below.</p><% } %>
+  <% if (!messages.length) { %><p class="muted"><%= t("No messages yet. Start the conversation below.") %></p><% } %>
   <div class="thread">
     <% messages.forEach(m => { %>
       <div class="msg <%= m.sender_role === user.role ? 'mine' : 'theirs' %>">
@@ -17,8 +17,8 @@
   </div>
 
   <form action="<%= postUrl %>" method="post" class="row-form" style="margin-top:1rem">
-    <input name="message" placeholder="Type a message…" required style="flex:1">
-    <button class="btn" type="submit">Send</button>
+    <input name="message" placeholder="<%= t("Type a message…") %>" required style="flex:1">
+    <button class="btn" type="submit"><%= t("Send") %></button>
   </form>
 </div>
 <%- include("partials/footer") %>

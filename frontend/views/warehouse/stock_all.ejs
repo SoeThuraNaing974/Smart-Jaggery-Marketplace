@@ -1,166 +1,145 @@
 <%- include("../partials/header") %>
+<%
+  // "Ingredients: … \n\n Effectiveness: …" -> two editable fields (same shape the
+  // admin category cards use, so both sides edit the same description format)
+  function splitDesc(d) {
+    d = d || "";
+    var ing = "", eff = "";
+    var mi = d.match(/Ingredients:\s*([\s\S]*?)(?:\n+\s*Effectiveness:|$)/i);
+    var me = d.match(/Effectiveness:\s*([\s\S]*)$/i);
+    if (mi) ing = (mi[1] || "").trim();
+    if (me) eff = (me[1] || "").trim();
+    if (!mi && !me && d.trim()) ing = d.trim();
+    return { ing: ing, eff: eff };
+  }
+%>
 
 <div class="page-intro">
   <span class="page-intro-ico">📦</span>
   <div>
-    <strong>Current stock — all products</strong>
-    <span>Every product in your warehouse. Search by the date it was added; update quality &amp; price,
-      upload photos, or remove items.</span>
+    <strong><%= t("Current stock — all products") %></strong>
+    <span><%= t("Every product in your warehouse. Search by the date it was added; update quality & price, upload photos, or remove items.") %></span>
   </div>
 </div>
 
+<% var whDelBack = "all"; %>
+<%- include("../partials/wh_deleted_alert") %>
+
 <div class="card">
   <form action="/warehouse/stock-all" method="get" class="orders-toolbar">
-    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
-    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
-    <button class="btn sm" type="submit">🔍 Search</button>
-    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/stock-all">Clear</a><% } %>
-    <a class="btn sm gray" href="/warehouse">← Back to home</a>
+    <label class="ot-field"><%= t("From") %> <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field"><%= t("To") %> <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 <%= t("Search") %></button>
+    <% if (from || to) { %><a class="btn sm gray" href="/warehouse/stock-all"><%= t("Clear") %></a><% } %>
+    <a class="btn sm gray" href="/warehouse">← <%= t("Back to home") %></a>
   </form>
 
   <% if (typeof newCount !== "undefined" && newCount > 0) { %>
     <div class="new-cat-banner">
       <span class="ncb-ico">🎉</span>
-      <span class="ncb-text"><strong><%= newCount %> new categor<%= newCount === 1 ? "y" : "ies" %></strong>
-        just added to your warehouse — highlighted <%= newCount === 1 ? "below" : "at the top" %>
-        with a <span class="ncb-tag">✨ NEW</span> tag.</span>
+      <span class="ncb-text"><%= t(newCount === 1
+        ? "{n} new category just added to your warehouse — highlighted below with a ✨ NEW tag."
+        : "{n} new categories just added to your warehouse — highlighted at the top with a ✨ NEW tag.", { n: newCount }) %></span>
     </div>
   <% } %>
 
   <p class="muted" style="margin:.6rem 0">
-    <strong><%= batches.length %></strong> product<%= batches.length === 1 ? "" : "s" %><%
-      if (from || to) { %> · added <%= from || "…" %> → <%= to || "…" %><% } %>
+    <%= t(batches.length === 1 ? "{n} product" : "{n} products", { n: batches.length }) %><%
+      if (from || to) { %> · <%= t("added {from} → {to}", { from: from || "…", to: to || "…" }) %><% } %>
   </p>
 
   <% if (!batches.length) { %>
     <div class="empty-state">
       <div class="empty-icon">📦</div>
-      <div class="empty-title">No products found</div>
-      <div class="empty-sub">Try a different date range.</div>
+      <div class="empty-title"><%= t("No products found") %></div>
+      <div class="empty-sub"><%= t("Try a different date range.") %></div>
     </div>
   <% } else { %>
-    <form id="bulkStockAll" action="/warehouse/batches/bulk-delete" method="post" data-confirm="Delete the selected product(s)? They'll be removed from the shop and the admin notified.">
-      <input type="hidden" name="_back" value="all"></form>
-    <table class="tbl stock-tbl">
-      <thead><tr><th><input type="checkbox" class="bulk-all" data-group="stockAll" title="Select all"></th><th>📅 Added</th><th>No.</th><th>Category</th><th>Grade</th><th>Qty</th><th>Kyats/kg</th>
-        <th>Production Date</th><th>Photos</th><th>Update</th><th></th></tr></thead>
-      <tbody>
-      <% batches.forEach((b, idx) => { %>
-        <tr class="<%= b.isNew ? 'new-cat-row ' : '' %><%= b.expiry_status === 'expired' ? 'expired-row' : (b.near_expiry ? 'expiry-row' : '') %>">
-          <td class="dir-chk"><input type="checkbox" class="bulk-cb" data-group="stockAll" name="stock_ids" value="<%= b.id %>" form="bulkStockAll"></td>
-          <td data-label="Added" class="muted"><%= b.created_at ? b.created_at.substring(0,10) : "—" %></td>
-          <td data-label="No."><%= idx + 1 %></td>
-          <td data-label="Category"><%= b.batch_id %>
-            <% if (b.isNew) { %><span class="new-tag">✨ NEW</span><% } %>
-            <% if (b.expiry_status === 'expired') { %><span class="exp-badge">EXPIRED</span>
-            <% } else if (b.near_expiry) { %><span class="exp-badge near">near expiry</span><% } %>
-          </td>
-          <td data-label="Grade"><%= b.grade %></td>
-          <td data-label="Qty"><%= b.qty_kg %></td>
-          <td data-label="Kyats/kg"><%= b.price_per_kg %></td>
-          <td data-label="Production Date"><%= b.harvest_date %></td>
-          <td data-label="Photos" class="cell-block">
-            <div class="wh-imgs">
+    <div class="cat-grid">
+      <% batches.forEach(b => { const fid = "wf" + b.id; const dd = splitDesc(b.description); %>
+        <div class="cat-card <%= b.expired ? 'expired' : '' %>">
+          <div class="cat-top">
+            <div class="cat-thumb">
               <% if (b.image_path) { %>
-                <span class="wh-img cover" title="Cover photo">
-                  <img src="/uploads/<%= b.image_path %>" alt="cover">
-                  <form action="/warehouse/batches/<%= b.id %>/image/remove" method="post" data-confirm="Remove the cover photo?">
-                    <button class="cat-img-x" type="submit" title="Remove cover photo">✕</button>
-                  </form>
-                </span>
+                <img src="/uploads/<%= b.image_path %>" alt="jaggery">
+              <% } else { %>
+                <span class="cat-noimg"><%= t("No image") %></span>
               <% } %>
-              <% (b.images || []).forEach(im => { %>
-                <span class="wh-img">
-                  <img src="/uploads/<%= im.image_path %>" alt="photo">
-                  <form action="/warehouse/batches/<%= b.id %>/images/<%= im.id %>/delete" method="post" data-confirm="Remove this photo?">
-                    <button class="cat-img-x" type="submit" title="Remove photo">✕</button>
+            </div>
+            <div class="cat-meta">
+              <strong class="cat-name"><%= b.batch_id %>
+                <% if (b.isNew) { %><span class="new-tag">✨ <%= t("NEW") %></span><% } %></strong>
+              <span class="status status-<%= b.expiry_status === 'expired' ? 'cancelled' : (b.expiry_status === 'near_expiry' ? 'pending' : 'delivered') %>"><%= t(b.expiry_status) %></span>
+            </div>
+          </div>
+
+          <% if (b.images && b.images.length) { %>
+            <div class="cat-imgs">
+              <% b.images.forEach(im => { %>
+                <span class="cat-img-thumb">
+                  <img src="/uploads/<%= im.image_path %>" alt="extra photo">
+                  <form action="/warehouse/batches/<%= b.id %>/images/<%= im.id %>/delete" method="post" data-confirm="<%= t("Remove this photo?") %>">
+                    <button class="cat-img-x" type="submit" title="<%= t("Remove photo") %>">✕</button>
                   </form>
                 </span>
               <% }) %>
-              <% if (!b.image_path && !(b.images || []).length) { %><span class="muted wh-noimg">No photos yet</span><% } %>
             </div>
-          </td>
-          <td data-label="Update" class="cell-block">
-            <% const uf = "uf" + b.id; %>
-            <form id="<%= uf %>" action="/warehouse/batches/<%= b.id %>/update" method="post"></form>
-            <div class="inline" style="gap:.4rem;align-items:flex-end;flex-wrap:wrap">
-              <label class="upd-lbl">Quality<input name="qty_kg" form="<%= uf %>" type="text" inputmode="decimal"
-                value="<%= b.qty_kg %>" title="Quantity in kg"
-                oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')"></label>
-              <label class="upd-lbl">Price/kg<input name="price_per_kg" form="<%= uf %>" type="text" inputmode="numeric"
-                value="<%= b.price_per_kg %>" title="Whole numbers only"
-                oninput="this.value=this.value.replace(/[^0-9]/g,'')"></label>
-              <div class="inline" style="gap:.4rem;flex-wrap:nowrap">
-                <button class="btn sm" type="submit" form="<%= uf %>">Save</button>
+          <% } %>
+
+          <form id="<%= fid %>" action="/warehouse/batches/<%= b.id %>/update" method="post" class="cat-fields">
+            <input type="hidden" name="_back" value="all">
+            <label style="grid-column:1 / -1"><%= t("Name") %><input name="batch_id" type="text" value="<%= b.batch_id %>" required></label>
+            <label><%= t("Grade") %>
+              <select name="grade">
+                <% ["A","B","C"].forEach(g => { %><option <%= b.grade === g ? "selected" : "" %>><%= g %></option><% }) %>
+              </select>
+            </label>
+            <label><%= t("Qty (kg)") %><input name="qty_kg" type="number" step="0.5" value="<%= b.qty_kg %>"></label>
+            <label><%= t("Kyats/kg") %><input name="price_per_kg" type="number" step="0.5" value="<%= b.price_per_kg %>"></label>
+            <label><%= t("Production date") %><input name="harvest_date" type="date" value="<%= b.harvest_date %>"></label>
+            <div class="desc-edit">
+              <div class="de-col">
+                <span class="de-head">🧪 <%= t("Ingredients") %></span>
+                <input type="text" name="ingredients" class="de-input" value="<%= dd.ing %>" placeholder="<%= t("e.g. pure sugarcane juice") %>">
               </div>
-            </div>
-          </td>
-          <td data-label="" class="cell-block">
-            <% if (b.certificate_path) { %><span class="muted">✔ Certificate on file</span><br><% } %>
-            <div class="inline" style="flex-wrap:wrap;gap:.4rem;align-items:center">
-              <div class="upl-menu-wrap">
-                <button type="button" class="btn sm upl-menu-btn" aria-expanded="false">
-                  <svg class="upl-btn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-                  Upload <span class="upl-caret">▾</span>
-                </button>
-                <div class="upl-menu" hidden>
-                  <div class="upl-menu-head">Choose what to upload</div>
-                  <form action="/warehouse/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data" class="upl-menu-item">
-                    <label class="upl-label" title="Set the cover photo — shown across the whole system, replaces the current one">
-                      <span class="upl-menu-ico upl-ico-cover" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.6" cy="9.6" r="1.5"/><path d="M3.6 17.8 9 12.4l3.6 3.6 2.6-2.6 5.2 5.2"/></svg>
-                      </span>
-                      <span class="upl-menu-txt">
-                        <span class="upl-menu-title">Cover photo</span>
-                        <span class="upl-menu-sub">1 image · replaces current</span>
-                      </span>
-                      <span class="upl-menu-go" aria-hidden="true">›</span>
-                      <input type="file" name="file" accept="image/*" class="js-img-input" onchange="if(!window.__inplaceImage)this.closest('form').submit()">
-                    </label>
-                  </form>
-                  <form action="/warehouse/batches/<%= b.id %>/images" method="post" enctype="multipart/form-data" class="upl-menu-item">
-                    <label class="upl-label" title="Add extra photos — you can add several at once">
-                      <span class="upl-menu-ico upl-ico-photos" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><rect x="7" y="3.5" width="13.5" height="13.5" rx="3"/><path d="M16.5 20.5H6a2.5 2.5 0 0 1-2.5-2.5V7.5"/><path d="M7.4 13.6 11 10l2.8 2.8 2-2 4.7 4.7"/></svg>
-                      </span>
-                      <span class="upl-menu-txt">
-                        <span class="upl-menu-title">Side Photos</span>
-                        <span class="upl-menu-sub">Add several at once</span>
-                      </span>
-                      <span class="upl-menu-go" aria-hidden="true">›</span>
-                      <input type="file" name="files" accept="image/*" multiple onchange="this.closest('form').submit()">
-                    </label>
-                  </form>
-                </div>
+              <div class="de-col">
+                <span class="de-head">💪 <%= t("Effectiveness") %></span>
+                <input type="text" name="effectiveness" class="de-input" value="<%= dd.eff %>" placeholder="<%= t("e.g. rich in iron, aids digestion") %>">
               </div>
+              <button type="button" class="de-more" data-form="<%= fid %>" data-name="<%= b.batch_id %>"><%= t("See more & edit") %> ⤢</button>
             </div>
-          </td>
-        </tr>
+          </form>
+
+          <p class="muted cat-date" style="white-space:nowrap">📅 <%= t("Added: {a} · Production: {p}", { a: b.created_at ? b.created_at.substring(0,10) : "—", p: b.harvest_date ? b.harvest_date.substring(0,10) : "—" }) %></p>
+          <% if (b.certificate_path) { %><p class="muted" style="margin:.1rem 0">✔ <%= t("Certificate on file") %></p><% } %>
+
+          <div class="cat-toolbar">
+            <form action="/warehouse/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data" class="ct-form">
+              <label class="btn sm btn-outline upl-label" title="<%= t("Set the cover photo") %>">⬆ <%= t("Cover") %>
+                <input type="file" name="file" accept="image/*" class="js-img-input" onchange="if(!window.__inplaceImage)this.closest('form').submit()">
+              </label>
+            </form>
+            <form action="/warehouse/batches/<%= b.id %>/images" method="post" enctype="multipart/form-data" class="ct-form">
+              <label class="btn sm btn-outline upl-label" title="<%= t("Add more photos") %>">➕ <%= t("Photos") %>
+                <input type="file" name="files" accept="image/*" multiple onchange="this.closest('form').submit()">
+              </label>
+            </form>
+            <form action="/warehouse/batches/<%= b.id %>/image/remove" method="post" class="ct-form" data-confirm="<%= t("Remove the cover photo?") %>">
+              <button class="btn sm btn-outline" type="submit" <%= b.image_path ? "" : "disabled" %>><%= t("Remove image") %></button>
+            </form>
+            <span class="spacer"></span>
+            <button class="btn sm" type="submit" form="<%= fid %>"><%= t("Save") %></button>
+            <form action="/warehouse/batches/<%= b.id %>/delete" method="post" class="ct-form"
+                  data-confirm="<%= t("Delete category {name}? It will be removed from the shop and the admin notified.", { name: b.batch_id }) %>">
+              <input type="hidden" name="_back" value="all">
+              <button class="btn sm danger" type="submit"><%= t("Delete") %></button>
+            </form>
+          </div>
+        </div>
       <% }) %>
-      </tbody>
-    </table>
-    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkStockAll">🗑 Delete selected</button>
-      <% if (batches.length > 5) { %>
-        <button type="button" class="btn sm" id="stockMoreBtn"></button>
-      <% } %>
     </div>
   <% } %>
 </div>
 
-<script>
-  // Show at most 5 products; reveal the rest with "See more" (toggle).
-  (function () {
-    var btn = document.getElementById("stockMoreBtn");
-    if (!btn) return;
-    var rows = Array.prototype.slice.call(document.querySelectorAll(".stock-tbl tbody tr"));
-    var CAP = 5, expanded = false;
-    function apply() {
-      rows.forEach(function (tr, i) { tr.style.display = (expanded || i < CAP) ? "" : "none"; });
-      btn.textContent = expanded ? "▲ Show less" : ("▾ See " + (rows.length - CAP) + " more products");
-    }
-    btn.addEventListener("click", function () { expanded = !expanded; apply(); });
-    apply();
-  })();
-</script>
-
+<%- include("../partials/desc_edit_modal") %>
 <%- include("../partials/footer") %>

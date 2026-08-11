@@ -3,43 +3,43 @@
 <div class="page-intro">
   <span class="page-intro-ico">🏬</span>
   <div>
-    <strong>Warehouse package status</strong>
-    <span>Every warehouse and the plan it is on — search by the date the package started.</span>
+    <strong><%= t("Warehouse subscription status") %></strong>
+    <span><%= t("Every warehouse and the plan it is on — search by the date the subscription started.") %></span>
   </div>
 </div>
 
 <div class="card">
   <form action="/admin/subscription-statuses" method="get" class="orders-toolbar">
-    <label class="ot-field">From <input type="date" name="from" value="<%= from %>"></label>
-    <label class="ot-field">To <input type="date" name="to" value="<%= to %>"></label>
-    <button class="btn sm" type="submit">🔍 Search</button>
-    <% if (from || to) { %><a class="btn sm gray" href="/admin/subscription-statuses">Clear</a><% } %>
-    <a class="btn sm gray" href="/admin/subscriptions">← Back to packages</a>
+    <label class="ot-field"><%= t("From") %> <input type="date" name="from" value="<%= from %>"></label>
+    <label class="ot-field"><%= t("To") %> <input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn sm" type="submit">🔍 <%= t("Search") %></button>
+    <% if (from || to) { %><a class="btn sm gray" href="/admin/subscription-statuses"><%= t("Clear") %></a><% } %>
+    <a class="btn sm gray" href="/admin/subscriptions">← <%= t("Back to subscriptions") %></a>
   </form>
 
   <p class="muted" style="margin:.6rem 0">
-    <strong><%= subs.length %></strong> warehouse<%= subs.length === 1 ? "" : "s" %><%
-      if (from || to) { %> · started <%= from || "…" %> → <%= to || "…" %><% } %>
+    <strong><%= t(subs.length === 1 ? "{n} warehouse" : "{n} warehouses", { n: subs.length }) %></strong><%
+      if (from || to) { %> · <%= t("started {from} → {to}", { from: from || "…", to: to || "…" }) %><% } %>
   </p>
 
   <% if (!subs.length) { %>
     <div class="empty-state">
       <div class="empty-icon">📦</div>
       <% if (from || to) { %>
-        <div class="empty-title">No packages in this date range</div>
-        <div class="empty-sub">Try a different date range.</div>
+        <div class="empty-title"><%= t("No subscriptions in this date range") %></div>
+        <div class="empty-sub"><%= t("Try a different date range.") %></div>
       <% } else { %>
-        <div class="empty-title">No packages bought yet</div>
-        <div class="empty-sub">When a warehouse buys a package, it appears here. Warehouses that haven't bought one aren't listed.</div>
+        <div class="empty-title"><%= t("No subscriptions bought yet") %></div>
+        <div class="empty-sub"><%= t("When a warehouse buys a subscription, it appears here. Warehouses that haven't bought one aren't listed.") %></div>
       <% } %>
     </div>
   <% } else { %>
-    <form id="bulkSubAll" action="/admin/subscriptions/bulk-delete" method="post" data-confirm="Delete the selected package(s)?">
+    <form id="bulkSubAll" action="/admin/subscriptions/bulk-delete" method="post" data-confirm="<%= t("Delete the selected subscription(s)?") %>">
       <input type="hidden" name="_back" value="statuses"></form>
     <table class="tbl">
       <thead>
-        <tr><th><input type="checkbox" class="bulk-all" data-group="subAll" title="Select all"></th><th>No.</th><th>Warehouse</th><th>Status</th><th>Plan</th>
-          <th>📅 Started</th><th>Expires</th><th>Days left</th><th>Action</th></tr>
+        <tr><th><input type="checkbox" class="bulk-all" data-group="subAll" title="<%= t("Select all") %>"></th><th><%= t("No.") %></th><th><%= t("Warehouse") %></th><th><%= t("Status") %></th><th><%= t("Plan") %></th>
+          <th>📅 <%= t("Started") %></th><th><%= t("Expires") %></th><th><%= t("Days left") %></th><th><%= t("Action") %></th></tr>
       </thead>
       <tbody>
         <% subs.forEach((s, i) => { %>
@@ -47,7 +47,7 @@
             <td class="dir-chk"><% if (s.current) { %><input type="checkbox" class="bulk-cb" data-group="subAll" name="sub_ids" value="<%= s.current.id %>" form="bulkSubAll"><% } %></td>
             <td><%= i + 1 %></td>
             <td><strong><%= s.warehouse %></strong></td>
-            <td><span class="status status-<%= s.subscribed ? 'delivered' : 'pending' %>"><%= s.subscribed ? "active" : "expired" %></span></td>
+            <td><span class="status status-<%= s.subscribed ? 'delivered' : 'pending' %>"><%= s.subscribed ? t("active") : t("expired") %></span></td>
             <td><%= s.current ? s.current.plan_name : "—" %></td>
             <td class="muted"><%= s.current && s.current.start_date ? s.current.start_date.substring(0,10) : "—" %></td>
             <td><%= s.current ? s.current.end_date : "—" %></td>
@@ -55,8 +55,8 @@
             <td>
               <% if (s.current) { %>
                 <form action="/admin/subscriptions/<%= s.current.id %>/delete" method="post" class="ct-form"
-                      data-confirm="Delete <%= s.warehouse %>'s package?">
-                  <button class="btn sm danger" type="submit">Delete</button>
+                      data-confirm="<%= t("Delete {warehouse}'s subscription?", { warehouse: s.warehouse }) %>">
+                  <button class="btn sm danger" type="submit"><%= t("Delete") %></button>
                 </form>
               <% } else { %><span class="muted">—</span><% } %>
             </td>
@@ -64,7 +64,7 @@
         <% }) %>
       </tbody>
     </table>
-    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkSubAll">🗑 Delete selected</button></div>
+    <div class="acc-actions"><button class="btn sm danger" type="submit" form="bulkSubAll">🗑 <%= t("Delete selected") %></button></div>
   <% } %>
 </div>
 

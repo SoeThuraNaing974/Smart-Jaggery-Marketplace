@@ -1,0 +1,23 @@
+<%# Warehouse notification: categories the ADMIN removed from this warehouse.
+    Shown on the warehouse home + stock pages until the warehouse dismisses it
+    (dismissal is remembered per batch id). Set whDelBack="all" before including
+    to return to the stock page after dismissing. %>
+<% if (typeof whDeletedItems !== "undefined" && whDeletedItems.length) { %>
+<div class="card wh-del-alert">
+  <h3>🗑 <%= t("Removed by admin") %></h3>
+  <p class="wh-del-text"><%= t(whDeletedItems.length === 1
+    ? "The admin removed {n} of your categories from the shop. It no longer appears to customers or in your stock."
+    : "The admin removed {n} of your categories from the shop. They no longer appear to customers or in your stock.", { n: whDeletedItems.length }) %></p>
+  <ul class="wh-del-list">
+    <% whDeletedItems.forEach(function (b) { %>
+      <li><strong><%= b.batch_id %></strong> · <%= t("Grade") %> <%= b.grade %> ·
+        <%= t("deleted on {d}", { d: b.deleted_at ? b.deleted_at.substring(0, 10) : "—" }) %></li>
+    <% }) %>
+  </ul>
+  <form action="/warehouse/deleted-ack" method="post">
+    <% whDeletedItems.forEach(function (b) { %><input type="hidden" name="ids" value="<%= b.id %>"><% }) %>
+    <input type="hidden" name="_back" value="<%= typeof whDelBack !== "undefined" ? whDelBack : "" %>">
+    <button class="btn sm" type="submit">✓ <%= t("Got it") %></button>
+  </form>
+</div>
+<% } %>
