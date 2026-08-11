@@ -120,6 +120,13 @@ h2,h3 { color:var(--brown); }
 .spend-label { font-size:.88rem; color:#9a8b76; font-weight:600; }
 .spend-total { font-size:1.75rem; font-weight:800; color:var(--brown); line-height:1.1; }
 .spend-sub { font-size:.76rem; margin-top:.05rem; }
+/* Burmese runs wider than English: give the spending card a wider column on
+   desktop and step the big total down a notch, so the label and
+   "191,443 ကျပ်" hold one line each just like the English layout */
+body.lang-my .spend-cols { grid-template-columns:1.3fr 1fr; }
+body.lang-my .spend-total { font-size:1.45rem; }
+body.lang-my .spend-label { font-size:.84rem; }
+@media (max-width:760px){ body.lang-my .spend-cols { grid-template-columns:1fr; } }
 
 /* ---- attractive customer welcome hero ---- */
 .welcome-hero {

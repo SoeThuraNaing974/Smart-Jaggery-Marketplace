@@ -3,9 +3,9 @@
    - Pages (HTML) use network-first so logged-in users always get fresh, correct data;
      if offline, a simple fallback message is shown.
    - Static assets use cache-first. */
-const CACHE = "jaggery-pwa-v72";
+const CACHE = "jaggery-pwa-v73";
 const SHELL = [
-  "/css/style.css?v=191",
+  "/css/style.css?v=192",
   "/js/charts.js?v=6",
   "/js/confirm.js?v=6",
   "/js/responsive-tables.js?v=3",

@@ -20,6 +20,7 @@ import qrcode
 from openpyxl import Workbook
 
 from config import Config
+from utils import myanmar
 
 
 # ======================================================================= PDFs
@@ -52,6 +53,11 @@ def _styles():
     ss.add(ParagraphStyle("KV", parent=ss["Normal"], fontSize=10, textColor=_DARK, leading=15))
     ss.add(ParagraphStyle("Foot", parent=ss["Normal"], fontSize=7.5, textColor=colors.grey,
                           alignment=TA_CENTER))
+    # Cell styles used only when a cell contains Burmese (see _cells). They
+    # mirror the TableStyle below, because a Paragraph carries its own font.
+    ss.add(ParagraphStyle("CellHead", parent=ss["Normal"], fontName="Helvetica-Bold",
+                          fontSize=9.5, leading=13, textColor=colors.white, alignment=TA_CENTER))
+    ss.add(ParagraphStyle("Cell", parent=ss["Normal"], fontSize=9, leading=13, textColor=_DARK))
     return ss
 
 
@@ -83,10 +89,10 @@ def _brand_header(styles, doc_title, meta_lines=None):
         Paragraph(_BRAND_NAME, styles["Brand"]),
         Paragraph("&bull;&nbsp;&nbsp; " + _TAGLINE + " &nbsp;&nbsp;&bull;", styles["BrandSub"]),
         HRFlowable(width="100%", thickness=2.4, color=_BROWN, spaceBefore=5, spaceAfter=9),
-        Paragraph(doc_title, styles["DocTitle"]),
+        Paragraph(myanmar.inline(doc_title), styles["DocTitle"]),
     ]
     for m in (meta_lines or []):
-        flow.append(Paragraph(m, styles["MetaC"]))
+        flow.append(Paragraph(myanmar.inline(m), styles["MetaC"]))
     flow.append(HRFlowable(width="100%", thickness=0.7, color=_GOLD, spaceBefore=7, spaceAfter=9))
     return flow
 
@@ -107,6 +113,14 @@ def _footer(canvas, doc):
 def _build(buf, story):
     _doc(buf).build(story, onFirstPage=_footer, onLaterPages=_footer)
     return buf.getvalue()
+
+
+def _cells(rows, styles):
+    """Run every cell past the Burmese renderer. Cells without Burmese come back
+    unchanged, so tables that are pure Latin look exactly as they always did."""
+    head, body = (rows[:1], rows[1:]) if rows else ([], [])
+    return ([[myanmar.cell(c, styles["CellHead"]) for c in r] for r in head]
+            + [[myanmar.cell(c, styles["Cell"]) for c in r] for r in body])
 
 
 def _table(rows, col_widths=None):
@@ -162,7 +176,7 @@ def invoice_pdf(order_dict):
     for it in order_dict["items"]:
         rows.append([it["batch_id"], it.get("warehouse_name") or "-", it["grade"], f"{it['qty_kg']}",
                      f"{it['unit_price']} Kyats", f"{it['line_total']} Kyats"])
-    story.append(_table(rows, [115, 100, 45, 55, 70, 75]))
+    story.append(_table(_cells(rows, styles), [115, 100, 45, 55, 70, 75]))
     story.append(Spacer(1, 7 * mm))
     story.append(_totals_table([
         ["Subtotal", f"{order_dict['subtotal']} Kyats"],
@@ -188,7 +202,7 @@ def packing_slip_pdf(order_dict):
     rows = [["Product", "Grade", "Qty (kg)", "Packed"]]
     for it in order_dict["items"]:
         rows.append([it["batch_id"], it["grade"], f"{it['qty_kg']}", "[   ]"])
-    story.append(_table(rows, [170, 65, 95, 80]))
+    story.append(_table(_cells(rows, styles), [170, 65, 95, 80]))
     return _build(buf, story)
 
 
@@ -207,7 +221,7 @@ def report_pdf(title, headers, rows, summary_lines=None, period=None):
     for line in (summary_lines or []):
         meta.append(line)
     story = _brand_header(styles, title, meta)
-    story.append(_table([headers] + [[str(c) for c in r] for r in rows]))
+    story.append(_table(_cells([headers] + [[str(c) for c in r] for r in rows], styles)))
     return _build(buf, story)
 
 
@@ -221,18 +235,19 @@ def payment_slip_pdf(title, pairs, amount, note=None, items=None, item_headers=N
     styles = _styles()
     meta = [title, f"Issued: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"]
     story = _brand_header(styles, "PAYMENT RECEIPT", meta)
-    story.append(_table([["Detail", "Value"]] + [[str(k), str(v)] for k, v in pairs], [200, 260]))
+    story.append(_table(_cells([["Detail", "Value"]] + [[str(k), str(v)] for k, v in pairs],
+                               styles), [200, 260]))
     if items:
         story.append(Spacer(1, 6 * mm))
         story.append(Paragraph("<b>Items in this order</b>", styles["KV"]))
         story.append(Spacer(1, 2 * mm))
         hdr = item_headers or ["Category", "Grade", "Qty (kg)", "Unit (Kyats)", "Value (Kyats)"]
-        story.append(_table([hdr] + [[str(c) for c in r] for r in items]))
+        story.append(_table(_cells([hdr] + [[str(c) for c in r] for r in items], styles)))
     story.append(Spacer(1, 7 * mm))
     story.append(_totals_table([["AMOUNT PAID", f"{amount}"]], [330, 130]))
     if note:
         story.append(Spacer(1, 6 * mm))
-        story.append(Paragraph(note, styles["MetaC"]))
+        story.append(Paragraph(myanmar.inline(note), styles["MetaC"]))
     return _build(buf, story)
 
 
@@ -242,12 +257,13 @@ def backup_slip_pdf(pairs, note=None):
     styles = _styles()
     meta = [f"Issued: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"]
     story = _brand_header(styles, "DATABASE BACKUP RECEIPT", meta)
-    story.append(_table([["Detail", "Value"]] + [[str(k), str(v)] for k, v in pairs], [165, 295]))
+    story.append(_table(_cells([["Detail", "Value"]] + [[str(k), str(v)] for k, v in pairs],
+                               styles), [165, 295]))
     story.append(Spacer(1, 7 * mm))
     story.append(_totals_table([["STATUS", "BACKUP SUCCESSFUL"]], [330, 130]))
     if note:
         story.append(Spacer(1, 7 * mm))
-        story.append(Paragraph(note, styles["MetaC"]))
+        story.append(Paragraph(myanmar.inline(note), styles["MetaC"]))
     return _build(buf, story)
 
 

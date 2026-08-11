@@ -7,6 +7,10 @@ python-dotenv==1.0.1
 python-dateutil==2.9.0.post0
 flask-cors==4.0.1
 reportlab==4.2.2
+# Burmese text on PDFs: uharfbuzz reorders/ligates the script, fonttools
+# re-cmaps the bundled Noto Sans Myanmar so ReportLab can draw the glyphs.
+uharfbuzz==0.56.0
+fonttools==4.63.0
 qrcode[pil]==7.4.2
 openpyxl==3.1.5
 gunicorn==23.0.0

@@ -1,0 +1,9 @@
+Noto Sans Myanmar
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/myanmar)
+
+Licensed under the SIL Open Font License, Version 1.1.
+Full text: https://scripts.sil.org/OFL
+
+Bundled (rather than relying on a system font) because the deployment target
+has no Myanmar font installed. Used by backend/utils/myanmar.py to render
+Burmese on PDF invoices, packing slips, payment receipts and reports.
