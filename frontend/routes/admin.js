@@ -4,6 +4,7 @@ const FormData = require("form-data");
 const { client } = require("../lib/api");
 const { requireRole } = require("../middleware/auth");
 const { MM_CITIES, COUNTRIES } = require("../lib/locations");
+const { GRADE_INFO } = require("../lib/gradeInfo");
 
 const router = express.Router();
 const adminOnly = requireRole("admin");
@@ -481,7 +482,7 @@ router.get("/about-edit", adminOnly, async (req, res) => {
   });
 });
 router.post("/about-edit", adminOnly, async (req, res) => {
-  const r = await client(req.token).put("/api/content/about", {
+  const r = await client(req.token).put("/api/admin/content/about", {
     headline_a: req.body.headline_a || "", headline_b: req.body.headline_b || "",
     hero_sub: req.body.hero_sub || "",
     who_p1: req.body.who_p1 || "", who_p2: req.body.who_p2 || "",
@@ -489,6 +490,30 @@ router.post("/about-edit", adminOnly, async (req, res) => {
   });
   res.redirect(r.status === 200 ? "/about?msg=About+page+updated"
     : "/admin/about-edit?err=" + encodeURIComponent((r.data && r.data.error) || "Failed"));
+});
+
+// ------------------------------------------------ grade descriptions editor
+// The customer Category page shows a description box when a grade chip (A/B/C)
+// is selected. The admin edits those texts here; blank fields fall back to the
+// built-in bilingual defaults (same site_content mechanism as the About page).
+router.get("/grade-edit", adminOnly, async (req, res) => {
+  const r = await client(req.token).get("/api/content/grades");
+  res.render("admin/grade_edit", {
+    c: (r.status === 200 && r.data && typeof r.data === "object" && !Array.isArray(r.data)) ? r.data : {},
+    gradeInfo: GRADE_INFO,
+    flash: req.query.msg || null, error: req.query.err || null,
+  });
+});
+router.post("/grade-edit", adminOnly, async (req, res) => {
+  const fields = {};
+  ["a", "b", "c"].forEach((g) => {
+    ["title", "quality", "strengths", "weaknesses"].forEach((f) => {
+      fields[g + "_" + f] = req.body[g + "_" + f] || "";
+    });
+  });
+  const r = await client(req.token).put("/api/admin/content/grades", fields);
+  res.redirect(r.status === 200 ? "/admin/grade-edit?msg=Grade+descriptions+updated"
+    : "/admin/grade-edit?err=" + encodeURIComponent((r.data && r.data.error) || "Failed"));
 });
 
 // --------------------------------------------------------- promotion management

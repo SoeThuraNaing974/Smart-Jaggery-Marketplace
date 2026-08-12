@@ -2,6 +2,7 @@ const express = require("express");
 const { client } = require("../lib/api");
 const { requireRole, publicPage } = require("../middleware/auth");
 const { isLocal, buildOptions } = require("../lib/locations");
+const { GRADE_INFO } = require("../lib/gradeInfo");
 
 const router = express.Router();
 
@@ -56,10 +57,12 @@ router.get("/about", publicPage, async (req, res) => {
 router.get("/batches", publicPage, async (req, res) => {
   const api = client(req.token);
   const grade = ["A", "B", "C"].includes(req.query.grade) ? req.query.grade : "";
-  const [allRes, promoRes, ratingsRes] = await Promise.all([
+  const [allRes, promoRes, ratingsRes, gradeRes] = await Promise.all([
     api.get("/api/batches"),
     api.get("/api/promotions/active"),
     api.get("/api/warehouses/ratings"),
+    // admin-edited grade descriptions (only shown when a grade chip is selected)
+    grade ? api.get("/api/content/grades").catch(() => null) : Promise.resolve(null),
   ]);
   const all = allRes.data || [];
   // Flag categories added since this customer last opened the page, then mark
@@ -87,6 +90,9 @@ router.get("/batches", publicPage, async (req, res) => {
     promotions: promoRes.data || [],
     ratings: ratingsRes.data || {},
     selectedGrade: grade,
+    gradeInfo: GRADE_INFO,
+    gradeContent: (gradeRes && gradeRes.status === 200 && gradeRes.data
+      && typeof gradeRes.data === "object" && !Array.isArray(gradeRes.data)) ? gradeRes.data : {},
     cartItems: cv.items,
     cartSubtotal: cv.subtotal,
     flash: req.query.msg || null,

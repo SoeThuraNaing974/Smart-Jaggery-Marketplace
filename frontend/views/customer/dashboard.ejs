@@ -20,47 +20,7 @@
 </script>
 
 <% if (typeof ads !== "undefined" && ads && ads.length) { %>
-  <section class="ad-rail <%= ads.length === 1 ? 'ad-rail-single' : '' %>" id="adRail" aria-label="<%= t("Advertisements") %>">
-    <div class="ad-rail-head">
-      <span class="ad-rail-tag">✨ <%= t("Advertisements For You") %></span>
-      <% if (ads.length > 1) { %>
-        <div class="ad-nav">
-          <button type="button" class="ad-arrow" data-ad-prev aria-label="<%= t("Previous") %>">‹</button>
-          <button type="button" class="ad-arrow" data-ad-next aria-label="<%= t("Next") %>">›</button>
-        </div>
-      <% } %>
-    </div>
-    <div class="ad-track" id="adTrack">
-      <% ads.forEach(function (ad) { var ext = ad.link_url && /^https?:\/\//i.test(ad.link_url); %>
-        <article class="ad-card accent-<%= ad.accent || 'amber' %>">
-          <div class="ad-ico"><%= ad.icon || '📣' %></div>
-          <h3 class="ad-title"><%= ad.title %></h3>
-          <% if (ad.body) { %><p class="ad-body"><%= ad.body %></p><% } %>
-          <% if (ad.link_url) { %>
-            <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || t("Learn more") %> →</a>
-          <% } %>
-        </article>
-      <% }) %>
-    </div>
-  </section>
-  <script>
-    (function () {
-      var track = document.getElementById("adTrack");
-      if (!track) return;
-      var cards = track.querySelectorAll(".ad-card");
-      function step() { return cards.length ? cards[0].getBoundingClientRect().width + 14 : 240; }
-      var prevBtn = document.querySelector("[data-ad-prev]"), nextBtn = document.querySelector("[data-ad-next]");
-      var timer = null;
-      function rest() { if (timer) clearInterval(timer); if (cards.length > 1) timer = setInterval(tick, 4000); }
-      function tick() {
-        if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 4) track.scrollTo({ left: 0, behavior: "smooth" });
-        else track.scrollBy({ left: step(), behavior: "smooth" });
-      }
-      if (prevBtn) prevBtn.addEventListener("click", function () { track.scrollBy({ left: -step(), behavior: "smooth" }); rest(); });
-      if (nextBtn) nextBtn.addEventListener("click", function () { track.scrollBy({ left: step(), behavior: "smooth" }); rest(); });
-      rest();
-    })();
-  </script>
+  <%- include("../partials/ads_slider", { ads: ads, label: t("Advertisements For You") }) %>
 <% } %>
 
 <% if (priceDrops && priceDrops.length) { %>

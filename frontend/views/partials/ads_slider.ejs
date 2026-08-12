@@ -1,0 +1,87 @@
+<%
+  /* Full-width advertisement carousel — every ad is a full banner, shown one
+     slide at a time and auto-advanced every 3 seconds (wraps back to the first).
+     Used on the customer dashboard and the guest home page.
+     Locals: ads (required), label (optional heading — defaults to "Advertisements"). */
+  var adLabel = (typeof label !== "undefined" && label) ? label : t("Advertisements");
+%>
+<section class="ad-rail <%= ads.length === 1 ? 'ad-rail-single' : '' %>" id="adRail" aria-label="<%= adLabel %>">
+  <div class="ad-rail-head">
+    <span class="ad-rail-tag">✨ <%= adLabel %></span>
+    <% if (ads.length > 1) { %>
+      <div class="ad-nav">
+        <button type="button" class="ad-arrow" data-ad-prev aria-label="<%= t("Previous") %>">‹</button>
+        <button type="button" class="ad-arrow" data-ad-next aria-label="<%= t("Next") %>">›</button>
+      </div>
+    <% } %>
+  </div>
+  <div class="ad-track" id="adTrack">
+    <% ads.forEach(function (ad) { var ext = ad.link_url && /^https?:\/\//i.test(ad.link_url); %>
+      <article class="ad-card accent-<%= ad.accent || 'amber' %>">
+        <div class="ad-ico"><%= ad.icon || '📣' %></div>
+        <h3 class="ad-title"><%= ad.title %></h3>
+        <% if (ad.body) { %><p class="ad-body"><%= ad.body %></p><% } %>
+        <% if (ad.link_url) { %>
+          <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || t("Learn more") %> →</a>
+        <% } %>
+      </article>
+    <% }) %>
+  </div>
+  <% if (ads.length > 1) { %>
+    <div class="ad-dots" id="adDots">
+      <% ads.forEach(function (ad, i) { %>
+        <button type="button" class="ad-dot<%= i === 0 ? ' on' : '' %>" data-ad-dot aria-label="<%= t("Go to advertisement {n}", { n: i + 1 }) %>"></button>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+<script>
+  (function () {
+    var track = document.getElementById("adTrack");
+    if (!track) return;
+    var cards = track.querySelectorAll(".ad-card");
+    if (cards.length < 2) return;
+    var dots = document.querySelectorAll("[data-ad-dot]");
+    var idx = 0, timer = null, settle = null;
+    function step() { return cards[1].offsetLeft - cards[0].offsetLeft; }   // one full slide (width + gap)
+    function paint() { for (var i = 0; i < dots.length; i++) dots[i].classList.toggle("on", i === idx); }
+    function goTo(i) {
+      idx = (i + cards.length) % cards.length;
+      track.scrollTo({ left: idx * step(), behavior: "smooth" });
+      paint();
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    function play() {
+      stop();
+      timer = setInterval(function () {
+        if (!track.isConnected) return stop();          // page was swapped away (no-reload engine)
+        goTo(idx + 1);
+      }, 3000);
+    }
+    var prevBtn = document.querySelector("[data-ad-prev]"), nextBtn = document.querySelector("[data-ad-next]");
+    if (prevBtn) prevBtn.addEventListener("click", function () { goTo(idx - 1); play(); });
+    if (nextBtn) nextBtn.addEventListener("click", function () { goTo(idx + 1); play(); });
+    for (var d = 0; d < dots.length; d++) (function (i) {
+      dots[i].addEventListener("click", function () { goTo(i); play(); });
+    })(d);
+    // keep the dots honest when the user swipes by hand
+    track.addEventListener("scroll", function () {
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(function () {
+        idx = Math.max(0, Math.min(cards.length - 1, Math.round(track.scrollLeft / step())));
+        paint();
+      }, 90);
+    }, { passive: true });
+    // pause while the pointer rests on an ad (same manners as the news ticker)
+    track.addEventListener("mouseenter", stop);
+    track.addEventListener("mouseleave", play);
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // don't slide in a background tab — smooth scrolling stalls there, which
+    // would let the dots drift ahead of the ad actually on screen
+    document.addEventListener("visibilitychange", function () {
+      if (!track.isConnected) return;
+      if (document.hidden) stop(); else play();
+    });
+    if (!document.hidden) play();
+  })();
+</script>

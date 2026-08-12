@@ -39,32 +39,22 @@
 <% } %>
 
 <% if (ads && ads.length) { %>
-  <section class="ad-rail <%= ads.length === 1 ? 'ad-rail-single' : '' %>" aria-label="Advertisements">
-    <div class="ad-rail-head"><span class="ad-rail-tag">✨ Advertisements</span></div>
-    <div class="ad-track">
-      <% ads.forEach(function (ad) { var ext = ad.link_url && /^https?:\/\//i.test(ad.link_url); %>
-        <article class="ad-card accent-<%= ad.accent || 'amber' %>">
-          <div class="ad-ico"><%= ad.icon || '📣' %></div>
-          <h3 class="ad-title"><%= ad.title %></h3>
-          <% if (ad.body) { %><p class="ad-body"><%= ad.body %></p><% } %>
-          <% if (ad.link_url) { %>
-            <a class="ad-cta" href="<%= ad.link_url %>"<% if (ext) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= ad.link_label || 'Learn more' %> →</a>
-          <% } %>
-        </article>
-      <% }) %>
-    </div>
-  </section>
+  <%- include("partials/ads_slider", { ads: ads, label: t("Advertisements") }) %>
 <% } %>
 
 <% if (promotions && promotions.length) { %>
   <div class="card promo">
     <h3>🎉 <%= t("Active promotions") %></h3>
-    <ul>
-      <% promotions.forEach(function (p) { %>
-        <li><strong><%= p.title %></strong> — <%= t("{p}% off on {q}kg or more", { p: p.discount_percent, q: p.min_qty }) %>
-          <span class="muted">(<%= t("until {d}", { d: p.end_date }) %>)</span></li>
-      <% }) %>
-    </ul>
+    <div class="promo-ticker" aria-label="<%= t("Active promotions") %>">
+      <div class="promo-ticker-move">
+        <% for (var pk = 0; pk < 2; pk++) { %>
+          <% promotions.forEach(function (p) { %>
+            <span class="promo-ticker-item">🎉 <strong><%= p.title %></strong> — <%= t("{p}% off on {q}kg or more", { p: p.discount_percent, q: p.min_qty }) %>
+              <span class="muted">(<%= t("until {d}", { d: p.end_date }) %>)</span></span>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
   </div>
 <% } %>
 

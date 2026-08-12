@@ -22,6 +22,7 @@
     <label class="ot-field"><%= t("To") %> <input type="date" name="to" value="<%= to %>"></label>
     <button class="btn sm" type="submit">🔍 <%= t("Search") %></button>
     <% if (from || to) { %><a class="btn sm gray" href="/admin/categories"><%= t("Clear") %></a><% } %>
+    <a class="btn sm gray" href="/admin/grade-edit">✏️ <%= t("Grade A,B,C descriptions") %></a>
     <a class="btn sm gray" href="/admin/batches">← <%= t("Back") %></a>
   </form>
 
@@ -79,7 +80,8 @@
             </div>
           </form>
 
-          <p class="muted cat-date" style="white-space:nowrap">📅 <%= t("Added: {a} · Production: {p}", { a: b.created_at ? b.created_at.substring(0,10) : "—", p: b.harvest_date ? b.harvest_date.substring(0,10) : "—" }) %></p>
+          <% const dparts = t("Added: {a} · Production: {p}", { a: b.created_at ? b.created_at.substring(0,10) : "—", p: b.harvest_date ? b.harvest_date.substring(0,10) : "—" }).split(" · "); %>
+          <p class="muted cat-date">📅 <% dparts.forEach((dp, di) => { %><span class="cd-seg"><%= dp %><%= di < dparts.length - 1 ? " ·" : "" %></span><%= di < dparts.length - 1 ? " " : "" %><% }) %></p>
 
           <div class="cat-toolbar">
             <form action="/admin/batches/<%= b.id %>/image" method="post" enctype="multipart/form-data" class="ct-form">

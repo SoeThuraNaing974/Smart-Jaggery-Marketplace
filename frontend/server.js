@@ -307,6 +307,17 @@ app.get("/", (req, res) => {
 
 app.use((req, res) => res.status(404).render("error", { message: "Page not found." }));
 
+// An async route that throws (e.g. the Flask API is down/restarting → axios
+// ECONNREFUSED) must not kill the whole website for everyone — that request
+// fails, the server stays up and recovers as soon as the API is back.
+process.on("unhandledRejection", (err) => {
+  console.error("[frontend] unhandled rejection (request failed, server kept alive):",
+    (err && err.message) || err);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[frontend] uncaught exception (server kept alive):", (err && err.stack) || err);
+});
+
 const PORT = process.env.PORT || 3000;
 // 0.0.0.0 = listen on all network interfaces so other devices (your phone) on the
 // same Wi-Fi can open the site at http://<your-laptop-ip>:3000

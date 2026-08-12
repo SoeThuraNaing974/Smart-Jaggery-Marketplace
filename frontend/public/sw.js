@@ -3,7 +3,7 @@
    - Pages (HTML) use network-first so logged-in users always get fresh, correct data;
      if offline, a simple fallback message is shown.
    - Static assets use cache-first. */
-const CACHE = "jaggery-pwa-v77";
+const CACHE = "jaggery-pwa-v78";
 const SHELL = [
   "/css/style.css?v=196",
   "/js/charts.js?v=6",
@@ -75,9 +75,14 @@ self.addEventListener("fetch", (event) => {
     fetch(req).catch(() =>
       caches.match(req).then((hit) =>
         hit || new Response(
+          // charset must be declared BOTH in the header and the document — without
+          // it the browser decodes the Burmese text as Latin-1 (mojibake).
+          "<!doctype html><html><head><meta charset='utf-8'>" +
+          "<meta name='viewport' content='width=device-width, initial-scale=1'><title>Offline</title></head><body>" +
           "<h2 style='font-family:sans-serif;color:#7a4a1e;text-align:center;margin-top:3rem'>You are offline &middot; အင်တာနက် ချိတ်ဆက်မှု မရှိပါ</h2>" +
-          "<p style='font-family:sans-serif;color:#888;text-align:center'>Reconnect to use Smart Jaggery Mart.<br>Smart Jaggery Mart ကို သုံးရန် ပြန်လည်ချိတ်ဆက်ပါ။</p>",
-          { headers: { "Content-Type": "text/html" } }
+          "<p style='font-family:sans-serif;color:#888;text-align:center'>Reconnect to use Smart Jaggery Mart.<br>Smart Jaggery Mart ကို သုံးရန် ပြန်လည်ချိတ်ဆက်ပါ။</p>" +
+          "</body></html>",
+          { headers: { "Content-Type": "text/html; charset=utf-8" } }
         )
       )
     )

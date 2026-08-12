@@ -110,7 +110,8 @@
             </div>
           </form>
 
-          <p class="muted cat-date" style="white-space:nowrap">📅 <%= t("Added: {a} · Production: {p}", { a: b.created_at ? b.created_at.substring(0,10) : "—", p: b.harvest_date ? b.harvest_date.substring(0,10) : "—" }) %></p>
+          <% const dparts = t("Added: {a} · Production: {p}", { a: b.created_at ? b.created_at.substring(0,10) : "—", p: b.harvest_date ? b.harvest_date.substring(0,10) : "—" }).split(" · "); %>
+          <p class="muted cat-date">📅 <% dparts.forEach((dp, di) => { %><span class="cd-seg"><%= dp %><%= di < dparts.length - 1 ? " ·" : "" %></span><%= di < dparts.length - 1 ? " " : "" %><% }) %></p>
           <% if (b.certificate_path) { %><p class="muted" style="margin:.1rem 0">✔ <%= t("Certificate on file") %></p><% } %>
 
           <div class="cat-toolbar">

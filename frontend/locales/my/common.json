@@ -157,5 +157,14 @@
   "Submit": "တင်သွင်းရန်",
   "Approve": "ခွင့်ပြုရန်",
   "Reject": "ငြင်းပယ်ရန်",
-  "Page not found.": "စာမျက်နှာ ရှာမတွေ့ပါ။"
+  "Page not found.": "စာမျက်နှာ ရှာမတွေ့ပါ။",
+  "Grade descriptions": "အဆင့် ဖော်ပြချက်များ",
+  "Grade A,B,C descriptions": "အဆင့် A,B,C ဖော်ပြချက်များ",
+  "Edit the grade descriptions": "အဆင့် ဖော်ပြချက်များကို ပြင်ဆင်ရန်",
+  "These texts appear on the Category page when a customer selects Grade A, B or C. What you save here replaces the built-in text in both languages. Leave a field blank to go back to the built-in bilingual default.": "ဝယ်သူတစ်ဦးက အဆင့် A၊ B သို့မဟုတ် C ကို ရွေးလိုက်သောအခါ ဤစာသားများသည် အမျိုးအစား စာမျက်နှာတွင် ပေါ်ပါသည်။ ဤနေရာတွင် သိမ်းလိုက်သည့်စာသားက ဘာသာစကားနှစ်မျိုးလုံးတွင် မူရင်းစာသားကို အစားထိုးပါသည်။ ကွက်လပ်ထားခဲ့လျှင် မူရင်း နှစ်ဘာသာ စာသားသို့ ပြန်သွားပါမည်။",
+  "Title": "ခေါင်းစဉ်",
+  "Quality & appearance": "အရည်အသွေးနှင့် ပုံစံ",
+  "Strengths (one per line)": "အားသာချက်များ (တစ်ကြောင်းလျှင် တစ်ခု)",
+  "Weaknesses (one per line)": "အားနည်းချက်များ (တစ်ကြောင်းလျှင် တစ်ခု)",
+  "Grade descriptions updated": "အဆင့် ဖော်ပြချက်များ ပြင်ဆင်ပြီးပါပြီ"
 }

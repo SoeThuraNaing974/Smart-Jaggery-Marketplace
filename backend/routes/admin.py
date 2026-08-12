@@ -933,10 +933,11 @@ def delete_abandoned_carts():
 @bp.put("/content/<key>")
 @role_required("admin")
 def save_site_content(key):
-    """Upsert the admin-edited copy for a public page (About Us). Blank fields
-    are dropped so the template's built-in bilingual defaults show again."""
+    """Upsert the admin-edited copy for a public page (About Us, grade
+    descriptions). Blank fields are dropped so the template's built-in
+    bilingual defaults show again."""
     from models import SiteContent
-    if key not in ("about",):
+    if key not in ("about", "grades"):
         return jsonify({"error": "unknown content key"}), 404
     data = request.get_json(silent=True) or {}
     fields = {}

@@ -1,0 +1,55 @@
+<%- include("../partials/header") %>
+
+<%# Editor for the grade description box shown on the customer Category page
+    when a grade chip (A/B/C) is selected. Same mechanism as the About Us
+    editor: saved fields are stored in the backend's site_content table
+    (key "grades") and replace the built-in text in both languages; a field
+    left blank falls back to the built-in bilingual default (shown as the
+    placeholder). Strengths/weaknesses: one bullet per line. %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">✏️</span>
+  <div>
+    <strong><%= t("Edit the grade descriptions") %></strong>
+    <span><%= t("These texts appear on the Category page when a customer selects Grade A, B or C. What you save here replaces the built-in text in both languages. Leave a field blank to go back to the built-in bilingual default.") %></span>
+  </div>
+</div>
+
+<div class="card">
+  <form action="/admin/grade-edit" method="post" class="grade-edit-form">
+    <% ["A", "B", "C"].forEach(function (g, i) { var gi = gradeInfo[g]; var k = g.toLowerCase(); %>
+      <h3 <%= i === 0 ? 'style="margin-top:0"' : "" %>><%= gi.icon %> <%= t("Grade {g}", { g: g }) %></h3>
+      <label class="msg-modal-label" for="ge-<%= k %>-title"><%= t("Title") %></label>
+      <input id="ge-<%= k %>-title" name="<%= k %>_title" value="<%= c[k + "_title"] || "" %>" placeholder="<%= gi.title %>">
+      <label class="msg-modal-label" for="ge-<%= k %>-quality"><%= t("Quality & appearance") %></label>
+      <textarea id="ge-<%= k %>-quality" name="<%= k %>_quality" rows="3" placeholder="<%= gi.quality %>"><%= c[k + "_quality"] || "" %></textarea>
+      <label class="msg-modal-label" for="ge-<%= k %>-strengths"><%= t("Strengths (one per line)") %></label>
+      <textarea id="ge-<%= k %>-strengths" name="<%= k %>_strengths" rows="3" placeholder="<%= gi.strengths.join("\n") %>"><%= c[k + "_strengths"] || "" %></textarea>
+      <label class="msg-modal-label" for="ge-<%= k %>-weaknesses"><%= t("Weaknesses (one per line)") %></label>
+      <textarea id="ge-<%= k %>-weaknesses" name="<%= k %>_weaknesses" rows="3" placeholder="<%= gi.weaknesses.join("\n") %>"><%= c[k + "_weaknesses"] || "" %></textarea>
+    <% }) %>
+
+    <div class="acc-actions" style="margin-top:1rem">
+      <button class="btn" type="submit">💾 <%= t("Save changes") %></button>
+      <% ["A", "B", "C"].forEach(function (g) { %>
+        <a class="btn sm gray" href="/batches?grade=<%= g %>">👁 <%= t("Grade {g}", { g: g }) %></a>
+      <% }) %>
+      <a class="btn sm gray" href="/admin/categories">← <%= t("Back") %></a>
+    </div>
+  </form>
+</div>
+
+<style>
+  /* stacked editor form: full-width fields, labels above (placeholders show the
+     built-in text each field falls back to when left blank) */
+  .grade-edit-form input, .grade-edit-form textarea {
+    width:100%; padding:.55rem .7rem; margin-bottom:.6rem;
+    border:1px solid #d8c9b2; border-radius:8px; background:#fffdf9;
+    font:inherit; color:#222;
+  }
+  .grade-edit-form textarea { resize:vertical; }
+  .grade-edit-form h3 { margin:1.1rem 0 .5rem; }
+  .grade-edit-form .msg-modal-label { margin:.15rem 0 .25rem; }
+</style>
+
+<%- include("../partials/footer") %>
