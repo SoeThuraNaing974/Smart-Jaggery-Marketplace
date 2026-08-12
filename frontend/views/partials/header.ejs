@@ -66,7 +66,7 @@
       delOk: "🗑️ " + t("Yes, delete"), otherOk: "✓ " + t("Yes, continue")
     }) %>;
   </script>
-  <link rel="stylesheet" href="/css/style.css?v=192" />
+  <link rel="stylesheet" href="/css/style.css?v=196" />
   <%
     // Chart.js is heavy (~200KB). Only load it on the 3 pages that actually draw
     // charts — every other page loads much lighter & faster (especially on mobile).
@@ -82,7 +82,7 @@
 </head>
 <body class="<%= (typeof user !== 'undefined' && user) ? 'role-' + user.role : 'is-guest' %> lang-<%= (typeof lang !== 'undefined' && lang) ? lang : 'en' %>">
   <nav class="nav">
-    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"><span class="lm3"><span class="lm3-orbit"><span class="lm3-arm lm3-arm-1"><i class="lm3-ball lm3-b1"></i></span><span class="lm3-arm lm3-arm-2"><i class="lm3-ball lm3-b2"></i></span></span><span class="lm3-topwrap"><i class="lm3-ball lm3-b3"></i></span></span></span>Smart Jaggery Mart</a>
+    <a class="brand" href="/"><span class="logo-mark" aria-hidden="true"><span class="lm3"><span class="lm3-orbit"><span class="lm3-arm lm3-arm-1"><i class="lm3-ball lm3-b1"></i></span><span class="lm3-arm lm3-arm-2"><i class="lm3-ball lm3-b2"></i></span></span><span class="lm3-topwrap"><i class="lm3-ball lm3-b3"></i></span></span></span><span class="brand-text">Smart Jaggery Mart</span></a>
     <input type="checkbox" id="navToggle" class="nav-toggle" hidden>
     <label for="navToggle" class="nav-burger" aria-label="Toggle menu">&#9776;</label>
     <div class="nav-links">
@@ -106,8 +106,8 @@
           <a href="/warehouse" class="<%= navCls('/warehouse') %> notif-link"><%= t("Home") %><% if (typeof whDeletedCount !== "undefined" && whDeletedCount > 0) { %><span class="fb-badge" title="<%= t(whDeletedCount === 1 ? '{n} of your categories was removed by the admin' : '{n} of your categories were removed by the admin', { n: whDeletedCount }) %>"><%= whDeletedCount > 9 ? '9+' : whDeletedCount %></span><% } %></a>
           <a href="/warehouse/stock-all" class="<%= navCls('/warehouse/stock-all') %> notif-link"><%= t("Category") %><% if (typeof whCategoryCount !== "undefined" && whCategoryCount > 0) { %><span class="fb-badge" title="<%= t(whCategoryCount === 1 ? '{n} new category in your stock' : '{n} new categories in your stock', { n: whCategoryCount }) %>"><%= whCategoryCount > 9 ? '9+' : whCategoryCount %></span><% } %></a>
           <a href="/warehouse/orders-all" class="<%= navCls('/warehouse/orders-all') %> notif-link"><%= t("Orders") %><% if (typeof whOrderCount !== "undefined" && whOrderCount > 0) { %><span class="fb-badge" title="<%= t('{n} new customer order(s)', { n: whOrderCount }) %>"><%= whOrderCount > 9 ? '9+' : whOrderCount %></span><% } %></a>
-          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>"><%= t("Request Category") %></a>
-          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link"><%= t("Subscription Plan") %><% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= t('{n} new subscription plan(s)', { n: whPlanCount }) %>"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
+          <a href="/warehouse/transfers" class="<%= navCls('/warehouse/transfers') %>"><%= t("RequestCategory") %></a>
+          <a href="/warehouse/subscription" class="<%= navCls('/warehouse/subscription') %> notif-link"><%= t("SubscriptionPlan") %><% if (typeof whPlanCount !== "undefined" && whPlanCount > 0) { %><span class="fb-badge" title="<%= t('{n} new subscription plan(s)', { n: whPlanCount }) %>"><%= whPlanCount > 9 ? '9+' : whPlanCount %></span><% } %></a>
         <% } else if (user.role === "admin") { %>
           <a href="/admin" class="<%= navCls('/admin') %>"><%= t("Home") %></a>
           <% var catAttn = (typeof pendingRequestCount !== "undefined" ? pendingRequestCount : 0) + (typeof deletedStockCount !== "undefined" ? deletedStockCount : 0); %>
@@ -120,6 +120,11 @@
           <% var accAttn = (typeof newWarehouseCount !== "undefined" ? newWarehouseCount : 0) + (typeof newUserCount !== "undefined" ? newUserCount : 0); %>
           <a href="/admin/directory" class="<%= navCls('/admin/directory') %> notif-link"><%= t("Accounts") %><% if (accAttn > 0) { %><span class="fb-badge" title="<%= t('{n} new registration(s)', { n: accAttn }) %>"><%= accAttn > 9 ? '9+' : accAttn %></span><% } %></a>
         <% } %>
+        <%# About Us is for customers / admin / guests — warehouses don't get it
+            (their bar is the longest; the page's CTAs aren't for them anyway). %>
+        <% if (user.role !== "warehouse") { %>
+        <a href="/about" class="<%= navCls('/about') %>"><%= t("About Us") %></a>
+        <% } %>
         <a href="/profile" class="<%= navCls('/profile') %>"><%= t("Profile") %></a>
         <span class="user-pill">
           <span class="user-ava" title="<%= user.name || user.role %>">
@@ -130,10 +135,11 @@
             <% } %>
             <span class="user-ava-dot" aria-hidden="true"></span>
           </span>
-          <%= user.name || user.role %>
+          <span class="up-name"><%= user.name || user.role %></span>
         </span>
         <form action="/logout" method="post" style="display:inline">
-          <button class="logout-btn" type="submit"><svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.75v8.5"/><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0"/></svg> <%= t("Logout") %></button>
+          <%# the label collapses to the icon on narrow desktops — aria-label/title keep it named %>
+          <button class="logout-btn" type="submit" aria-label="<%= t("Logout") %>" title="<%= t("Logout") %>"><svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.75v8.5"/><path d="M7.05 6.4a7.5 7.5 0 1 0 9.9 0"/></svg> <span class="lo-label"><%= t("Logout") %></span></button>
         </form>
       <% } else { %>
         <%# Guest: a clean browse-only bar. Signing in is offered by the landing
@@ -146,7 +152,7 @@
       <%# Language switcher (all roles + guests). data-no-ajax forces a full page
           load so the header nav itself re-renders in the chosen language. %>
       <a href="/lang/<%= lang === 'my' ? 'en' : 'my' %>" class="nav-link lang-switch" data-no-ajax
-         title="<%= lang === 'my' ? 'Switch to English' : 'မြန်မာဘာသာသို့ ပြောင်းရန်' %>">🌐 <%= lang === 'my' ? 'English' : 'မြန်မာ' %></a>
+         title="<%= lang === 'my' ? 'Switch to English' : 'မြန်မာဘာသာသို့ ပြောင်းရန်' %>">🌐 <span class="ls-long"><%= lang === 'my' ? 'English' : 'မြန်မာ' %></span><span class="ls-short"><%= lang === 'my' ? 'EN' : 'MM' %></span></a>
     </div>
     <!-- dimmed backdrop behind the open mobile menu; tapping it closes the menu -->
     <label for="navToggle" class="nav-backdrop" aria-hidden="true"></label>

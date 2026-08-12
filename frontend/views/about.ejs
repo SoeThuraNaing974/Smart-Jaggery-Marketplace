@@ -1,18 +1,35 @@
 <%- include("partials/header") %>
 
-<%# Public "About us" page. The facts describe how the platform works — replace
-    the contact details below with your real ones (marked TODO). %>
+<%# Public "About us" page. The admin can override the main copy from
+    /admin/about-edit (stored per-field in the backend's site_content table);
+    any field left blank there falls back to the bilingual defaults below. %>
+<% var c = (typeof about !== "undefined" && about) ? about : {}; %>
 <div class="a3d-stage">
 
   <section class="a3d-hero" id="a3dHero">
     <div class="a3d-hero-inner">
       <div class="a3d-copy">
         <span class="a3d-eyebrow">🍯 <%= t("About us") %></span>
-        <h1 class="a3d-headline"><%= t("Local jaggery,") %> <span><%= t("one honest marketplace.") %></span></h1>
-        <p class="a3d-sub"><%= t("Growers, warehouses and buyers in one place — with one basket, one payment and one delivery, however many warehouses you buy from.") %></p>
+        <h1 class="a3d-headline"><%= c.headline_a || t("Local jaggery,") %> <span><%= c.headline_b || t("one honest marketplace.") %></span></h1>
+        <p class="a3d-sub"><%= c.hero_sub || t("Growers, warehouses and buyers in one place — with one basket, one payment and one delivery, however many warehouses you buy from.") %></p>
+        <%# The page is open to everyone, so the buttons follow whoever is reading:
+            a guest is invited to sign up, while a signed-in reader gets the two
+            places they actually work in. %>
         <div class="a3d-hero-actions">
-          <a class="gbtn solid" href="/batches">🛍️ <%= t("Browse categories") %></a>
-          <a class="gbtn ghost" href="/register?next=%2Fbatches"><%= t("Create an account") %></a>
+          <% if (!user) { %>
+            <a class="gbtn solid" href="/batches">🛍️ <%= t("Browse categories") %></a>
+            <a class="gbtn ghost" href="/register?next=%2Fbatches"><%= t("Create an account") %></a>
+          <% } else if (user.role === "customer") { %>
+            <a class="gbtn solid" href="/batches">🛍️ <%= t("Browse categories") %></a>
+            <a class="gbtn ghost" href="/orders"><%= t("My Order") %></a>
+          <% } else if (user.role === "warehouse") { %>
+            <a class="gbtn solid" href="/warehouse/stock-all">📦 <%= t("Category") %></a>
+            <a class="gbtn ghost" href="/warehouse/orders-all"><%= t("Orders") %></a>
+          <% } else { %>
+            <a class="gbtn solid" href="/admin/about-edit">✏️ <%= t("Edit this page") %></a>
+            <a class="gbtn ghost" href="/admin/batches">📦 <%= t("Category") %></a>
+            <a class="gbtn ghost" href="/admin/directory"><%= t("Accounts") %></a>
+          <% } %>
         </div>
       </div>
       <%# a real 3D cube: six faces rotated in space, slowly spinning %>
@@ -27,8 +44,8 @@
 
   <div class="a3d-panel a3d-reveal">
     <h3><%= t("Who we are") %></h3>
-    <p><%= t("Smart Jaggery Mart brings Myanmar's jaggery makers and buyers together in one place. Producers store their harvest in their own warehouses and list it here; you see the same grade, price and stock they do — no middleman marking things up along the way.") %></p>
-    <p class="muted"><%= t("Every product carries the warehouse that made it, its grade, its harvest and expiry dates, and the star rating other buyers gave it.") %></p>
+    <p><%= c.who_p1 || t("Smart Jaggery Mart brings Myanmar's jaggery makers and buyers together in one place. Producers store their harvest in their own warehouses and list it here; you see the same grade, price and stock they do — no middleman marking things up along the way.") %></p>
+    <p class="muted"><%= c.who_p2 || t("Every product carries the warehouse that made it, its grade, its harvest and expiry dates, and the star rating other buyers gave it.") %></p>
   </div>
 
   <div class="a3d-panel a3d-reveal">
@@ -85,20 +102,26 @@
     </div>
   </div>
 
-  <div class="a3d-panel a3d-panel-cta a3d-reveal">
-    <h3><%= t("Selling with us") %></h3>
-    <p><%= t("Run a jaggery warehouse? Register as a warehouse to list your stock, manage your own orders, and get paid into your wallet as each delivery completes.") %></p>
-    <div class="acc-actions">
-      <a class="btn" href="/register"><%= t("Register your warehouse") %></a>
-      <a class="btn sm gray" href="/batches"><%= t("See what's on the shop") %></a>
+  <%# A recruitment pitch: worth showing to guests and customers, but noise for a
+      warehouse that already sells here or for the admin who runs the place. %>
+  <% if (!user || user.role === "customer") { %>
+    <div class="a3d-panel a3d-panel-cta a3d-reveal">
+      <h3><%= t("Selling with us") %></h3>
+      <p><%= t("Run a jaggery warehouse? Register as a warehouse to list your stock, manage your own orders, and get paid into your wallet as each delivery completes.") %></p>
+      <div class="acc-actions">
+        <% if (!user) { %>
+          <a class="btn" href="/register"><%= t("Register your warehouse") %></a>
+        <% } %>
+        <a class="btn sm gray" href="/batches"><%= t("See what's on the shop") %></a>
+      </div>
     </div>
-  </div>
+  <% } %>
 
   <div class="a3d-panel a3d-reveal">
     <h3><%= t("Get in touch") %></h3>
-    <p class="muted"><%= t("Questions about an order, a product, or selling with us — reach the team and we'll come back to you.") %></p>
-    <%# TODO: replace with your real contact details. %>
-    <p><strong><%= t("Email:") %></strong> <a href="mailto:hello@smartjaggerymart.local">hello@smartjaggerymart.local</a></p>
+    <p class="muted"><%= c.contact_blurb || t("Questions about an order, a product, or selling with us — reach the team and we'll come back to you.") %></p>
+    <% var _email = c.contact_email || "hello@smartjaggerymart.local"; %>
+    <p><strong><%= t("Email:") %></strong> <a href="mailto:<%= _email %>"><%= _email %></a></p>
   </div>
 </div>
 

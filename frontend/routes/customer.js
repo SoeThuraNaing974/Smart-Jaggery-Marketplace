@@ -40,9 +40,15 @@ router.get("/", publicPage, async (req, res, next) => {
   });
 });
 
-// About us — public, no login and no API calls needed.
-router.get("/about", publicPage, (req, res) => {
-  res.render("about", { flash: req.query.msg || null, error: req.query.err || null });
+// About us — public. The admin can override the page copy (Edit this page);
+// if the API is unreachable the built-in bilingual defaults still render.
+router.get("/about", publicPage, async (req, res) => {
+  let about = {};
+  try {
+    const r = await client(req.token).get("/api/content/about");
+    if (r.status === 200 && r.data && typeof r.data === "object" && !Array.isArray(r.data)) about = r.data;
+  } catch (e) { /* backend down — show the defaults */ }
+  res.render("about", { about, flash: req.query.msg || null, error: req.query.err || null });
 });
 
 // Browse catalogue + active promotions (optional ?grade=A|B|C filter).

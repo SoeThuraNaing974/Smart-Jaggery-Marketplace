@@ -119,6 +119,17 @@ def list_batches():
     return jsonify([b.to_dict() for b in batches])
 
 
+@bp.get("/content/<key>")
+def site_content(key):
+    """Public, admin-edited page copy (About Us). Unsaved keys → {} so the
+    frontend's built-in bilingual defaults render."""
+    from models import SiteContent
+    if key not in ("about",):
+        return jsonify({"error": "unknown content key"}), 404
+    row = db.session.get(SiteContent, key)
+    return jsonify(row.data if row and row.data else {})
+
+
 @bp.get("/announcements/active")
 @optional_auth
 def active_announcements():

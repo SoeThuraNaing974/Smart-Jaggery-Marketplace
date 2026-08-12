@@ -470,6 +470,27 @@ router.get("/announcements", adminOnly, async (req, res) => {
   });
 });
 
+// --------------------------------------------------------- About Us page editor
+// The public /about page shows the saved fields; blank fields fall back to the
+// built-in bilingual text (reached from the "Edit this page" button on /about).
+router.get("/about-edit", adminOnly, async (req, res) => {
+  const r = await client(req.token).get("/api/content/about");
+  res.render("admin/about_edit", {
+    c: (r.status === 200 && r.data && typeof r.data === "object") ? r.data : {},
+    flash: req.query.msg || null, error: req.query.err || null,
+  });
+});
+router.post("/about-edit", adminOnly, async (req, res) => {
+  const r = await client(req.token).put("/api/content/about", {
+    headline_a: req.body.headline_a || "", headline_b: req.body.headline_b || "",
+    hero_sub: req.body.hero_sub || "",
+    who_p1: req.body.who_p1 || "", who_p2: req.body.who_p2 || "",
+    contact_blurb: req.body.contact_blurb || "", contact_email: req.body.contact_email || "",
+  });
+  res.redirect(r.status === 200 ? "/about?msg=About+page+updated"
+    : "/admin/about-edit?err=" + encodeURIComponent((r.data && r.data.error) || "Failed"));
+});
+
 // --------------------------------------------------------- promotion management
 router.get("/promotions", adminOnly, async (req, res) => {
   const [promos, analytics] = await Promise.all([

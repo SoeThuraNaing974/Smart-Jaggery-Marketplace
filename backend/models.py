@@ -740,6 +740,24 @@ class OrderMessage(db.Model):
         }
 
 
+class SiteContent(db.Model):
+    """Admin-editable page copy (the About Us page), one JSON blob per page key.
+    Only the overridden fields are stored — anything absent falls back to the
+    built-in bilingual text in the template."""
+    __tablename__ = "site_content"
+
+    key = db.Column(db.String(40), primary_key=True)
+    data = db.Column(db.JSON, nullable=False, default=dict)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "key": self.key,
+            "data": self.data or {},
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class AuditLog(db.Model):
     __tablename__ = "audit_logs"
 

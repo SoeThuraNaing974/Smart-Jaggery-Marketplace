@@ -929,6 +929,30 @@ def delete_abandoned_carts():
     return jsonify({"message": "deleted", "count": n})
 
 
+# ------------------------------------------------------------- site content
+@bp.put("/content/<key>")
+@role_required("admin")
+def save_site_content(key):
+    """Upsert the admin-edited copy for a public page (About Us). Blank fields
+    are dropped so the template's built-in bilingual defaults show again."""
+    from models import SiteContent
+    if key not in ("about",):
+        return jsonify({"error": "unknown content key"}), 404
+    data = request.get_json(silent=True) or {}
+    fields = {}
+    for k, v in data.items():
+        if isinstance(v, (str, int, float)) and str(v).strip():
+            fields[str(k)[:40]] = str(v).strip()[:2000]
+    row = db.session.get(SiteContent, key)
+    if not row:
+        row = SiteContent(key=key)
+        db.session.add(row)
+    row.data = fields
+    db.session.commit()
+    audit("site_content_saved", f"key={key} fields={sorted(fields.keys())}")
+    return jsonify({"message": "saved", "content": row.to_dict()})
+
+
 # ------------------------------------------------------------- announcements
 @bp.get("/announcements")
 @role_required("admin")

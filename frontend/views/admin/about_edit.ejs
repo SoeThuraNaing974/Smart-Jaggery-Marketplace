@@ -1,0 +1,53 @@
+<%- include("../partials/header") %>
+
+<div class="page-intro">
+  <span class="page-intro-ico">✏️</span>
+  <div>
+    <strong><%= t("Edit the About Us page") %></strong>
+    <span><%= t("What you save here replaces the built-in text in both languages. Leave a field blank to go back to the built-in bilingual default.") %></span>
+  </div>
+</div>
+
+<div class="card">
+  <form action="/admin/about-edit" method="post" class="about-edit-form">
+    <h3 style="margin-top:0">🍯 <%= t("Hero") %></h3>
+    <label class="msg-modal-label" for="ae-ha"><%= t("Headline — first part") %></label>
+    <input id="ae-ha" name="headline_a" value="<%= c.headline_a || "" %>" placeholder="Local jaggery,">
+    <label class="msg-modal-label" for="ae-hb"><%= t("Headline — highlighted part") %></label>
+    <input id="ae-hb" name="headline_b" value="<%= c.headline_b || "" %>" placeholder="one honest marketplace.">
+    <label class="msg-modal-label" for="ae-sub"><%= t("Intro line under the headline") %></label>
+    <textarea id="ae-sub" name="hero_sub" rows="2" placeholder="Growers, warehouses and buyers in one place — with one basket, one payment and one delivery, however many warehouses you buy from."><%= c.hero_sub || "" %></textarea>
+
+    <h3>🌾 <%= t("Who we are") %></h3>
+    <label class="msg-modal-label" for="ae-p1"><%= t("First paragraph") %></label>
+    <textarea id="ae-p1" name="who_p1" rows="3" placeholder="Smart Jaggery Mart brings Myanmar's jaggery makers and buyers together in one place. Producers store their harvest in their own warehouses and list it here; you see the same grade, price and stock they do — no middleman marking things up along the way."><%= c.who_p1 || "" %></textarea>
+    <label class="msg-modal-label" for="ae-p2"><%= t("Second paragraph (smaller print)") %></label>
+    <textarea id="ae-p2" name="who_p2" rows="2" placeholder="Every product carries the warehouse that made it, its grade, its harvest and expiry dates, and the star rating other buyers gave it."><%= c.who_p2 || "" %></textarea>
+
+    <h3>✉️ <%= t("Get in touch") %></h3>
+    <label class="msg-modal-label" for="ae-cb"><%= t("Contact blurb") %></label>
+    <textarea id="ae-cb" name="contact_blurb" rows="2" placeholder="Questions about an order, a product, or selling with us — reach the team and we'll come back to you."><%= c.contact_blurb || "" %></textarea>
+    <label class="msg-modal-label" for="ae-ce"><%= t("Contact email") %></label>
+    <input id="ae-ce" name="contact_email" type="email" value="<%= c.contact_email || "" %>" placeholder="hello@smartjaggerymart.local">
+
+    <div class="acc-actions" style="margin-top:1rem">
+      <button class="btn" type="submit">💾 <%= t("Save changes") %></button>
+      <a class="btn sm gray" href="/about">👁 <%= t("View the page") %></a>
+    </div>
+  </form>
+</div>
+
+<style>
+  /* stacked editor form: full-width fields, labels above (placeholders show the
+     built-in text each field falls back to when left blank) */
+  .about-edit-form input, .about-edit-form textarea {
+    width:100%; padding:.55rem .7rem; margin-bottom:.6rem;
+    border:1px solid #d8c9b2; border-radius:8px; background:#fffdf9;
+    font:inherit; color:#222;
+  }
+  .about-edit-form textarea { resize:vertical; }
+  .about-edit-form h3 { margin:1.1rem 0 .5rem; }
+  .about-edit-form .msg-modal-label { margin:.15rem 0 .25rem; }
+</style>
+
+<%- include("../partials/footer") %>
