@@ -36,11 +36,22 @@ repo from 1741 tracked files to under 300, so builds start much faster.
 
 ## Deploy — step by step
 
-1. In the Render dashboard click **New +** (top right) → **Blueprint**.
+**Start here — one click:**
 
-2. Find **Smart-Jaggery-Marketplace** in the repo list and click **Connect**.
-   Render reads `render.yaml` and shows what it will create:
-   `jaggery-db` (database), `jaggery-backend` (API), `smart-jaggery` (website).
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/SoeThuraNaing974/Smart-Jaggery-Marketplace)
+
+<https://render.com/deploy?repo=https://github.com/SoeThuraNaing974/Smart-Jaggery-Marketplace>
+
+That link opens Render's Blueprint page with this repo already filled in, so
+you can skip steps 1–2 below. Render will ask you to sign in first.
+
+1. *(only if you didn't use the link)* In the Render dashboard click
+   **New +** (top right) → **Blueprint**.
+
+2. *(only if you didn't use the link)* Find **Smart-Jaggery-Marketplace** in
+   the repo list and click **Connect**. Render reads `render.yaml` and shows
+   what it will create: `jaggery-db` (database), `jaggery-backend` (API),
+   `smart-jaggery` (website).
 
 3. Render asks for a value for **API_BASE** — you can't know it yet, so just
    type `x` and continue. Click **Apply / Deploy Blueprint** and wait until
