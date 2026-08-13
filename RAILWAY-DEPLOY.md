@@ -31,10 +31,18 @@ Leave it alone — it needs no configuration.
 1. On the project canvas click **New** (or **+ Create**) → **GitHub Repo** →
    pick **Smart-Jaggery-Marketplace**.
 2. Open the new service → **Settings**:
-   - **Root Directory** → `backend`
+   - **Root Directory** → `backend` ← **set this first, before anything else**
    - **Start Command** → `gunicorn wsgi:app --bind 0.0.0.0:$PORT`
-   - Rename the service to exactly **`backend`** (Settings → top of the page).
-     The name matters — step 3 refers to it.
+   - **Build Command** → leave it **empty**. Railway sees
+     `backend/requirements.txt` and installs the Python packages itself.
+   - Note the service's name (Railway names it after the repo). Step 3 has to
+     refer to it, so either rename it to **`backend`** or remember the name
+     Railway gave it.
+
+> **If the build fails with `pip: not found`,** Root Directory is not set to
+> `backend`. Railway then looks at the repository root, finds no
+> `requirements.txt`, decides the project is not Python, and never installs
+> `pip`. Set Root Directory and redeploy.
 3. Go to the **Variables** tab and add:
 
    | Name            | Value                        |
@@ -69,6 +77,11 @@ fresh database has no users at all. It does nothing on later boots.
    | `API_BASE`   | `${{backend.RAILWAY_PUBLIC_DOMAIN}}`   |
    | `JWT_SECRET` | `${{backend.JWT_SECRET}}`              |
    | `NODE_ENV`   | `production`                           |
+
+   Replace `backend` in those two references with whatever your backend service
+   is actually called — e.g. `${{jaggery-backend.RAILWAY_PUBLIC_DOMAIN}}`.
+   Hyphens are fine. Railway autocompletes service names as you type, which is
+   the safest way to get them right.
 
    `RAILWAY_PUBLIC_DOMAIN` is a bare hostname with no `https://` — the app adds
    the scheme itself, so this works as-is.
