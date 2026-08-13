@@ -3,7 +3,11 @@ const axios = require("axios");
 const http = require("http");
 const https = require("https");
 
-const API_BASE = process.env.API_BASE || "http://127.0.0.1:5000";
+// Tolerate the two easy mistakes when pasting the hosted API's URL into an
+// env var: a missing scheme ("xyz.onrender.com") and a trailing slash.
+let _base = process.env.API_BASE || "http://127.0.0.1:5000";
+if (!/^https?:\/\//i.test(_base)) _base = `https://${_base}`;
+const API_BASE = _base.replace(/\/+$/, "");
 
 // Reuse TCP connections to the API instead of opening a new one per request.
 // Each page makes several API calls — keep-alive removes the per-call handshake

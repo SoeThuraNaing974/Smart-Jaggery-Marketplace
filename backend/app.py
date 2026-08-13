@@ -82,6 +82,12 @@ def create_app(config_overrides=None):
         os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
         db.create_all()
         _ensure_new_columns()
+        # A fresh hosted database (e.g. Render) has no accounts at all, and a
+        # free hosting plan has no shell to run seed.py from — so with
+        # SEED_DEMO=true the app seeds itself. No-op once an admin exists.
+        if os.getenv("SEED_DEMO", "").lower() in ("1", "true", "yes"):
+            from seed import seed_demo
+            seed_demo()
 
     return app
 

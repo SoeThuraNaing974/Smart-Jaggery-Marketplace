@@ -1,10 +1,25 @@
-# Render Blueprint — deploys the whole marketplace in one click:
+# Render Blueprint — deploys the whole marketplace in one go:
 #   1 free PostgreSQL database + 2 free web services (Flask API + Express site).
-# On render.com: New → Blueprint → pick this repo. After the first deploy,
-# set the frontend's API_BASE to the backend's public URL (see README steps).
+#
+# How to use:  push this repo to GitHub, then on render.com:
+#   New + → Blueprint → pick this repo → Apply.
+# One manual step remains (free services must talk over public URLs):
+#   after the first deploy, copy the backend's public URL and paste it into
+#   the frontend's API_BASE env var. Full walkthrough: DEPLOY-RENDER.md.
+#
+# Everything is pinned to the Singapore region (closest to Myanmar).
+# Free-plan facts to know:
+#   * a service sleeps after 15 min without visitors; the next visit
+#     takes ~1 min to wake it up
+#   * the free database EXPIRES 30 DAYS after creation (14-day grace to
+#     upgrade) — export your data before demo day, or upgrade the db
+#   * uploaded files are lost on every deploy/restart (see the disk note
+#     at the bottom to fix that on a paid plan)
+
 databases:
   - name: jaggery-db
     plan: free
+    region: singapore
 
 services:
   # ---- Flask API ----
@@ -12,9 +27,11 @@ services:
     name: jaggery-backend
     runtime: python
     plan: free
+    region: singapore
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -24,6 +41,11 @@ services:
         generateValue: true # random secret, shared with the frontend below
       - key: PYTHON_VERSION
         value: 3.12.7 # psycopg2-binary 2.9.9 has no wheels for newer Pythons
+      # First boot on an empty database loads the demo accounts
+      # (admin@jaggery.local / admin123 — change the password after login!).
+      # Does nothing once an admin account exists.
+      - key: SEED_DEMO
+        value: "true"
 
   # ---- Express frontend (BFF) ----
   # the service name becomes the public link: https://smart-jaggery-xxxx.onrender.com
@@ -31,12 +53,21 @@ services:
     name: smart-jaggery
     runtime: node
     plan: free
+    region: singapore
     rootDir: frontend
     buildCommand: npm install
     startCommand: node server.js
     envVars:
-      # Public URL of the backend service — paste it in the Render dashboard
-      # after the backend's first deploy (e.g. https://jaggery-backend-xxxx.onrender.com)
+      # Render does NOT set this by default. Without it the login cookie is not
+      # marked Secure on the public HTTPS site, and EJS templates are re-read
+      # from disk on every request instead of being cached.
+      - key: NODE_ENV
+        value: production
+      # Public URL of the backend service. Render asks for this value while
+      # applying the blueprint — type anything (e.g. "x") to get past it, then
+      # after the backend's first deploy paste its real URL here
+      # (e.g. https://jaggery-backend-xxxx.onrender.com). A bare hostname or a
+      # trailing slash is fine too — the app cleans it up.
       - key: API_BASE
         sync: false
       # must match the backend's secret — the frontend verifies login tokens with it
@@ -45,3 +76,14 @@ services:
           type: web
           name: jaggery-backend
           envVarKey: JWT_SECRET
+
+# ---- Keeping uploaded images across restarts (optional, paid) ----
+# Free services have no permanent disk: every image uploaded on the hosted
+# site disappears on the next deploy/restart (images committed to the repo in
+# backend/uploads always survive). To keep uploads, move the backend to the
+# "starter" plan and add this under the jaggery-backend service:
+#
+#    disk:
+#      name: uploads
+#      mountPath: /opt/render/project/src/backend/uploads
+#      sizeGB: 1

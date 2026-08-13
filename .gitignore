@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Node
+node_modules/
+
+# Secrets / machine-specific config (SETUP.bat / Render create these)
+.env
+
+# Database backups the app generates at runtime — these contain real user
+# emails and password hashes, so they must never be pushed to a public repo.
+# (Backups already committed stay tracked until you `git rm --cached` them.)
+backend/uploads/backup_*.sql
+
+# Local tools & personal files that don't belong in the repo
+cloudflared.exe
+Chapter2_Training_Schedule.docx
+.claude/
+
+# OS noise
+Thumbs.db
+.DS_Store
