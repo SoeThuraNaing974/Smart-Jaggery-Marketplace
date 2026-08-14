@@ -92,6 +92,32 @@ def abandoned_carts():
     return jsonify(out)
 
 
+def _own_order_dict(order, wid):
+    """Serialize an order as seen by ONE warehouse.
+
+    A cart that mixes products from several warehouses becomes a single order
+    assigned to the first item's warehouse, so an assigned order may carry other
+    warehouses' items. Staff must only ever see THEIR OWN items and the money
+    for those items — never another warehouse's slice. The discount is shared
+    in proportion to this warehouse's part of the goods; the delivery charge
+    stays with the assigned (delivering) warehouse.
+    """
+    d = order.to_dict()
+    own = [it for it in order.items if it.batch and it.batch.warehouse_id == wid]
+    if len(own) == len(order.items):
+        return d                                    # entirely this warehouse's order
+    own_subtotal = sum(round(float(it.line_total)) for it in own)
+    ratio = own_subtotal / float(order.subtotal) if float(order.subtotal or 0) else 0.0
+    own_discount = round(float(order.discount_amount) * ratio)
+    d["items"] = [it.to_dict() for it in own]
+    d["subtotal"] = own_subtotal
+    d["discount_amount"] = own_discount
+    d["total_price"] = own_subtotal - own_discount
+    d["grand_total"] = d["total_price"] + round(float(order.delivery_charge))
+    d["partial"] = True          # other warehouses' items exist but are hidden
+    return d
+
+
 @bp.get("/orders")
 @role_required("warehouse")
 def assigned_orders():
@@ -102,7 +128,29 @@ def assigned_orders():
         .order_by(Order.created_at.desc())
         .all()
     )
-    return jsonify([o.to_dict() for o in orders])
+    return jsonify([_own_order_dict(o, wid) for o in orders])
+
+
+@bp.get("/orders/unpaid")
+@role_required("warehouse")
+def unpaid_orders():
+    """Customers who still owe this warehouse money — the collection list.
+
+    An order can be unpaid in two ways: pay-on-delivery (already confirmed, so
+    it sits in the fulfilment queue as 'waiting'), or an online payment the
+    customer never completed ('pending'). /orders above hides 'pending' on
+    purpose so nothing unpaid can be shipped — but staff still need to chase
+    that money, which is what this list is for, so it includes both.
+    """
+    wid = _staff_warehouse_id()
+    orders = (
+        Order.query.filter(Order.assigned_warehouse_id == wid,
+                           Order.payment_status != "paid",
+                           Order.status != "cancelled")
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+    return jsonify([_own_order_dict(o, wid) for o in orders])
 
 
 @bp.post("/orders/delete")
@@ -143,15 +191,17 @@ def order_history_pdf():
     headers = ["No.", "Date", "Customer", "Phone", "Product", "Total (Kyats)", "Status"]
     rows, revenue = [], 0.0
     for n, o in enumerate(orders, start=1):
-        items = ", ".join(it.batch.batch_id for it in o.items if it.batch)
+        # only this warehouse's own items/amounts — never another warehouse's slice
+        od = _own_order_dict(o, wid)
+        items = ", ".join(it["batch_id"] for it in od["items"] if it.get("batch_id"))
         if len(items) > 38:
             items = items[:35] + "..."
         d = o.created_at.strftime("%Y-%m-%d") if o.created_at else ""
         rows.append([n, d, (o.customer.name if o.customer else ""),
                      (o.customer.phone if o.customer and o.customer.phone else "-"), items,
-                     f"{float(o.total_price):.0f}", o.status])
+                     f"{float(od['total_price']):.0f}", o.status])
         if o.status != "cancelled":
-            revenue += float(o.total_price)
+            revenue += float(od["total_price"])
     summary = [f"Total orders: {len(rows)}",
                f'<font size="11" color="#7a4a1e"><b>Total amount (excluding cancelled): '
                f'{revenue:,.0f} Kyats</b></font>']
@@ -422,16 +472,20 @@ def dashboard_charts():
                   .group_by(JaggeryBatch.grade).all())
     stock_by_grade = {g_: float(q) for g_, q in grade_rows}
 
-    # last 7 days revenue (line) for this warehouse's orders
+    # last 7 days revenue (line) — only this warehouse's own slice of each order,
+    # so the chart agrees with the per-warehouse totals on the Orders page
     today = date.today()
     days = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
     rev = {d.isoformat(): 0.0 for d in days}
-    rows = (db.session.query(func.date(Order.created_at), func.coalesce(func.sum(Order.total_price), 0))
-            .filter(Order.assigned_warehouse_id == wid, Order.status != "cancelled",
-                    Order.created_at >= today - timedelta(days=6))
-            .group_by(func.date(Order.created_at)).all())
-    for d, total in rows:
-        rev[str(d)] = round(float(total))
+    recent = (Order.query
+              .filter(Order.assigned_warehouse_id == wid, Order.status != "cancelled",
+                      Order.created_at >= today - timedelta(days=6))
+              .all())
+    for o in recent:
+        key = o.created_at.date().isoformat() if o.created_at else None
+        if key in rev:
+            rev[key] += float(_own_order_dict(o, wid)["total_price"])
+    rev = {k: round(v) for k, v in rev.items()}
 
     pending = Order.query.filter_by(assigned_warehouse_id=wid, status="waiting").count()
     return jsonify({
@@ -553,10 +607,11 @@ def request_transfer():
 @bp.get("/orders/<int:order_id>/packing-slip")
 @role_required("warehouse")
 def packing_slip(order_id):
-    order = Order.query.filter_by(id=order_id, assigned_warehouse_id=_staff_warehouse_id()).first()
+    wid = _staff_warehouse_id()
+    order = Order.query.filter_by(id=order_id, assigned_warehouse_id=wid).first()
     if not order:
         return jsonify({"error": "order not in your warehouse"}), 404
-    pdf = packing_slip_pdf(order.to_dict())
+    pdf = packing_slip_pdf(_own_order_dict(order, wid))
     return Response(pdf, mimetype="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=packing_{order_id}.pdf"})
 

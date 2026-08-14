@@ -98,7 +98,13 @@ router.get("/stock-all", requireRole("warehouse"), async (req, res) => {
 // Viewing this page marks new orders as seen, clearing the header badge.
 router.get("/orders-all", requireRole("warehouse"), async (req, res) => {
   const from = req.query.from || "", to = req.query.to || "";
-  const r = await client(req.token).get("/api/warehouse/orders");
+  const api = client(req.token);
+  // the fulfilment queue hides unpaid (pending) orders, so the unpaid list comes
+  // from its own endpoint — see /api/warehouse/orders/unpaid
+  const [r, unpaidRes] = await Promise.all([
+    api.get("/api/warehouse/orders"),
+    api.get("/api/warehouse/orders/unpaid"),
+  ]);
   const all = r.data || [];
   const seen = new Set((req.cookies.wh_order_seen || "").split(",").filter(Boolean));
   const hasSeen = req.cookies.wh_order_seen !== undefined;
@@ -112,7 +118,12 @@ router.get("/orders-all", requireRole("warehouse"), async (req, res) => {
   orders.sort((a, b) => (b.isNew === true) - (a.isNew === true));
   // orders history lives on this page too, as a card under the assigned orders
   const historyOrders = all.filter(o => ["shipped", "delivered", "cancelled"].includes(o.status));
-  res.render("warehouse/orders_all", { orders, historyOrders, from, to });
+  // customers who still owe this warehouse money (pay-on-delivery + unfinished
+  // online payments), searchable by the same date range as the queue above
+  let unpaidOrders = unpaidRes.data || [];
+  if (from || to) unpaidOrders = unpaidOrders.filter(o => inDateRange(o.created_at, from, to));
+  const unpaidTotal = Math.round(unpaidOrders.reduce((s, o) => s + (Number(o.total_price) || 0), 0));
+  res.render("warehouse/orders_all", { orders, historyOrders, unpaidOrders, unpaidTotal, from, to });
 });
 
 // Full transfer-history list (Read more) — searchable by request date
@@ -531,8 +542,15 @@ router.post("/subscription/pay", requireRole("warehouse"), async (req, res) => {
 // Per-order message thread (warehouse side)
 // Order detail page (read-only view for warehouse)
 router.get("/orders/:id/details", requireRole("warehouse"), async (req, res) => {
-  const r = await client(req.token).get("/api/warehouse/orders");
-  const order = (r.data || []).find(o => String(o.id) === String(req.params.id));
+  const api = client(req.token);
+  // check the unpaid list too — the fulfilment queue leaves out pending orders,
+  // so without it "View" on an unpaid customer would say "Order not found"
+  const [queue, unpaid] = await Promise.all([
+    api.get("/api/warehouse/orders"),
+    api.get("/api/warehouse/orders/unpaid"),
+  ]);
+  const match = (o) => String(o.id) === String(req.params.id);
+  const order = (queue.data || []).find(match) || (unpaid.data || []).find(match);
   if (!order) return res.redirect("/warehouse?err=Order+not+found");
   res.render("warehouse/order_detail", { order });
 });

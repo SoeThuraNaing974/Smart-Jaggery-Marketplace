@@ -166,5 +166,13 @@
   "Quality & appearance": "အရည်အသွေးနှင့် ပုံစံ",
   "Strengths (one per line)": "အားသာချက်များ (တစ်ကြောင်းလျှင် တစ်ခု)",
   "Weaknesses (one per line)": "အားနည်းချက်များ (တစ်ကြောင်းလျှင် တစ်ခု)",
-  "Grade descriptions updated": "အဆင့် ဖော်ပြချက်များ ပြင်ဆင်ပြီးပါပြီ"
+  "Grade descriptions updated": "အဆင့် ဖော်ပြချက်များ ပြင်ဆင်ပြီးပါပြီ",
+
+  "Unpaid customers": "ငွေမပေးရသေးသော ဝယ်သူများ",
+  "Outstanding": "ရရန်ကျန်ငွေ",
+  "= {n} Kyats": "= {n} ကျပ်",
+  "Customers whose orders are not paid yet — most chose pay on delivery. Call or message them to collect the payment.": "အော်ဒါများအတွက် ငွေမပေးချေရသေးသော ဝယ်သူများ — အများစုမှာ အရောက်ငွေချေ ရွေးထားသူများ ဖြစ်သည်။ ငွေကောက်ခံရန် ဖုန်းခေါ်ပါ သို့မဟုတ် စာပို့ပါ။",
+  "No unpaid customers": "ငွေမပေးရသေးသော ဝယ်သူ မရှိပါ",
+  "Every order has been paid.": "အော်ဒါအားလုံး ငွေပေးချေပြီး ဖြစ်ပါသည်။",
+  "(your items only)": "(သင့်ဂိုဒေါင်၏ ပစ္စည်းများသာ)"
 }

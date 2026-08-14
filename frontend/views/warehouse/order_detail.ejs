@@ -47,7 +47,7 @@
 
 <!-- items -->
 <div class="card">
-  <h3>📦 <%= t("Items") %></h3>
+  <h3>📦 <%= t("Items") %><% if (order.partial) { %> <span class="muted" style="font-size:.8rem;font-weight:400"><%= t("(your items only)") %></span><% } %></h3>
   <table class="tbl">
     <thead><tr><th><%= t("No.") %></th><th><%= t("Product") %></th><th><%= t("Grade") %></th><th><%= t("Qty (kg)") %></th><th><%= t("Unit (Kyats)") %></th><th><%= t("Line Kyats") %> </th></tr></thead>
     <tbody>

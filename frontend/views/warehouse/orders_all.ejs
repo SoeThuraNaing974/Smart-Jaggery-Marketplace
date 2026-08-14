@@ -38,7 +38,7 @@
           <td class="muted"><%= o.created_at ? o.created_at.substring(0,10) : "—" %></td>
           <td><%= o.customer_name %></td>
           <td class="muted"><%= o.customer_phone || "—" %></td>
-          <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %><% if (o.partial) { %><div class="muted" style="font-size:.72rem"><%= t("(your items only)") %></div><% } %></td>
           <td><% o.items.forEach(function (it) { %><div><%= t("{n} Kyats", { n: it.unit_price }) %></div><% }) %></td>
           <td class="muted"><%= o.delivery_address %></td>
           <td><%= o.total_price %></td>
@@ -58,6 +58,8 @@
     </table>
   <% } %>
 </div>
+
+<%- include("unpaid_customers_card") %>
 
 <%- include("orders_history_card", { orders: historyOrders }) %>
 

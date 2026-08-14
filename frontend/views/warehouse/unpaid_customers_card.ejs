@@ -1,0 +1,42 @@
+<%# Unpaid-customers card — embedded on the Orders page (expects `unpaidOrders` +
+    `unpaidTotal`). Pay-on-delivery orders stay unpaid until the customer settles
+    them, so this is the warehouse's collection list. %>
+<div class="card">
+  <h3>💰 <%= t("Unpaid customers") %> <span class="muted">(<%= unpaidOrders.length %>)</span> ·
+    <%= t("Outstanding") %> <span class="badge" style="font-size:1.15rem;padding:.3rem .7rem"><%= t("= {n} Kyats", { n: unpaidTotal }) %></span></h3>
+  <p class="muted" style="margin:.1rem 0 .6rem"><%= t("Customers whose orders are not paid yet — most chose pay on delivery. Call or message them to collect the payment.") %></p>
+
+  <% if (!unpaidOrders.length) { %>
+    <div class="empty-state">
+      <div class="empty-icon">💰</div>
+      <div class="empty-title"><%= t("No unpaid customers") %></div>
+      <div class="empty-sub"><%= t("Every order has been paid.") %></div>
+    </div>
+  <% } else { %>
+    <table class="tbl">
+      <thead><tr><th><%= t("No.") %></th><th>📅 <%= t("Date") %></th><th><%= t("Customer") %></th><th>📞 <%= t("Phone") %></th><th><%= t("Product") %></th><th><%= t("Payment") %></th><th><%= t("Status") %></th><th><%= t("Total (Kyats)") %></th><th><%= t("Details") %></th><th><%= t("Message") %></th></tr></thead>
+      <tbody>
+      <% unpaidOrders.forEach((o, idx) => { %>
+        <tr>
+          <td><%= idx + 1 %></td>
+          <td class="muted"><%= o.created_at ? o.created_at.substring(0,10) : "—" %></td>
+          <td><strong><%= o.customer_name %></strong></td>
+          <td class="muted"><%= o.customer_phone || "—" %></td>
+          <td><% o.items.forEach(function (it) { %><div><%= it.batch_id %></div><% }) %><% if (o.partial) { %><div class="muted" style="font-size:.72rem"><%= t("(your items only)") %></div><% } %></td>
+          <td>
+            <% if (o.payment_method === "cod") { %>
+              <span class="pay-badge cod"><%= t("Pay on delivery") %></span>
+            <% } else { %>
+              <span class="pay-badge unpaid"><%= t("Unpaid") %></span>
+            <% } %>
+          </td>
+          <td class="status-flat"><%= whStatusLabel(o.status) %></td>
+          <td><%= o.total_price %></td>
+          <td><a class="btn sm row-view" href="/warehouse/orders/<%= o.id %>/details">🔍 <%= t("View") %></a></td>
+          <td><a class="btn sm" href="/warehouse/orders/<%= o.id %>/messages">💬</a></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
