@@ -8,8 +8,12 @@ from db import db
 
 from flask_sqlalchemy import SQLAlchemy
 
-def create_app():
+def create_app(config_overrides=None):
     app = Flask(__name__)
+    app.config.from_object(Config)
+    app.config["MAX_CONTENT_LENGTH"] = Config.MAX_CONTENT_LENGTH
+    if config_overrides:
+        app.config.update(config_overrides)
 
     # =========================
     # Database Configuration
@@ -31,56 +35,6 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Initialize Flask-SQLAlchemy
-    db.init_app(app)
-
-    # =========================
-    # Routes
-    # =========================
-
-    @app.route("/")
-    def home():
-        return "Flask application is running!"
-
-    return app
-
-
-# =========================
-# Run Locally
-# =========================
-if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
-
-def _ensure_new_columns():
-    """Tiny in-place migration: db.create_all() creates missing TABLES but never
-    adds new columns to an existing table, so columns introduced after a database
-    was first created are added here."""
-    from sqlalchemy import inspect, text
-    insp = inspect(db.engine)
-    cols = {c["name"] for c in insp.get_columns("jaggery_batches")}
-    if "deleted_by" not in cols:
-        with db.engine.begin() as conn:
-            conn.execute(text("ALTER TABLE jaggery_batches ADD COLUMN deleted_by VARCHAR(10)"))
-            # everything soft-deleted before this column existed was warehouse-deleted
-            conn.execute(text("UPDATE jaggery_batches SET deleted_by = 'warehouse' "
-                              "WHERE deleted_at IS NOT NULL AND deleted_by IS NULL"))
-    # category names are no longer globally unique — drop the old constraint
-    # (Postgres only; fresh databases are created without it from the model)
-    if db.engine.dialect.name == "postgresql":
-        for uc in insp.get_unique_constraints("jaggery_batches"):
-            if uc.get("column_names") == ["batch_id"] and uc.get("name"):
-                with db.engine.begin() as conn:
-                    conn.execute(text(f'ALTER TABLE jaggery_batches DROP CONSTRAINT "{uc["name"]}"'))
-
-
-def create_app(config_overrides=None):
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    app.config["MAX_CONTENT_LENGTH"] = Config.MAX_CONTENT_LENGTH
-    if config_overrides:
-        app.config.update(config_overrides)
-
     db.init_app(app)
     # allow the EJS frontend (and direct browser calls) to talk to the API
     CORS(app, supports_credentials=True,
@@ -123,6 +77,27 @@ def create_app(config_overrides=None):
     def not_found(_):
         return jsonify({"error": "not found"}), 404
 
+    def _ensure_new_columns():
+        """Tiny in-place migration: db.create_all() creates missing TABLES but never
+        adds new columns to an existing table, so columns introduced after a database
+        was first created are added here."""
+        from sqlalchemy import inspect, text
+        insp = inspect(db.engine)
+        cols = {c["name"] for c in insp.get_columns("jaggery_batches")}
+        if "deleted_by" not in cols:
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE jaggery_batches ADD COLUMN deleted_by VARCHAR(10)"))
+                # everything soft-deleted before this column existed was warehouse-deleted
+                conn.execute(text("UPDATE jaggery_batches SET deleted_by = 'warehouse' "
+                                  "WHERE deleted_at IS NOT NULL AND deleted_by IS NULL"))
+        # category names are no longer globally unique — drop the old constraint
+        # (Postgres only; fresh databases are created without it from the model)
+        if db.engine.dialect.name == "postgresql":
+            for uc in insp.get_unique_constraints("jaggery_batches"):
+                if uc.get("column_names") == ["batch_id"] and uc.get("name"):
+                    with db.engine.begin() as conn:
+                        conn.execute(text(f'ALTER TABLE jaggery_batches DROP CONSTRAINT "{uc["name"]}"'))
+
     with app.app_context():
         os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
         db.create_all()
@@ -147,3 +122,4 @@ if __name__ == "__main__":
     import os
     _debug = os.environ.get("FLASK_DEBUG") == "1"
     create_app().run(host="127.0.0.1", port=5000, threaded=True, debug=_debug)
+
