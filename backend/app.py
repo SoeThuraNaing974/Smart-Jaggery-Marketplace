@@ -6,51 +6,6 @@ from flask_cors import CORS
 from config import Config
 from db import db
 
-from flask_sqlalchemy import SQLAlchemy
-
-def create_app():
-    app = Flask(__name__)
-
-    # =========================
-    # Database Configuration
-    # =========================
-    database_url = os.getenv("DATABASE_URL")
-
-    if not database_url:
-        raise ValueError("DATABASE_URL is not set")
-
-    # Convert old PostgreSQL URL format if necessary
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace(
-            "postgres://",
-            "postgresql://",
-            1
-        )
-
-    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    # Initialize Flask-SQLAlchemy
-    db.init_app(app)
-
-    # =========================
-    # Routes
-    # =========================
-
-    @app.route("/")
-    def home():
-        return "Flask application is running!"
-
-    return app
-
-
-# =========================
-# Run Locally
-# =========================
-if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
 
 def _ensure_new_columns():
     """Tiny in-place migration: db.create_all() creates missing TABLES but never
@@ -81,7 +36,26 @@ def create_app(config_overrides=None):
     if config_overrides:
         app.config.update(config_overrides)
 
+    # =========================
+    # Database Configuration
+    # =========================
+    # Read DATABASE_URL from the environment FIRST, before any db init, so
+    # SQLAlchemy is never handed an empty/invalid URI.
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+        raise ValueError("DATABASE_URL is not set")
+
+    # Convert old PostgreSQL URL format if necessary
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # Initialize Flask-SQLAlchemy only after the URI has been set
     db.init_app(app)
+
     # allow the EJS frontend (and direct browser calls) to talk to the API
     CORS(app, supports_credentials=True,
          origins=["http://localhost:3000", "http://127.0.0.1:3000"])
@@ -144,6 +118,5 @@ if __name__ == "__main__":
     # threaded=True → handle several requests at once (each page makes multiple
     # API calls, so this makes the whole site much faster). debug is left OFF for
     # speed and so the interactive debugger is never exposed when hosted online.
-    import os
     _debug = os.environ.get("FLASK_DEBUG") == "1"
     create_app().run(host="127.0.0.1", port=5000, threaded=True, debug=_debug)
